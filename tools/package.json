@@ -1,0 +1,9 @@
+{
+  "name": "macrotrack-tools",
+  "private": true,
+  "type": "module",
+  "description": "Data pipeline and eval harness for MacroTrack (Node >= 22)",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0"
+  }
+}
