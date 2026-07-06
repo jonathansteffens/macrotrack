@@ -1,0 +1,13 @@
+{
+  "seed": 1,
+  "text_sft": "data/sft/sft-text.jsonl",
+  "text_take": 300,
+  "image_sft": "runs/dryrun/n5k-tiny.jsonl",
+  "image_repeat": 1,
+  "epochs": 1,
+  "batch_size": 2,
+  "grad_accum": 2,
+  "probe_every_steps": 40,
+  "probe_n": 8,
+  "out_dir": "runs/dryrun"
+}

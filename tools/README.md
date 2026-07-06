@@ -28,3 +28,14 @@ https://fdc.nal.usda.gov/download-datasets for current filenames), then bump
 `schema_version` in the meta table if the schema changed.
 
 USDA FoodData Central data is public domain (CC0).
+
+## Other tool directories
+
+- `tools/eval/` — Phase 3 acceptance harness: `build-cases.mjs` (52 text
+  cases with DB-derived ground truth), `run-eval.mjs` (scores Anthropic or
+  any OpenAI-compatible endpoint), `run-eval-n5k.mjs` (Nutrition5k photo
+  eval), `check-overlap.mjs` (verifies eval hold-out from training data).
+- `tools/finetune/` — training-data generation (`generate-synthetic.mjs`,
+  `fetch-nutrition5k.sh` + `convert-nutrition5k.mjs`), QLoRA training
+  (`train_qlora.py`, configs under `runs/`), and GGUF export
+  (`export-gguf.sh`). See `docs/FINETUNE.md` and `docs/finetune-report.md`.

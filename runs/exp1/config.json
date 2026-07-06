@@ -1,0 +1,16 @@
+{
+  "seed": 1,
+  "lora_r": 16,
+  "lora_alpha": 16,
+  "lr": 1e-4,
+  "epochs": 1,
+  "batch_size": 4,
+  "grad_accum": 4,
+  "text_sft": "data/sft/sft-text.jsonl",
+  "text_take": 24000,
+  "image_sft": "data/nutrition5k/n5k-train.jsonl",
+  "image_repeat": 4,
+  "probe_every_steps": 300,
+  "probe_n": 24,
+  "out_dir": "runs/exp1"
+}

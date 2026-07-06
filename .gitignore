@@ -1,2 +1,11 @@
 # machine-local Claude Code settings
 .claude/settings.local.json
+
+# Phase 3 fine-tune: env, datasets, weights — commit scripts and configs, not artifacts
+.venv-ft/
+data/
+models/
+runs/*/checkpoints/
+runs/*/merged/
+tools/finetune/sft-*.jsonl
+tools/finetune/*.jsonl
