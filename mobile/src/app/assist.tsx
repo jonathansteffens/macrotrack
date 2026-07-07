@@ -68,10 +68,18 @@ export default function AssistScreen() {
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
     if (result.canceled || !result.assets[0]) return;
 
-    // Downscale before upload — full-resolution photos cost ~3x more tokens
+    // Cap the long side at 768 px before encoding. This matches the on-device
+    // model's training resolution (~640x480) and keeps the vision pass ~1.3k
+    // tokens; larger images are both slower on-device and a train/inference
+    // mismatch that hurts accuracy. Resize by whichever dimension is longer so
+    // portrait photos are capped too (resizing one dimension preserves aspect).
     const asset = result.assets[0];
     const context = ImageManipulator.manipulate(asset.uri);
-    if ((asset.width ?? 0) > 1280) context.resize({ width: 1280 });
+    const w = asset.width ?? 0;
+    const h = asset.height ?? 0;
+    if (Math.max(w, h) > 768) {
+      context.resize(w >= h ? { width: 768 } : { height: 768 });
+    }
     const rendered = await context.renderAsync();
     const saved = await rendered.saveAsync({
       base64: true,
