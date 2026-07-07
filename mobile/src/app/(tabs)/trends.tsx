@@ -22,6 +22,7 @@ const METRICS = [
   { key: 'protein', label: 'Protein', color: MacroColors.protein, unit: 'g' },
   { key: 'carbs', label: 'Carbs', color: MacroColors.carbs, unit: 'g' },
   { key: 'fat', label: 'Fat', color: MacroColors.fat, unit: 'g' },
+  { key: 'fiber', label: 'Fiber', color: MacroColors.fiber, unit: 'g' },
 ] as const;
 
 type MetricKey = (typeof METRICS)[number]['key'];
@@ -66,9 +67,13 @@ export default function TrendsScreen() {
   const avg =
     trends == null
       ? 0
-      : { kcal: trends.avgKcal, protein: trends.avgProtein, carbs: trends.avgCarbs, fat: trends.avgFat }[
-          metric
-        ];
+      : {
+          kcal: trends.avgKcal,
+          protein: trends.avgProtein,
+          carbs: trends.avgCarbs,
+          fat: trends.avgFat,
+          fiber: trends.avgFiber,
+        }[metric];
 
   return (
     <ThemedView style={styles.root}>

@@ -34,6 +34,7 @@ export default function SettingsScreen() {
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
+  const [fiber, setFiber] = useState('');
   const [dbInfo, setDbInfo] = useState<{ count: number; sources: string } | null>(null);
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
@@ -44,6 +45,7 @@ export default function SettingsScreen() {
       setProtein(String(Math.round(g.protein)));
       setCarbs(String(Math.round(g.carbs)));
       setFat(String(Math.round(g.fat)));
+      setFiber(String(Math.round(g.fiber)));
     });
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
@@ -81,12 +83,25 @@ export default function SettingsScreen() {
       protein: parseDecimal(protein),
       carbs: parseDecimal(carbs),
       fat: parseDecimal(fat),
+      fiber: parseDecimal(fiber),
     };
-    if (g.kcal == null || g.protein == null || g.carbs == null || g.fat == null) {
-      Alert.alert('Invalid goals', 'All four goals must be numbers.');
+    if (
+      g.kcal == null ||
+      g.protein == null ||
+      g.carbs == null ||
+      g.fat == null ||
+      g.fiber == null
+    ) {
+      Alert.alert('Invalid goals', 'All goals must be numbers.');
       return;
     }
-    await setGoals({ kcal: g.kcal, protein: g.protein, carbs: g.carbs, fat: g.fat });
+    await setGoals({
+      kcal: g.kcal,
+      protein: g.protein,
+      carbs: g.carbs,
+      fat: g.fat,
+      fiber: g.fiber,
+    });
     router.back();
   };
 
@@ -107,6 +122,7 @@ export default function SettingsScreen() {
             <GoalField label="Protein (g)" value={protein} onChange={setProtein} style={inputStyle} />
             <GoalField label="Carbs (g)" value={carbs} onChange={setCarbs} style={inputStyle} />
             <GoalField label="Fat (g)" value={fat} onChange={setFat} style={inputStyle} />
+            <GoalField label="Fiber (g)" value={fiber} onChange={setFiber} style={inputStyle} />
           </View>
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>

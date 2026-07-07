@@ -54,6 +54,6 @@ export type LogEntry = {
   source: FoodSource | 'manual' | 'ai_estimate';
 };
 
-export type Goals = { kcal: number; protein: number; carbs: number; fat: number };
+export type Goals = { kcal: number; protein: number; carbs: number; fat: number; fiber: number };
 
-export const DEFAULT_GOALS: Goals = { kcal: 2000, protein: 150, carbs: 200, fat: 65 };
+export const DEFAULT_GOALS: Goals = { kcal: 2000, protein: 150, carbs: 200, fat: 65, fiber: 30 };

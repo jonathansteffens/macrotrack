@@ -7,6 +7,7 @@ export type DayTotal = {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
   logged: boolean;
 };
 
@@ -17,6 +18,7 @@ export type TrendSummary = {
   avgProtein: number;
   avgCarbs: number;
   avgFat: number;
+  avgFiber: number;
   streak: number; // consecutive logged days ending today or yesterday
 };
 
@@ -28,8 +30,9 @@ export async function getTrends(nDays: number): Promise<TrendSummary> {
     protein: number;
     carbs: number;
     fat: number;
+    fiber: number | null;
   }>(
-    `SELECT day, SUM(kcal) kcal, SUM(protein) protein, SUM(carbs) carbs, SUM(fat) fat
+    `SELECT day, SUM(kcal) kcal, SUM(protein) protein, SUM(carbs) carbs, SUM(fat) fat, SUM(fiber) fiber
      FROM log_entries WHERE day >= ? GROUP BY day`,
     keys[0]
   );
@@ -38,8 +41,8 @@ export async function getTrends(nDays: number): Promise<TrendSummary> {
   const days: DayTotal[] = keys.map((day) => {
     const r = byDay.get(day);
     return r
-      ? { day, kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, logged: true }
-      : { day, kcal: 0, protein: 0, carbs: 0, fat: 0, logged: false };
+      ? { day, kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, fiber: r.fiber ?? 0, logged: true }
+      : { day, kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, logged: false };
   });
 
   const logged = days.filter((d) => d.logged);
@@ -53,6 +56,7 @@ export async function getTrends(nDays: number): Promise<TrendSummary> {
     avgProtein: avg((d) => d.protein),
     avgCarbs: avg((d) => d.carbs),
     avgFat: avg((d) => d.fat),
+    avgFiber: avg((d) => d.fiber),
     streak: await getStreak(),
   };
 }

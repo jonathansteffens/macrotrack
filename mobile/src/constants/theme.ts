@@ -32,6 +32,7 @@ export const MacroColors = {
   protein: '#E4645C',
   carbs: '#E8A33D',
   fat: '#3FA98E',
+  fiber: '#8E7CC3',
 } as const;
 
 export const Fonts = Platform.select({

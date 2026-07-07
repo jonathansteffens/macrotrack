@@ -96,6 +96,7 @@ export default function TodayScreen() {
             <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={MacroColors.protein} />
             <MacroBar label="Carbs" value={totals.carbs} goal={goals.carbs} color={MacroColors.carbs} />
             <MacroBar label="Fat" value={totals.fat} goal={goals.fat} color={MacroColors.fat} />
+            <MacroBar label="Fiber" value={totals.fiber ?? 0} goal={goals.fiber} color={MacroColors.fiber} />
           </ThemedView>
 
           {/* Meals */}
