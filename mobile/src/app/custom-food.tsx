@@ -43,12 +43,13 @@ export default function CustomFoodScreen() {
   const [sodium, setSodium] = useState('');
   const [servingLabel, setServingLabel] = useState('');
   const [servingGrams, setServingGrams] = useState('');
+  const [unit, setUnit] = useState<'g' | 'ml'>('g');
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     const kcalNum = parseDecimal(kcal);
     if (!name.trim() || kcalNum == null) {
-      Alert.alert('Missing info', 'A name and calories (per 100 g) are required.');
+      Alert.alert('Missing info', `A name and calories (per 100 ${unit}) are required.`);
       return;
     }
     const portions: Portion[] = [];
@@ -72,6 +73,7 @@ export default function CustomFoodScreen() {
         },
         portions,
         barcode: params.barcode ?? null,
+        unit,
       });
       if (params.day && params.meal) {
         router.replace({
@@ -117,9 +119,30 @@ export default function CustomFoodScreen() {
             <TextInput style={inputStyle} value={brand} onChangeText={setBrand} />
           </Field>
 
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Nutrition per 100 g
-          </ThemedText>
+          <View style={styles.unitToggleRow}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              Nutrition per 100 {unit}
+            </ThemedText>
+            <View style={styles.unitChips}>
+              {(['g', 'ml'] as const).map((u) => (
+                <Pressable
+                  key={u}
+                  onPress={() => setUnit(u)}
+                  style={[
+                    styles.unitChip,
+                    {
+                      backgroundColor:
+                        unit === u ? theme.backgroundSelected : theme.backgroundElement,
+                      borderColor: unit === u ? MacroColors.kcal : 'transparent',
+                    },
+                  ]}>
+                  <ThemedText type="small" themeColor={unit === u ? 'text' : 'textSecondary'}>
+                    {u}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
           <View style={styles.grid}>
             <NumField label="Calories *" value={kcal} onChange={setKcal} style={inputStyle} />
             <NumField label="Protein (g)" value={protein} onChange={setProtein} style={inputStyle} />
@@ -217,6 +240,21 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginTop: Spacing.two,
+  },
+  unitToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  unitChips: {
+    flexDirection: 'row',
+    gap: Spacing.one,
+  },
+  unitChip: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderWidth: 1,
   },
   grid: {
     flexDirection: 'row',

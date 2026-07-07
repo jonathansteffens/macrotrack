@@ -15,6 +15,7 @@ type FoodRow = {
   sugar: number | null;
   sodium_mg: number | null;
   portions_json: string;
+  unit?: string | null;
 };
 
 function rowMacros(r: FoodRow): Macros {
@@ -58,6 +59,7 @@ function customRowToFood(r: FoodRow): FoodItem {
     brand: r.brand ?? null,
     category: null,
     per100: rowMacros(r),
+    unit: r.unit === 'ml' ? 'ml' : 'g',
     portions: parsePortions(r.portions_json),
   };
 }
@@ -140,6 +142,7 @@ export async function getFoodByRef(ref: string): Promise<FoodItem | null> {
       brand: r.brand ?? null,
       category: null,
       per100: rowMacros(r),
+      unit: r.unit === 'ml' ? 'ml' : 'g',
       portions: parsePortions(r.portions_json),
     };
   }
@@ -156,13 +159,14 @@ export type CustomFoodInput = {
   per100: Macros;
   portions?: Portion[];
   barcode?: string | null;
+  unit?: 'g' | 'ml';
 };
 
 export async function createCustomFood(input: CustomFoodInput): Promise<FoodItem> {
   const res = await getUserDb().runAsync(
     `INSERT INTO custom_foods
-       (name, name_norm, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, barcode, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, name_norm, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, barcode, unit, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.name.trim(),
     normName(input.name),
     input.brand?.trim() || null,
@@ -175,6 +179,7 @@ export async function createCustomFood(input: CustomFoodInput): Promise<FoodItem
     input.per100.sodiumMg,
     JSON.stringify(input.portions ?? []),
     input.barcode ?? null,
+    input.unit ?? 'g',
     new Date().toISOString()
   );
   const food = await getFoodByRef(`custom:${res.lastInsertRowId}`);

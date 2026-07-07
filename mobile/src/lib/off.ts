@@ -9,7 +9,8 @@ import type { FoodItem, Portion } from './types';
  */
 
 const OFF_URL = 'https://world.openfoodfacts.org/api/v2/product/';
-const OFF_FIELDS = 'product_name,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit';
+const OFF_FIELDS =
+  'product_name,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,nutrition_data_per';
 const USER_AGENT = 'MacroTrack/0.1 (personal macro tracker)';
 const CACHE_TTL_DAYS = 30;
 
@@ -75,13 +76,17 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     });
   }
 
+  // Liquids: OFF marks these with a 'ml' serving unit or per-100ml nutrition.
+  const unit: 'g' | 'ml' =
+    servingUnit === 'ml' || p.nutrition_data_per === '100ml' ? 'ml' : 'g';
+
   const name = (p.product_name ?? '').trim();
   if (!name) return { status: 'not_found' };
 
   await getUserDb().runAsync(
     `INSERT OR REPLACE INTO barcode_cache
-       (barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, unit, fetched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     barcode,
     name,
     (p.brands ?? '').split(',')[0].trim() || null,
@@ -93,6 +98,7 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     num(n['sugars_100g']),
     sodiumMg,
     JSON.stringify(portions),
+    unit,
     new Date().toISOString()
   );
 

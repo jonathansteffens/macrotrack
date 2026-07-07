@@ -121,6 +121,15 @@ export async function initDb(): Promise<void> {
   userDb = await SQLite.openDatabaseAsync('user.db');
   await userDb.execAsync(USER_SCHEMA);
 
+  // Additive column migrations for existing installs. ALTER throws if the
+  // column already exists; we ignore that (it just means the migration ran).
+  for (const stmt of [
+    "ALTER TABLE barcode_cache ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
+    "ALTER TABLE custom_foods ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
+  ]) {
+    await userDb.execAsync(stmt).catch(() => {});
+  }
+
   // Re-import the bundled food DB when the app ships a newer build of it.
   const row = await userDb.getFirstAsync<{ value: string }>(
     "SELECT value FROM settings WHERE key = 'foods_db_version'"

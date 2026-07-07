@@ -35,7 +35,7 @@ export function FoodRow({ food, onPress }: { food: FoodItem; onPress: () => void
           </View>
           <ThemedText type="small" themeColor="textSecondary">
             {fmtKcal(food.per100.kcal)} kcal · P {fmtGrams(food.per100.protein)} · C{' '}
-            {fmtGrams(food.per100.carbs)} · F {fmtGrams(food.per100.fat)} per 100 g
+            {fmtGrams(food.per100.carbs)} · F {fmtGrams(food.per100.fat)} per 100 {food.unit ?? 'g'}
           </ThemedText>
         </ThemedView>
       )}

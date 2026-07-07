@@ -70,7 +70,7 @@ export default function EntryScreen() {
       {entry.grams != null ? (
         <View style={styles.gramsRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Amount (g)
+            Amount
           </ThemedText>
           <TextInput
             style={[

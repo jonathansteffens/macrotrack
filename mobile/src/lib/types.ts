@@ -35,6 +35,8 @@ export type FoodItem = {
   brand: string | null;
   category: string | null;
   per100: Macros;
+  /** Base unit for amounts. Defaults to grams; 'ml' for liquids (mL ≈ g). */
+  unit?: 'g' | 'ml';
   portions: Portion[];
 };
 

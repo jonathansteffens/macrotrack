@@ -63,9 +63,10 @@ export default function FoodScreen() {
   const grams = amount != null ? amount * gramsPerUnit : null;
   const preview = grams != null ? scaleMacros(food.per100, grams) : null;
 
+  const unitLabel = food.unit ?? 'g';
   const quantityDesc =
     unitIdx === 0
-      ? `${fmtGrams(amount)} g`
+      ? `${fmtGrams(amount)} ${unitLabel}`
       : `${fmtGrams(amount)} × ${food.portions[unitIdx - 1].label}`;
 
   const log = async () => {
@@ -110,7 +111,7 @@ export default function FoodScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.unitChips}>
                 <UnitChip
-                  label="g"
+                  label={unitLabel}
                   selected={unitIdx === 0}
                   onPress={() => {
                     setUnitIdx(0);
@@ -120,7 +121,7 @@ export default function FoodScreen() {
                 {food.portions.map((p, i) => (
                   <UnitChip
                     key={i}
-                    label={`${p.label} (${fmtGrams(p.grams)} g)`}
+                    label={`${p.label} (${fmtGrams(p.grams)} ${unitLabel})`}
                     selected={unitIdx === i + 1}
                     onPress={() => {
                       setUnitIdx(i + 1);
