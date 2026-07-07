@@ -36,7 +36,7 @@ export default function EntryScreen() {
 
   const save = async () => {
     if (entry.grams != null && newGrams != null && newGrams > 0 && newGrams !== entry.grams) {
-      await updateEntryQuantity(entry.id, newGrams, `${fmtGrams(newGrams)} g`);
+      await updateEntryQuantity(entry.id, newGrams, `${fmtGrams(newGrams)} ${entry.unit ?? 'g'}`);
     }
     if (meal !== entry.meal) {
       await updateEntryMeal(entry.id, meal);
@@ -70,7 +70,7 @@ export default function EntryScreen() {
       {entry.grams != null ? (
         <View style={styles.gramsRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Amount
+            Amount ({entry.unit ?? 'g'})
           </ThemedText>
           <TextInput
             style={[

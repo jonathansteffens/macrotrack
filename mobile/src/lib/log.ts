@@ -11,6 +11,7 @@ type EntryRow = {
   food_ref: string | null;
   quantity_desc: string;
   grams: number | null;
+  unit?: string | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -31,6 +32,7 @@ function rowToEntry(r: EntryRow): LogEntry {
     foodRef: r.food_ref,
     quantityDesc: r.quantity_desc,
     grams: r.grams,
+    unit: r.unit === 'ml' ? 'ml' : 'g',
     macros: {
       kcal: r.kcal,
       protein: r.protein,
@@ -52,8 +54,8 @@ export async function logFood(
   const res = await getUserDb().runAsync(
     `INSERT INTO log_entries
        (day, ts, meal, food_name, food_ref, quantity_desc, grams,
-        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, unit, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     opts.day,
     new Date().toISOString(),
     opts.meal,
@@ -68,6 +70,7 @@ export async function logFood(
     m.fiber,
     m.sugar,
     m.sodiumMg,
+    food.unit ?? 'g',
     food.source
   );
   return res.lastInsertRowId;
@@ -88,8 +91,8 @@ export async function logAiEstimate(opts: {
   const res = await getUserDb().runAsync(
     `INSERT INTO log_entries
        (day, ts, meal, food_name, food_ref, quantity_desc, grams,
-        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, source)
-     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai_estimate')`,
+        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, unit, source)
+     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'g', 'ai_estimate')`,
     opts.day,
     new Date().toISOString(),
     opts.meal,

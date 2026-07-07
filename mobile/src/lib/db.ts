@@ -126,6 +126,7 @@ export async function initDb(): Promise<void> {
   for (const stmt of [
     "ALTER TABLE barcode_cache ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE custom_foods ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
+    "ALTER TABLE log_entries ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
   ]) {
     await userDb.execAsync(stmt).catch(() => {});
   }

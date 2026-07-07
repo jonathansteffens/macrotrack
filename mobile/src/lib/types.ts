@@ -49,6 +49,7 @@ export type LogEntry = {
   foodRef: string | null;
   quantityDesc: string;
   grams: number | null;
+  unit?: 'g' | 'ml';
   macros: Macros;
   source: FoodSource | 'manual' | 'ai_estimate';
 };
