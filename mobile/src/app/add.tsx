@@ -78,7 +78,19 @@ export default function AddFoodScreen() {
   };
 
   const showingRecents = !query.trim();
-  const data = showingRecents ? recents : results;
+  // While searching, surface recently-logged foods that match the query at the
+  // top ("you've had this before"), and drop them from the results below.
+  const q = query.trim().toLowerCase();
+  const matchingRecents = showingRecents
+    ? []
+    : recents
+        .filter((f) => {
+          const hay = `${f.name} ${f.brand ?? ''}`.toLowerCase();
+          return q.split(/\s+/).every((tok) => hay.includes(tok));
+        })
+        .slice(0, 3);
+  const matchingRefs = new Set(matchingRecents.map((f) => f.ref));
+  const data = showingRecents ? recents : results.filter((f) => !matchingRefs.has(f.ref));
 
   return (
     <ThemedView style={styles.root}>
@@ -178,6 +190,22 @@ export default function AddFoodScreen() {
                 </ThemedText>
               )}
             </View>
+          ) : matchingRecents.length > 0 ? (
+            <View>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
+                Recent
+              </ThemedText>
+              {matchingRecents.map((f) => (
+                <View key={f.ref} style={styles.recentMatch}>
+                  <FoodRow food={f} onPress={() => openFood(f)} />
+                </View>
+              ))}
+              {data.length > 0 && (
+                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
+                  All foods
+                </ThemedText>
+              )}
+            </View>
           ) : null
         }
         ListEmptyComponent={
@@ -228,6 +256,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  recentMatch: {
     marginBottom: Spacing.two,
   },
   templateRow: {
