@@ -11,12 +11,13 @@ native module — it will not load in Expo Go). Bundle with the first EAS build.
 | `macrotrack-estimator-q4_k_m.gguf` | ~1.9 GB | fine-tuned Qwen2.5-VL-3B text model, Q4_K_M |
 | `mmproj-macrotrack-estimator-f16.gguf` | ~1.3 GB | vision projector (f16 — small, quality-critical) |
 
-> The mmproj is the **stock Qwen2.5-VL-3B projector** — the vision encoder was
-> frozen during fine-tuning, so photo *identification* is exactly base-model
-> quality; the fine-tune improved schema-adherence and *portion* priors on the
-> language side. If photo identification proves too weak in the field, the next
-> iteration should unfreeze the last few vision blocks (see report §Known
-> failure modes) and export a fine-tuned mmproj.
+> The mmproj is a **fine-tuned projector** (the shipping exp2 model unfroze the
+> vision encoder), so it is **not** interchangeable with the stock base
+> mmproj — ship this exact file alongside the text model. Unfreezing vision is
+> what drove the photo-accuracy gain (Nutrition5k caloric MAE 46%→39%, mass
+> 31%→23%). Caveat: that gain is measured on overhead cafeteria photos; see the
+> report's photo-table caveat before assuming it fully transfers to angled
+> phone captures.
 
 Download on first use into `FileSystem.documentDirectory` (they exceed OTA
 asset limits); verify with a SHA-256 manifest.

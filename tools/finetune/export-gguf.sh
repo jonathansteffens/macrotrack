@@ -17,13 +17,13 @@
 #   failure by refusing to proceed if the merged text tensors are missing.
 #
 # IMPORTANT — the mmproj:
-#   The vision encoder is FROZEN during training (train_qlora.py
-#   finetune_vision_layers=False), so the correct projector is the BASE
-#   model's mmproj, byte-identical. We copy it. (Converting the projector
-#   from a peft-merged HF dir produces a broken mmproj — llama.cpp fails with
-#   "unable to find tensor v.blk.0.attn_out.weight" — because the AutoModel
-#   save renames vision-tower keys.) Override BASE_MMPROJ if you ever unfreeze
-#   vision, in which case convert it from the merged dir with --mmproj.
+#   Converted from the merged dir with --mmproj. This is correct whether the
+#   vision encoder was frozen or fine-tuned: merge_lora.py normalizes the
+#   vision-tower keys to the base layout (model.visual.* → visual.*), without
+#   which llama.cpp writes an incomplete projector that fails to load
+#   ("unable to find tensor v.blk.0.attn_out.weight"). If the merge did NOT go
+#   through merge_lora.py, set BASE_MMPROJ to fall back to copying a stock
+#   projector (only valid when vision was frozen).
 set -euo pipefail
 
 MERGED="$1"
@@ -32,17 +32,24 @@ HERE="$(cd "$(dirname "$0")/../.." && pwd)"
 LLAMA="/home/jonathan.steffens/sglang_env/llama.cpp"
 PY="$HERE/.venv-ft/bin/python"
 OUT="$HERE/models"
-BASE_MMPROJ="${BASE_MMPROJ:-$OUT/base/mmproj-Qwen2.5-VL-3B-Instruct-f16.gguf}"
+BASE_MMPROJ="${BASE_MMPROJ:-}"
 mkdir -p "$OUT"
 
 [ -d "$MERGED" ] || { echo "merged dir not found: $MERGED"; exit 1; }
-[ -f "$BASE_MMPROJ" ] || { echo "base mmproj not found: $BASE_MMPROJ (see header)"; exit 1; }
 
 echo "== text model → f16 GGUF =="
 "$PY" "$LLAMA/convert_hf_to_gguf.py" "$MERGED" --outfile "$OUT/$NAME-f16.gguf" --outtype f16
 
-echo "== vision projector: copy base mmproj (frozen vision) =="
-cp "$BASE_MMPROJ" "$OUT/mmproj-$NAME-f16.gguf"
+if [ -n "$BASE_MMPROJ" ]; then
+  echo "== vision projector: copy $BASE_MMPROJ (frozen-vision fallback) =="
+  cp "$BASE_MMPROJ" "$OUT/mmproj-$NAME-f16.gguf"
+else
+  echo "== vision projector → mmproj GGUF (from merged dir) =="
+  "$PY" "$LLAMA/convert_hf_to_gguf.py" "$MERGED" --outfile "$OUT/mmproj-$NAME-f16.gguf" --mmproj
+  # guard: a projector with no vision tensors is a few KB, not ~1.3 GB
+  sz=$(stat -c%s "$OUT/mmproj-$NAME-f16.gguf")
+  [ "$sz" -gt 100000000 ] || { echo "ERROR: mmproj is $sz bytes — vision tensors missing (merge_lora.py remap?)"; exit 1; }
+fi
 
 echo "== quantize =="
 "$LLAMA/build-cuda/bin/llama-quantize" "$OUT/$NAME-f16.gguf" "$OUT/$NAME-q4_k_m.gguf" Q4_K_M
@@ -52,7 +59,8 @@ echo "== sanity: reject a base-weights merge =="
 # The tuned model must NOT behave like the base. A 1-line generation without
 # grammar should emit the trained FoodClaim shape ("items":[...]). If it looks
 # like the base model instead, fail loudly so a silent bad merge can't ship.
-PROBE="$("$LLAMA/build-cuda/bin/llama-cli" -m "$OUT/$NAME-q4_k_m.gguf" -ngl 99 -no-cnv \
+# Runs on CPU (-ngl 0) so it never contends with a busy GPU / hangs.
+PROBE="$("$LLAMA/build-cuda/bin/llama-cli" -m "$OUT/$NAME-q4_k_m.gguf" -ngl 0 -c 512 -no-cnv \
   -p 'two scrambled eggs and toast' -n 64 --temp 0 2>/dev/null || true)"
 if echo "$PROBE" | grep -q '"items"'; then
   echo "   OK — emits FoodClaim items"
