@@ -31,11 +31,11 @@ const TEXT_MODEL: ModelFile = {
   name: 'macrotrack-estimator-q4_k_m.gguf',
   sizeBytes: 1_929_900_928,
 };
-const MMPROJ: ModelFile = {
-  name: 'mmproj-macrotrack-estimator-f16.gguf',
-  sizeBytes: 1_338_428_032,
-};
-const MODEL_FILES = [TEXT_MODEL, MMPROJ];
+// The vision projector (mmproj, ~1.3 GB) is intentionally NOT downloaded or
+// loaded — the app is text-only for now (faster, lighter, more reliable). To
+// restore photo estimates: add the MMPROJ file back here and re-enable
+// ctx.initMultimodal() in loadContext below.
+const MODEL_FILES = [TEXT_MODEL];
 
 export const LOCAL_MODEL_TOTAL_BYTES = MODEL_FILES.reduce((s, f) => s + f.sizeBytes, 0);
 
@@ -135,14 +135,13 @@ async function loadContext(): Promise<LlamaContext> {
     model: fileFor(TEXT_MODEL).uri,
     n_ctx: 4096, // system (~600) + one image (~1300) + claim fits comfortably
     n_gpu_layers: 99, // Metal (iOS) / GPU-delegate (Android); falls back to CPU
+    // Pin to the performance cores. Most modern Android SoCs have ~4 big cores
+    // (Tensor G2: 2×X1 + 2×A78); spilling onto the little A55 cores usually
+    // slows decode, since threads sync to the slowest. Tune per device.
+    n_threads: 4,
+    flash_attn: true, // less attention memory traffic → faster decode
     use_mlock: false, // let the OS page under memory pressure
-    ctx_shift: false, // required for multimodal token positioning
   });
-  const ok = await ctx.initMultimodal({ path: fileFor(MMPROJ).uri, use_gpu: true });
-  if (!ok) {
-    await ctx.release?.();
-    throw new Error('Failed to load the vision projector (mmproj).');
-  }
   return ctx;
 }
 
@@ -172,7 +171,6 @@ export async function releaseLocalContext(): Promise<void> {
   if (!p) return;
   try {
     const ctx = await p;
-    await ctx.releaseMultimodal?.();
     await ctx.release?.();
   } catch {
     // context never finished loading — nothing to release

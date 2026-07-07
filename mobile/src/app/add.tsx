@@ -1,15 +1,16 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { FoodRow } from '@/components/food-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { recentFoods, searchFoods } from '@/lib/foods';
 import { fmtKcal } from '@/lib/macros';
+import { listRecipes, recipePerServing, type Recipe } from '@/lib/recipes';
 import {
   deleteTemplate,
   listTemplates,
@@ -29,12 +30,17 @@ export default function AddFoodScreen() {
   const [results, setResults] = useState<FoodItem[]>([]);
   const [recents, setRecents] = useState<FoodItem[]>([]);
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const searchId = useRef(0);
 
-  useEffect(() => {
-    recentFoods().then(setRecents);
-    listTemplates().then(setTemplates);
-  }, []);
+  // Reload on focus so a recipe/template created in a pushed modal shows on return.
+  useFocusEffect(
+    useCallback(() => {
+      recentFoods().then(setRecents);
+      listTemplates().then(setTemplates);
+      listRecipes().then(setRecipes);
+    }, [])
+  );
 
   useEffect(() => {
     const id = ++searchId.current;
@@ -113,6 +119,36 @@ export default function AddFoodScreen() {
         ListHeaderComponent={
           showingRecents ? (
             <View>
+              <View style={styles.sectionHeaderRow}>
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  Recipes — tap to log a serving
+                </ThemedText>
+                <Pressable hitSlop={8} onPress={() => router.push('/recipe')}>
+                  <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+                    ＋ New
+                  </ThemedText>
+                </Pressable>
+              </View>
+              {recipes.map((r) => (
+                <Pressable
+                  key={r.id}
+                  style={styles.templateRow}
+                  onPress={() =>
+                    router.push({ pathname: '/food', params: { ref: `recipe:${r.id}`, day, meal } })
+                  }
+                  onLongPress={() =>
+                    router.push({ pathname: '/recipe', params: { id: String(r.id) } })
+                  }>
+                  <ThemedView type="backgroundElement" style={styles.templateCard}>
+                    <ThemedText type="small" numberOfLines={1} style={styles.templateName}>
+                      🍲 {r.name}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} kcal ea
+                    </ThemedText>
+                  </ThemedView>
+                </Pressable>
+              ))}
               {templates.length > 0 && (
                 <>
                   <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
@@ -187,6 +223,12 @@ const styles = StyleSheet.create({
   listHeader: {
     marginBottom: Spacing.two,
     marginTop: Spacing.one,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
   },
   templateRow: {
     marginBottom: Spacing.two,

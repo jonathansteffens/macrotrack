@@ -70,6 +70,23 @@ CREATE TABLE IF NOT EXISTS log_entries (
 CREATE INDEX IF NOT EXISTS idx_log_day ON log_entries(day);
 CREATE INDEX IF NOT EXISTS idx_log_ref ON log_entries(food_ref);
 
+CREATE TABLE IF NOT EXISTS recipes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  servings REAL NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recipe_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  recipe_id INTEGER NOT NULL,
+  food_name TEXT NOT NULL,
+  food_ref TEXT,
+  grams REAL NOT NULL,
+  per100_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_items ON recipe_items(recipe_id);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

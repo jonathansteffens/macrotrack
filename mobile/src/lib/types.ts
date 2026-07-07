@@ -22,7 +22,7 @@ export type Macros = {
 
 export type Portion = { label: string; grams: number };
 
-export type FoodSource = 'usda' | 'custom' | 'barcode';
+export type FoodSource = 'usda' | 'custom' | 'barcode' | 'recipe';
 
 /**
  * A loggable food. `ref` is a stable pointer: 'usda:<fdcId>',

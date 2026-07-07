@@ -1,4 +1,5 @@
 import { getFoodsDb, getUserDb } from './db';
+import { getRecipe, recipeToFood } from './recipes';
 import type { FoodItem, Macros, Portion } from './types';
 
 type FoodRow = {
@@ -141,6 +142,10 @@ export async function getFoodByRef(ref: string): Promise<FoodItem | null> {
       per100: rowMacros(r),
       portions: parsePortions(r.portions_json),
     };
+  }
+  if (kind === 'recipe') {
+    const recipe = await getRecipe(Number(key));
+    return recipe ? recipeToFood(recipe) : null;
   }
   return null;
 }

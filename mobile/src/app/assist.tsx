@@ -1,11 +1,8 @@
-import * as ImagePicker from 'expo-image-picker';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -44,7 +41,6 @@ export default function AssistScreen() {
 
   const [phase, setPhase] = useState<Phase>('input');
   const [text, setText] = useState('');
-  const [image, setImage] = useState<{ uri: string; base64: string } | null>(null);
   const [turns, setTurns] = useState<EstimateTurn[]>([]);
   const [claim, setClaim] = useState<FoodClaim | null>(null);
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -52,42 +48,6 @@ export default function AssistScreen() {
   const [clarifyText, setClarifyText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const pickImage = async (from: 'camera' | 'library') => {
-    const perm =
-      from === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission needed', 'Enable access in system settings to add a photo.');
-      return;
-    }
-    const result =
-      from === 'camera'
-        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
-    if (result.canceled || !result.assets[0]) return;
-
-    // Cap the long side at 768 px before encoding. This matches the on-device
-    // model's training resolution (~640x480) and keeps the vision pass ~1.3k
-    // tokens; larger images are both slower on-device and a train/inference
-    // mismatch that hurts accuracy. Resize by whichever dimension is longer so
-    // portrait photos are capped too (resizing one dimension preserves aspect).
-    const asset = result.assets[0];
-    const context = ImageManipulator.manipulate(asset.uri);
-    const w = asset.width ?? 0;
-    const h = asset.height ?? 0;
-    if (Math.max(w, h) > 768) {
-      context.resize(w >= h ? { width: 768 } : { height: 768 });
-    }
-    const rendered = await context.renderAsync();
-    const saved = await rendered.saveAsync({
-      base64: true,
-      compress: 0.7,
-      format: SaveFormat.JPEG,
-    });
-    if (saved.base64) setImage({ uri: saved.uri, base64: saved.base64 });
-  };
 
   const runEstimate = async (newTurns: EstimateTurn[]) => {
     setPhase('estimating');
@@ -116,8 +76,8 @@ export default function AssistScreen() {
   };
 
   const submit = () => {
-    if (!text.trim() && !image) return;
-    runEstimate([{ role: 'user', input: { text, imageBase64: image?.base64 } }]);
+    if (!text.trim()) return;
+    runEstimate([{ role: 'user', input: { text } }]);
   };
 
   const sendClarification = () => {
@@ -186,8 +146,8 @@ export default function AssistScreen() {
           {phase === 'input' && (
             <>
               <ThemedText type="small" themeColor="textSecondary">
-                Describe what you ate, attach a photo, or both. You can answer follow-up
-                questions before anything is logged.
+                Describe what you ate. You can answer follow-up questions before anything is
+                logged.
               </ThemedText>
               <TextInput
                 style={[...inputStyle, styles.multiline]}
@@ -198,30 +158,12 @@ export default function AssistScreen() {
                 multiline
                 autoFocus
               />
-              {image && (
-                <View style={styles.imageRow}>
-                  <Image source={{ uri: image.uri }} style={styles.thumbnail} />
-                  <Pressable hitSlop={8} onPress={() => setImage(null)}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Remove photo
-                    </ThemedText>
-                  </Pressable>
-                </View>
-              )}
-              <View style={styles.buttonRow}>
-                <ActionButton label="📷 Camera" onPress={() => pickImage('camera')} />
-                <ActionButton label="🖼 Photo library" onPress={() => pickImage('library')} />
-              </View>
               {error && (
                 <ThemedText type="small" style={{ color: MacroColors.protein }}>
                   {error}
                 </ThemedText>
               )}
-              <PrimaryButton
-                label="Estimate nutrition"
-                disabled={!text.trim() && !image}
-                onPress={submit}
-              />
+              <PrimaryButton label="Estimate nutrition" disabled={!text.trim()} onPress={submit} />
             </>
           )}
 

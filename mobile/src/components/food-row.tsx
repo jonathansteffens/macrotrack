@@ -11,6 +11,7 @@ const SOURCE_BADGE: Record<FoodItem['source'], string | null> = {
   usda: null,
   custom: 'custom',
   barcode: 'scanned',
+  recipe: 'recipe',
 };
 
 export function FoodRow({ food, onPress }: { food: FoodItem; onPress: () => void }) {

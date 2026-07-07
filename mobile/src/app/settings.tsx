@@ -213,11 +213,18 @@ function OnDeviceModel({
   }
 
   return (
-    <Pressable
-      style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
-      onPress={onDownload}>
-      <ThemedText type="small">Download on-device model ({sizeGb} GB, Wi-Fi recommended)</ThemedText>
-    </Pressable>
+    <View style={{ gap: Spacing.two }}>
+      <Pressable
+        style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+        onPress={onDownload}>
+        <ThemedText type="small">Download on-device model ({sizeGb} GB, Wi-Fi recommended)</ThemedText>
+      </Pressable>
+      <ThemedText type="small" style={{ color: MacroColors.carbs }}>
+        ⚠ Large one-time download, and the model runs entirely on your phone — a recent
+        device with plenty of RAM is recommended. On older or lower-memory phones,
+        estimates may be slow (tens of seconds) or may not run smoothly.
+      </ThemedText>
+    </View>
   );
 }
 

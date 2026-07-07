@@ -62,6 +62,7 @@ export default function RootLayout() {
           name="custom-food"
           options={{ presentation: 'modal', title: 'Custom food' }}
         />
+        <Stack.Screen name="recipe" options={{ presentation: 'modal', title: 'Recipe' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Goals' }} />
       </Stack>
     </ThemeProvider>

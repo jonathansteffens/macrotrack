@@ -18,26 +18,8 @@ import type { EstimateTurn, FoodClaim } from './types';
  * prompts the user to download it.
  */
 
-// Chat content is either a plain string or typed blocks (text + image).
-type ContentBlock =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } };
-type Message =
-  | { role: 'system'; content: string }
-  | { role: 'user'; content: ContentBlock[] }
-  | { role: 'assistant'; content: string };
-
-function userMessage(input: { text?: string; imageBase64?: string }): Message {
-  const content: ContentBlock[] = [];
-  if (input.imageBase64) {
-    content.push({
-      type: 'image_url',
-      image_url: { url: `data:image/jpeg;base64,${input.imageBase64}` },
-    });
-  }
-  content.push({ type: 'text', text: input.text?.trim() || 'Estimate the nutrition of this meal.' });
-  return { role: 'user', content };
-}
+// Text-only chat (the vision path is disabled for now — see local-model.ts).
+type Message = { role: 'system' | 'user' | 'assistant'; content: string };
 
 function buildMessages(turns: EstimateTurn[]): Message[] {
   const messages: Message[] = [{ role: 'system', content: ESTIMATOR_SYSTEM_PROMPT }];
@@ -45,18 +27,44 @@ function buildMessages(turns: EstimateTurn[]): Message[] {
     messages.push(
       turn.role === 'assistant'
         ? { role: 'assistant', content: JSON.stringify(turn.claim) }
-        : userMessage(turn.input)
+        : {
+            role: 'user',
+            content: turn.input.text?.trim() || 'Estimate the nutrition of this meal.',
+          }
     );
   }
   return messages;
+}
+
+/**
+ * Parse the model's text into a FoodClaim. Grammar-constrained output should
+ * be pure JSON, but be defensive: strip markdown code fences and, failing
+ * that, extract the outermost {...} object (in case a preamble or trailing
+ * chat-template tokens leak in).
+ */
+function parseClaim(raw: string): FoodClaim {
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  try {
+    return JSON.parse(s) as FoodClaim;
+  } catch {
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return JSON.parse(s.slice(start, end + 1)) as FoodClaim;
+    }
+    throw new SyntaxError('no JSON object found in model output');
+  }
 }
 
 export async function localEstimate(turns: EstimateTurn[]): Promise<EstimateResult> {
   const firstUser = turns.find((t) => t.role === 'user');
   if (!firstUser) return { ok: false, message: 'Nothing to estimate yet.' };
 
+  let raw: string;
   try {
-    const text = await runOnLocalContext((ctx) =>
+    raw = await runOnLocalContext((ctx) =>
       ctx
         .completion({
           messages: buildMessages(turns),
@@ -67,8 +75,6 @@ export async function localEstimate(turns: EstimateTurn[]): Promise<EstimateResu
         })
         .then((r) => r.text)
     );
-    const claim = JSON.parse(text) as FoodClaim;
-    return { ok: true, claim: sanitizeClaim(claim) };
   } catch (e) {
     if (e instanceof LocalModelUnavailable) {
       return e.reason === 'missing'
@@ -79,9 +85,17 @@ export async function localEstimate(turns: EstimateTurn[]): Promise<EstimateResu
           }
         : { ok: false, message: 'On-device AI isn’t available on this device.' };
     }
-    if (e instanceof SyntaxError) {
-      return { ok: false, message: 'Could not parse the on-device model response. Please try again.' };
-    }
     return { ok: false, message: 'On-device estimate failed. Please try again.' };
+  }
+
+  try {
+    return { ok: true, claim: sanitizeClaim(parseClaim(raw)) };
+  } catch {
+    // Surface the raw output so we can see WHY it didn't parse (Metro console).
+    console.warn('[localEstimate] unparseable model output >>>\n' + raw + '\n<<< end');
+    return {
+      ok: false,
+      message: 'Could not parse the on-device model response. Please try again.',
+    };
   }
 }
