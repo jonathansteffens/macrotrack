@@ -23,7 +23,7 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
 // point MODEL_BASE_URL at it. Sizes are checked after download as a cheap
 // integrity guard.
 const MODEL_BASE_URL =
-  'https://huggingface.co/jonathansteffens/macrotrack-estimator/resolve/main';
+  'https://github.com/jonathansteffens/macrotrack/releases/download/model-v1';
 
 type ModelFile = { name: string; sizeBytes: number };
 
