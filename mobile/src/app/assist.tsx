@@ -89,8 +89,8 @@ export default function AssistScreen() {
     if (!res.ok) {
       setError(res.message);
       setPhase(claim ? 'review' : 'input');
-      if (res.needsKey) {
-        Alert.alert('API key needed', res.message, [
+      if (res.needsKey || res.needsModel) {
+        Alert.alert(res.needsModel ? 'Model not downloaded' : 'API key needed', res.message, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open Settings', onPress: () => router.push('/settings') },
         ]);
@@ -99,10 +99,10 @@ export default function AssistScreen() {
     }
     const resolved = await resolveClaim(res.claim);
     setEngineNote(
-      res.engine === 'local'
-        ? 'Estimated by the local-model stand-in (Haiku pipeline)'
-        : res.fellBack
-          ? 'Local stand-in wasn’t confident — escalated to cloud'
+      res.fellBack
+        ? 'On-device model wasn’t available — used the cloud model'
+        : res.engine === 'local'
+          ? 'Estimated on-device'
           : res.engine === 'cloud'
             ? 'Estimated by the cloud model'
             : null

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +23,13 @@ import {
   setEngineMode,
   type EngineMode,
 } from '@/lib/ai/engine';
+import {
+  deleteLocalModel,
+  downloadLocalModel,
+  getLocalModelStatus,
+  LOCAL_MODEL_TOTAL_BYTES,
+  type LocalModelStatus,
+} from '@/lib/ai/local-model';
 import { exportFoodLog, exportTrainingData } from '@/lib/export';
 import { getFoodDbInfo } from '@/lib/foods';
 import { getGoals, setGoals } from '@/lib/goals';
@@ -37,6 +45,8 @@ export default function SettingsScreen() {
   const [apiKey, setApiKeyState] = useState('');
   const [model, setModel] = useState<string>(AI_MODELS[0].id);
   const [engine, setEngine] = useState<EngineMode>('cloud');
+  const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
+  const [downloadPct, setDownloadPct] = useState<number | null>(null);
 
   useEffect(() => {
     getGoals().then((g) => {
@@ -49,7 +59,34 @@ export default function SettingsScreen() {
     getApiKey().then((k) => setApiKeyState(k ?? ''));
     getAiModel().then(setModel);
     getEngineMode().then(setEngine);
+    getLocalModelStatus().then(setModelStatus);
   }, []);
+
+  const downloadModel = async () => {
+    setDownloadPct(0);
+    try {
+      await downloadLocalModel((f) => setDownloadPct(f));
+      setModelStatus(await getLocalModelStatus());
+    } catch (e) {
+      Alert.alert('Download failed', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setDownloadPct(null);
+    }
+  };
+
+  const removeModel = () => {
+    Alert.alert('Delete on-device model?', 'You can re-download it later.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteLocalModel();
+          setModelStatus(await getLocalModelStatus());
+        },
+      },
+    ]);
+  };
 
   const save = async () => {
     const g = {
@@ -130,9 +167,9 @@ export default function SettingsScreen() {
           </View>
 
           <ThemedText type="small" themeColor="textSecondary">
-            Estimator engine — “Local stand-in” runs a pipeline of small Haiku calls in place of
-            the future on-device model; “Auto” tries it first and escalates to cloud when it
-            isn’t confident.
+            Estimator engine — “On-device” runs the fine-tuned model locally on your phone (no
+            network, no API cost); “Auto” tries it first and falls back to cloud when the model
+            isn’t available or isn’t confident.
           </ThemedText>
           <View style={styles.modelChips}>
             {ENGINE_MODES.map((m) => (
@@ -153,6 +190,13 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
+
+          <OnDeviceModel
+            status={modelStatus}
+            downloadPct={downloadPct}
+            onDownload={downloadModel}
+            onDelete={removeModel}
+          />
 
           <Pressable style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]} onPress={save}>
             <ThemedText type="smallBold" style={styles.saveText}>
@@ -192,6 +236,62 @@ export default function SettingsScreen() {
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
+  );
+}
+
+function OnDeviceModel({
+  status,
+  downloadPct,
+  onDownload,
+  onDelete,
+}: {
+  status: LocalModelStatus | null;
+  downloadPct: number | null;
+  onDownload: () => void;
+  onDelete: () => void;
+}) {
+  const theme = useTheme();
+  const sizeGb = (LOCAL_MODEL_TOTAL_BYTES / 1e9).toFixed(1);
+
+  if (status == null) return null;
+  if (status === 'unsupported') {
+    return (
+      <ThemedText type="small" themeColor="textSecondary">
+        On-device AI needs an iOS/Android dev build — not available on web.
+      </ThemedText>
+    );
+  }
+
+  if (downloadPct != null) {
+    return (
+      <View style={styles.modelRow}>
+        <ActivityIndicator color={MacroColors.kcal} />
+        <ThemedText type="small" themeColor="textSecondary">
+          Downloading model… {Math.round(downloadPct * 100)}%
+        </ThemedText>
+      </View>
+    );
+  }
+
+  if (status === 'ready') {
+    return (
+      <View style={styles.modelRow}>
+        <ThemedText type="small">On-device model installed ✓</ThemedText>
+        <Pressable hitSlop={8} onPress={onDelete}>
+          <ThemedText type="small" style={{ color: MacroColors.protein }}>
+            Delete
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+      onPress={onDownload}>
+      <ThemedText type="small">Download on-device model ({sizeGb} GB, Wi-Fi recommended)</ThemedText>
+    </Pressable>
   );
 }
 
@@ -244,6 +344,12 @@ const styles = StyleSheet.create({
   modelChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: Spacing.two,
   },
   chip: {

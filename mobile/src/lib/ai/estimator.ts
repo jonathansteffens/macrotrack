@@ -14,7 +14,7 @@ import type { EstimateInput, EstimateTurn, FoodClaim } from './types';
 
 export type EstimateResult =
   | { ok: true; claim: FoodClaim }
-  | { ok: false; message: string; needsKey?: boolean };
+  | { ok: false; message: string; needsKey?: boolean; needsModel?: boolean };
 
 export function userContentBlocks(input: EstimateInput): Anthropic.ContentBlockParam[] {
   const blocks: Anthropic.ContentBlockParam[] = [];

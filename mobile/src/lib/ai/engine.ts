@@ -4,18 +4,19 @@ import { localEstimate } from './local';
 import type { EstimateTurn } from './types';
 
 /**
- * Engine dispatch — the Phase 3 architecture, live today with Haiku standing
- * in for the on-device model:
+ * Engine dispatch:
  *   cloud — one large-model call (Opus by default)
- *   local — the small-model pipeline (Haiku stand-in; later on-device)
- *   auto  — local first, transparent cloud fallback on error or low confidence
+ *   local — the fine-tuned on-device model (llama.rn; requires a dev build and
+ *           the model downloaded — see local-model.ts)
+ *   auto  — local first, transparent cloud fallback on error, low confidence,
+ *           or when the on-device model isn't available/downloaded
  */
 
 export type EngineMode = 'cloud' | 'local' | 'auto';
 
 export const ENGINE_MODES: { id: EngineMode; label: string }[] = [
   { id: 'cloud', label: 'Cloud' },
-  { id: 'local', label: 'Local stand-in' },
+  { id: 'local', label: 'On-device' },
   { id: 'auto', label: 'Auto' },
 ];
 
