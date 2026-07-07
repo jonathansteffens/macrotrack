@@ -3,7 +3,6 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
     "@expo/ui": "~57.0.3",
     "expo": "~57.0.2",
     "expo-asset": "~57.0.3",

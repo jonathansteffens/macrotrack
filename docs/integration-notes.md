@@ -1,10 +1,11 @@
 # Integrating the fine-tuned local estimator (llama.rn)
 
-**Status: implemented in the app code (typechecks + lints clean).** The local
-engine now runs the fine-tuned model on-device via llama.rn instead of the
-Haiku stand-in. What remains is a native build and hosting the model files —
-see "Remaining to ship" at the bottom. The app side requires an **Expo dev
-build** (llama.rn is a native module — it will not load in Expo Go).
+**Status: implemented in the app code (typechecks + lints clean).** The app is
+**local-only** — the fine-tuned model runs on-device via llama.rn, and the
+cloud engine (Anthropic) has been removed entirely. What remains is a native
+build and hosting the model files — see "Remaining to ship" at the bottom. The
+app side requires an **Expo dev build** (llama.rn is a native module — it will
+not load in Expo Go).
 
 ## What was implemented
 
@@ -12,17 +13,20 @@ build** (llama.rn is a native module — it will not load in Expo Go).
 |---|---|
 | `mobile/src/lib/ai/local-model.ts` | new — model download/status/delete + llama.rn context lifecycle (lazy load, serialized access, release on background). Native only. |
 | `mobile/src/lib/ai/local-model.web.ts` | new — web stub (local engine unavailable on web; Metro resolves this so llama.rn never enters the web bundle). |
-| `mobile/src/lib/ai/local.ts` | rewritten — `localEstimate()` keeps its signature; the 3 `runStage()` Haiku calls collapse to ONE grammar-constrained llama.rn `completion()`. |
-| `mobile/src/lib/ai/estimator.ts` | `EstimateResult` gains `needsModel?` (parallel to `needsKey`). |
-| `mobile/src/lib/ai/engine.ts` | engine labels/comments: "Local stand-in" → "On-device". Auto mode already falls back to cloud when the model is missing. |
-| `mobile/src/app/settings.tsx` | on-device model section: download (with %), installed/delete, "unsupported here" on web. |
-| `mobile/src/app/assist.tsx` | `needsModel` → prompt to open Settings; engine notes updated. |
+| `mobile/src/lib/ai/local.ts` | rewritten — `localEstimate()` is now the app's only estimator; one grammar-constrained llama.rn `completion()` replaces the 3 `runStage()` Haiku calls. |
+| `mobile/src/lib/ai/estimator.ts` | slimmed to the shared `EstimateResult` type (`needsModel?`) + `sanitizeClaim`. Anthropic `cloudEstimate` removed. |
+| `mobile/src/lib/ai/engine.ts`, `client.ts`, `config.ts` | **deleted** — cloud dispatch, Anthropic client, and API-key/cloud-model config are gone. |
+| `mobile/src/app/settings.tsx` | removed API-key + cloud-model + engine-mode UI; on-device model section (download %, installed/delete, "unsupported on web") is all that's left. |
+| `mobile/src/app/assist.tsx` | calls `localEstimate` directly; `needsModel` → prompt to open Settings. |
 | `mobile/src/app/_layout.tsx` | releases the model when the app backgrounds. |
-| `mobile/package.json` | adds `llama.rn`. |
+| `mobile/package.json` | adds `llama.rn`; removes `@anthropic-ai/sdk`. |
 
 llama.rn is loaded via **dynamic `import('llama.rn')`** (with a type-only
 static import for types), so nothing touches the native module at load time —
-Expo Go and web degrade gracefully to cloud instead of crashing.
+in Expo Go / on web the local engine reports "unavailable" instead of crashing.
+Because there's no cloud fallback, a device that can't run the model simply
+has no AI logging (acceptable per the current product decision to skip low-end
+phones).
 
 ## Files to ship
 
@@ -116,11 +120,10 @@ const messages = [
 ];
 ```
 
-This mirrors `cloudEstimate()` in `estimator.ts` (multi-turn clarification
-included — the model was trained to re-emit the complete claim after answers)
-and matches the training format exactly: system prompt from `prompt.ts`,
-photo-only default text `'Estimate the nutrition of this meal.'`, assistant
-turns are bare JSON claims.
+Multi-turn clarification is included — the model was trained to re-emit the
+complete claim after answers — and this matches the training format exactly:
+system prompt from `prompt.ts`, photo-only default text `'Estimate the
+nutrition of this meal.'`, assistant turns are bare JSON claims.
 
 Keep `sanitizeClaim()` and the existing resolver untouched — the model's
 `db_search_terms` are trained against the app's actual search ranking over
@@ -140,13 +143,14 @@ Measured on RTX PRO 6000 (workstation, llama-server, Q4_K_M): see
 `docs/finetune-report.md` §Latency. Phone throughput is far lower — expect
 roughly 15–25 tok/s decode on a 2024-class mid-range Android (Snapdragon 8s
 Gen 3-ish) ⇒ ~25–35 s for a worst-case 500-token claim, under the 8 s target
-only for short claims. If photo-to-claim latency misses the <8 s Phase 3 exit
-criterion on real hardware:
+only for short claims. The app is local-only (no cloud fallback), so if
+photo-to-claim latency misses the <8 s target on real hardware the levers are:
 
 1. drop to `SmolVLM2-2.2B` (fallback per docs/FINETUNE.md), or
 2. shrink the emitted claim (fewer `db_search_terms` per item — retrain with
    1 term), or
-3. keep cloud-auto mode as default for photos and local for text.
+3. accept slower photo latency (show a progress indicator) while keeping text
+   entry fast.
 
 ## Remaining to ship (native build + hosting)
 
@@ -157,8 +161,8 @@ The TypeScript is done; these steps happen in your build environment, not here:
    New Architecture, which llama.rn supports.
 2. **Dev build, not Expo Go.** `eas build --profile development` (or
    `npx expo run:ios` / `run:android`). llama.rn's native module only exists in
-   a dev build; in Expo Go the app still runs but the local engine reports
-   "not available" and auto falls back to cloud.
+   a dev build; in Expo Go the app still runs but AI logging is unavailable
+   (there's no cloud fallback).
 3. **Host the model files** and set `MODEL_BASE_URL` in `local-model.ts`. The
    two GGUFs (~3.2 GB total) are too big to bundle — put them on a HF repo,
    release asset, or CDN. The exact filenames and SHA-256s are in

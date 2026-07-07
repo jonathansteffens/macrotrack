@@ -8,15 +8,14 @@ import {
 import type { EstimateTurn, FoodClaim } from './types';
 
 /**
- * On-device estimator: the full task in one call. The fine-tuned
- * Qwen2.5-VL-3B model (see docs/finetune-report.md) reads the system prompt +
- * conversation (text and/or photo) and emits a complete FoodClaim, replacing
- * the earlier 3-stage Haiku stand-in. Output is constrained to the FoodClaim
- * JSON schema via llama.rn's grammar sampling, so it always parses.
- *
- * Same contract as cloudEstimate() in estimator.ts; engine.ts dispatches
- * between them. If the model isn't downloaded (or the platform can't run it),
- * this returns a non-fatal error so auto mode falls back to cloud.
+ * On-device estimator: the full task in one call, and the app's ONLY estimator
+ * (there is no cloud engine). The fine-tuned Qwen2.5-VL-3B model (see
+ * docs/finetune-report.md) reads the system prompt + conversation (text and/or
+ * photo) and emits a complete FoodClaim, replacing the earlier 3-stage Haiku
+ * stand-in. Output is constrained to the FoodClaim JSON schema via llama.rn's
+ * grammar sampling, so it always parses. If the model isn't downloaded (or the
+ * platform can't run it), it returns `needsModel` / a plain error — the UI
+ * prompts the user to download it.
  */
 
 // Chat content is either a plain string or typed blocks (text + image).
@@ -76,13 +75,13 @@ export async function localEstimate(turns: EstimateTurn[]): Promise<EstimateResu
         ? {
             ok: false,
             needsModel: true,
-            message: 'Download the on-device model in Settings to use local logging.',
+            message: 'Download the on-device model in Settings to use AI logging.',
           }
-        : { ok: false, message: 'On-device AI isn’t available here — use the cloud engine.' };
+        : { ok: false, message: 'On-device AI isn’t available on this device.' };
     }
     if (e instanceof SyntaxError) {
       return { ok: false, message: 'Could not parse the on-device model response. Please try again.' };
     }
-    return { ok: false, message: 'On-device estimate failed. Try again, or use the cloud engine.' };
+    return { ok: false, message: 'On-device estimate failed. Please try again.' };
   }
 }

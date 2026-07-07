@@ -19,7 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { estimateWithEngine } from '@/lib/ai/engine';
+import { localEstimate } from '@/lib/ai/local';
 import { recordAiEvent, type LoggedCorrection } from '@/lib/ai/events';
 import {
   displayName,
@@ -52,7 +52,6 @@ export default function AssistScreen() {
   const [clarifyText, setClarifyText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [engineNote, setEngineNote] = useState<string | null>(null);
 
   const pickImage = async (from: 'camera' | 'library') => {
     const perm =
@@ -85,12 +84,12 @@ export default function AssistScreen() {
   const runEstimate = async (newTurns: EstimateTurn[]) => {
     setPhase('estimating');
     setError(null);
-    const res = await estimateWithEngine(newTurns);
+    const res = await localEstimate(newTurns);
     if (!res.ok) {
       setError(res.message);
       setPhase(claim ? 'review' : 'input');
-      if (res.needsKey || res.needsModel) {
-        Alert.alert(res.needsModel ? 'Model not downloaded' : 'API key needed', res.message, [
+      if (res.needsModel) {
+        Alert.alert('Model not downloaded', res.message, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open Settings', onPress: () => router.push('/settings') },
         ]);
@@ -98,15 +97,6 @@ export default function AssistScreen() {
       return;
     }
     const resolved = await resolveClaim(res.claim);
-    setEngineNote(
-      res.fellBack
-        ? 'On-device model wasn’t available — used the cloud model'
-        : res.engine === 'local'
-          ? 'Estimated on-device'
-          : res.engine === 'cloud'
-            ? 'Estimated by the cloud model'
-            : null
-    );
     setTurns([...newTurns, { role: 'assistant', claim: res.claim }]);
     setClaim(res.claim);
     setItems(
@@ -281,11 +271,6 @@ export default function AssistScreen() {
               {error && (
                 <ThemedText type="small" style={{ color: MacroColors.protein }}>
                   {error}
-                </ThemedText>
-              )}
-              {engineNote && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {engineNote}
                 </ThemedText>
               )}
 

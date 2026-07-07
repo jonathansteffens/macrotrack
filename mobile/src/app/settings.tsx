@@ -16,13 +16,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { AI_MODELS, getAiModel, getApiKey, setAiModel, setApiKey } from '@/lib/ai/config';
-import {
-  ENGINE_MODES,
-  getEngineMode,
-  setEngineMode,
-  type EngineMode,
-} from '@/lib/ai/engine';
 import {
   deleteLocalModel,
   downloadLocalModel,
@@ -42,9 +35,6 @@ export default function SettingsScreen() {
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
   const [dbInfo, setDbInfo] = useState<{ count: number; sources: string } | null>(null);
-  const [apiKey, setApiKeyState] = useState('');
-  const [model, setModel] = useState<string>(AI_MODELS[0].id);
-  const [engine, setEngine] = useState<EngineMode>('cloud');
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
 
@@ -56,9 +46,6 @@ export default function SettingsScreen() {
       setFat(String(Math.round(g.fat)));
     });
     getFoodDbInfo().then(setDbInfo);
-    getApiKey().then((k) => setApiKeyState(k ?? ''));
-    getAiModel().then(setModel);
-    getEngineMode().then(setEngine);
     getLocalModelStatus().then(setModelStatus);
   }, []);
 
@@ -100,9 +87,6 @@ export default function SettingsScreen() {
       return;
     }
     await setGoals({ kcal: g.kcal, protein: g.protein, carbs: g.carbs, fat: g.fat });
-    await setApiKey(apiKey);
-    await setAiModel(model);
-    await setEngineMode(engine);
     router.back();
   };
 
@@ -128,69 +112,11 @@ export default function SettingsScreen() {
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             AI assistant
           </ThemedText>
-          <View style={styles.goalField}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Anthropic API key (stored in device keychain)
-            </ThemedText>
-            <TextInput
-              style={inputStyle}
-              value={apiKey}
-              onChangeText={setApiKeyState}
-              placeholder="sk-ant-…"
-              placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-          </View>
           <ThemedText type="small" themeColor="textSecondary">
-            Cloud model
+            Meals are estimated by the fine-tuned model running entirely on your phone — no
+            network, no API cost, nothing leaves the device. Download it once to enable AI
+            logging.
           </ThemedText>
-          <View style={styles.modelChips}>
-            {AI_MODELS.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={() => setModel(m.id)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor:
-                      model === m.id ? theme.backgroundSelected : theme.backgroundElement,
-                    borderColor: model === m.id ? MacroColors.kcal : 'transparent',
-                  },
-                ]}>
-                <ThemedText type="small" themeColor={model === m.id ? 'text' : 'textSecondary'}>
-                  {m.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-
-          <ThemedText type="small" themeColor="textSecondary">
-            Estimator engine — “On-device” runs the fine-tuned model locally on your phone (no
-            network, no API cost); “Auto” tries it first and falls back to cloud when the model
-            isn’t available or isn’t confident.
-          </ThemedText>
-          <View style={styles.modelChips}>
-            {ENGINE_MODES.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={() => setEngine(m.id)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor:
-                      engine === m.id ? theme.backgroundSelected : theme.backgroundElement,
-                    borderColor: engine === m.id ? MacroColors.kcal : 'transparent',
-                  },
-                ]}>
-                <ThemedText type="small" themeColor={engine === m.id ? 'text' : 'textSecondary'}>
-                  {m.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-
           <OnDeviceModel
             status={modelStatus}
             downloadPct={downloadPct}
