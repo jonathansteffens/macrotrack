@@ -107,7 +107,7 @@ export default function TrendsScreen() {
             <View style={styles.chartHeader}>
               <ThemedText type="smallBold">{m.label}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                goal (dashed) · 7-day avg (line)
+                {goals[metric] != null ? 'goal (dashed) · ' : ''}7-day avg (line)
               </ThemedText>
             </View>
             {trends && trends.loggedDays > 0 ? (
@@ -115,7 +115,7 @@ export default function TrendsScreen() {
                 values={values}
                 labels={labels}
                 color={m.color}
-                goal={goals[metric]}
+                goal={goals[metric] ?? undefined}
                 overlay={movingAvg}
               />
             ) : (

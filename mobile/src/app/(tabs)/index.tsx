@@ -41,7 +41,7 @@ export default function TodayScreen() {
     }, [load])
   );
 
-  const remaining = goals.kcal - totals.kcal;
+  const remaining = goals.kcal != null ? goals.kcal - totals.kcal : null;
 
   return (
     <ThemedView style={styles.root}>
@@ -80,17 +80,21 @@ export default function TodayScreen() {
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
             <View style={styles.kcalRow}>
               <ThemedText type="subtitle">{fmtKcal(totals.kcal)}</ThemedText>
-              <ThemedText themeColor="textSecondary"> / {fmtKcal(goals.kcal)} kcal</ThemedText>
-              <View style={styles.remainingBox}>
-                <ThemedText
-                  type="small"
-                  themeColor="textSecondary"
-                  style={remaining < 0 && { color: MacroColors.protein }}>
-                  {remaining >= 0
-                    ? `${fmtKcal(remaining)} left`
-                    : `${fmtKcal(-remaining)} over`}
-                </ThemedText>
-              </View>
+              <ThemedText themeColor="textSecondary">
+                {goals.kcal != null ? ` / ${fmtKcal(goals.kcal)} kcal` : ' kcal'}
+              </ThemedText>
+              {remaining != null && (
+                <View style={styles.remainingBox}>
+                  <ThemedText
+                    type="small"
+                    themeColor="textSecondary"
+                    style={remaining < 0 && { color: MacroColors.protein }}>
+                    {remaining >= 0
+                      ? `${fmtKcal(remaining)} left`
+                      : `${fmtKcal(-remaining)} over`}
+                  </ThemedText>
+                </View>
+              )}
             </View>
             <MacroBar label="Calories" value={totals.kcal} goal={goals.kcal} color={MacroColors.kcal} unit="" />
             <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={MacroColors.protein} />

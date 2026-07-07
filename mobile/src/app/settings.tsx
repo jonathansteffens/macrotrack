@@ -41,11 +41,12 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     getGoals().then((g) => {
-      setKcal(String(Math.round(g.kcal)));
-      setProtein(String(Math.round(g.protein)));
-      setCarbs(String(Math.round(g.carbs)));
-      setFat(String(Math.round(g.fat)));
-      setFiber(String(Math.round(g.fiber)));
+      const s = (v: number | null) => (v != null ? String(Math.round(v)) : '');
+      setKcal(s(g.kcal));
+      setProtein(s(g.protein));
+      setCarbs(s(g.carbs));
+      setFat(s(g.fat));
+      setFiber(s(g.fiber));
     });
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
@@ -78,29 +79,19 @@ export default function SettingsScreen() {
   };
 
   const save = async () => {
-    const g = {
-      kcal: parseDecimal(kcal),
-      protein: parseDecimal(protein),
-      carbs: parseDecimal(carbs),
-      fat: parseDecimal(fat),
-      fiber: parseDecimal(fiber),
-    };
-    if (
-      g.kcal == null ||
-      g.protein == null ||
-      g.carbs == null ||
-      g.fat == null ||
-      g.fiber == null
-    ) {
-      Alert.alert('Invalid goals', 'All goals must be numbers.');
+    // A blank field means "no goal" (null); a non-blank field must be a number.
+    const num = (t: string): number | null => (t.trim() ? parseDecimal(t) : null);
+    const invalid = (t: string) => t.trim() !== '' && parseDecimal(t) == null;
+    if ([kcal, protein, carbs, fat, fiber].some(invalid)) {
+      Alert.alert('Invalid goal', 'Goals must be numbers, or left blank for no goal.');
       return;
     }
     await setGoals({
-      kcal: g.kcal,
-      protein: g.protein,
-      carbs: g.carbs,
-      fat: g.fat,
-      fiber: g.fiber,
+      kcal: num(kcal),
+      protein: num(protein),
+      carbs: num(carbs),
+      fat: num(fat),
+      fiber: num(fiber),
     });
     router.back();
   };
@@ -124,6 +115,9 @@ export default function SettingsScreen() {
             <GoalField label="Fat (g)" value={fat} onChange={setFat} style={inputStyle} />
             <GoalField label="Fiber (g)" value={fiber} onChange={setFiber} style={inputStyle} />
           </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            Leave a goal blank to still track it, but without a target.
+          </ThemedText>
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             AI assistant

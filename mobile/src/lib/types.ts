@@ -54,6 +54,13 @@ export type LogEntry = {
   source: FoodSource | 'manual' | 'ai_estimate';
 };
 
-export type Goals = { kcal: number; protein: number; carbs: number; fat: number; fiber: number };
+/** A null goal means "track the amount, but don't set a target." */
+export type Goals = {
+  kcal: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  fiber: number | null;
+};
 
 export const DEFAULT_GOALS: Goals = { kcal: 2000, protein: 150, carbs: 200, fat: 65, fiber: 30 };
