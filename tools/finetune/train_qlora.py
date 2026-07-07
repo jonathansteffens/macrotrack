@@ -214,13 +214,17 @@ def main():
     (out_dir / "train_stats.json").write_text(json.dumps(stats.metrics, indent=2))
     probe(-1)  # final
 
-    # ---- Save LoRA + merged fp16 (for GGUF conversion) ----
+    # ---- Save the LoRA adapter ----
+    # NOTE: we deliberately do NOT call save_pretrained_merged here. For
+    # Qwen2.5-VL it was observed to silently write BASE weights (the exported
+    # GGUF then behaved exactly like the untuned model). Merge as a separate,
+    # verifiable step against the fp16 base:
+    #   .venv-ft/bin/python tools/finetune/merge_lora.py \
+    #       --adapter {out}/checkpoints/final-lora --out {out}/merged
     model.save_pretrained(str(out_dir / "checkpoints" / "final-lora"))
     processor.save_pretrained(str(out_dir / "checkpoints" / "final-lora"))
-    model.save_pretrained_merged(
-        str(out_dir / "merged"), processor, save_method="merged_16bit"
-    )
-    print(f"done: LoRA + merged fp16 saved under {out_dir}")
+    print(f"done: LoRA adapter saved to {out_dir}/checkpoints/final-lora")
+    print("next: merge_lora.py → export-gguf.sh (see script headers)")
 
 
 if __name__ == "__main__":

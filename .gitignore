@@ -4,8 +4,11 @@
 # Phase 3 fine-tune: env, datasets, weights — commit scripts and configs, not artifacts
 .venv-ft/
 data/
-models/
+models/*
+!models/README.md
 runs/*/checkpoints/
 runs/*/merged/
+runs/dryrun/
+unsloth_compiled_cache/
 tools/finetune/sft-*.jsonl
 tools/finetune/*.jsonl
