@@ -48,6 +48,9 @@ const PARAPHRASE_CONCURRENCY = parseInt(arg('paraphrase-concurrency', '8'), 10);
 // Fraction of samples to paraphrase (0..1). A 50/50 mix of teacher and
 // template phrasing gives broader style coverage than 100% of either.
 const PARAPHRASE_FRAC = parseFloat(arg('paraphrase-frac', '1'));
+// Fraction of samples that are a "base + add-on" pair ("toast with butter"),
+// teaching the model to emit the add-on as its own item (it was dropping them).
+const ADDON_FRAC = parseFloat(arg('addon-frac', '0.18'));
 
 // Deterministic RNG (mulberry32) so datasets are reproducible
 let s = SEED >>> 0;
@@ -284,6 +287,34 @@ const DISHES = {
   ],
 };
 
+// ---- Base + add-on: a plain food with an explicit topping, phrased "X with Y".
+// The model was dropping trailing add-ons ("toast with butter" → just toast),
+// because add-ons only appeared inside fixed dish templates or as coordinate
+// "and" items. Here BOTH the base and the add-on are in the gold claim, so the
+// model learns that "with <add-on>" is its own item. `phrase` is how the base
+// is typed (with article); `name` is the clean claim name. Confidence 0.7 —
+// the foods are named but portions are estimated.
+const ADDON_PAIRS = [
+  { meal: 'breakfast', base: { q: 'bread whole wheat commercially prepared toasted', name: 'toast', g: 26 }, addon: { q: 'butter salted', name: 'butter', g: 9 } },
+  { meal: 'breakfast', base: { q: 'bread whole wheat commercially prepared toasted', name: 'toast', g: 26 }, addon: { q: 'jams preserves', name: 'jam', g: 20 } },
+  { meal: 'breakfast', base: { q: 'bread whole wheat commercially prepared toasted', name: 'toast', g: 26 }, addon: { q: 'peanut butter smooth style with salt', name: 'peanut butter', g: 16 } },
+  { meal: 'breakfast', base: { q: 'bagels plain enriched', name: 'bagel', g: 99, phrase: 'a bagel' }, addon: { q: 'cheese cream', name: 'cream cheese', g: 30 } },
+  { meal: 'breakfast', base: { q: 'oats regular and quick cooked with water', name: 'oatmeal', g: 234 }, addon: { q: 'peanut butter smooth style with salt', name: 'peanut butter', g: 16 } },
+  { meal: 'breakfast', base: { q: 'pancakes plain frozen ready to heat', name: 'pancakes', g: 82 }, addon: { q: 'syrups table blends pancake', name: 'maple syrup', g: 40 } },
+  { meal: 'breakfast', base: { q: 'waffles plain frozen ready to heat toasted', name: 'waffles', g: 70 }, addon: { q: 'syrups table blends pancake', name: 'syrup', g: 40 } },
+  { meal: 'breakfast', base: { q: 'egg whole cooked scrambled', name: 'scrambled eggs', g: 122 }, addon: { q: 'sauce ready to serve pepper or hot', name: 'hot sauce', g: 8 } },
+  { meal: 'breakfast', base: { q: 'coffee brewed prepared with tap water', name: 'coffee', g: 240 }, addon: { q: 'cream half and half', name: 'cream', g: 15 }, extra: { q: 'sugars granulated', name: 'sugar', g: 8 } },
+  { meal: 'lunch', base: { q: 'fast foods potato french fried', name: 'french fries', g: 115 }, addon: { q: 'catsup', name: 'ketchup', g: 17 } },
+  { meal: 'lunch', base: { q: 'chicken breast meat only roasted', name: 'grilled chicken', g: 120 }, addon: { q: 'salad dressing ranch regular', name: 'ranch dressing', g: 30 } },
+  { meal: 'dinner', base: { q: 'potatoes baked flesh and skin', name: 'baked potato', g: 173, phrase: 'a baked potato' }, addon: { q: 'butter salted', name: 'butter', g: 14 }, extra: { q: 'cream sour cultured', name: 'sour cream', g: 24 } },
+  { meal: 'dinner', base: { q: 'bratwurst pork cooked', name: 'bratwurst', g: 85, phrase: 'a bratwurst' }, addon: { q: 'mustard prepared yellow', name: 'mustard', g: 6 } },
+  { meal: 'dinner', base: { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 158 }, addon: { q: 'soy sauce made from soy and wheat shoyu', name: 'soy sauce', g: 16 } },
+  { meal: 'snack', base: { q: 'apples raw skin', name: 'apple', g: 182, phrase: 'an apple' }, addon: { q: 'peanut butter smooth style with salt', name: 'peanut butter', g: 16 } },
+  { meal: 'snack', base: { q: 'snacks tortilla chips plain', name: 'tortilla chips', g: 28 }, addon: { q: 'salsa', name: 'salsa', g: 30 } },
+];
+
+const ADDON_TEMPLATES = ['{b} with {a}', '{b} with {a}', '{b} topped with {a}', '{b} w/ {a}', '{b} and {a}'];
+
 const MEAL_SHAPES = [
   { meal: 'breakfast', slots: [['protein', 'dairy'], ['starch', 'fruit'], ['drink', null, null]], prefix: ['for breakfast I had', 'breakfast:', 'this morning I ate'] },
   { meal: 'breakfast', slots: [['dish:breakfast'], ['drink', null]], prefix: ['for breakfast I had', 'breakfast was', ''] },
@@ -325,6 +356,12 @@ for (const dishes of Object.values(DISHES)) {
       c.food = search(c.q);
       if (!c.food) throw new Error(`Dish component not found in DB: "${c.q}"`);
     }
+  }
+}
+for (const pair of ADDON_PAIRS) {
+  for (const c of [pair.base, pair.addon, ...(pair.extra ? [pair.extra] : [])]) {
+    c.food = search(c.q);
+    if (!c.food) throw new Error(`Add-on food not found in DB: "${c.q}"`);
   }
 }
 
@@ -393,7 +430,34 @@ function renderComponent(item, vague) {
 
 const jitter = (g) => Math.max(5, Math.round(g * (0.85 + rand() * 0.3)));
 
+function makeAddonSample() {
+  const p = pick(ADDON_PAIRS);
+  const comps = [p.base, p.addon, ...(p.extra ? [p.extra] : [])];
+  const tmpl = p.extra ? '{b} with {a} and {e}' : pick(ADDON_TEMPLATES);
+  const text = tmpl
+    .replace('{b}', p.base.phrase ?? p.base.name)
+    .replace('{a}', p.addon.name)
+    .replace('{e}', p.extra ? p.extra.name : '');
+  const claimItems = comps.map((c) => ({
+    name: c.name,
+    grams: jitter(c.g),
+    prep: null,
+    confidence: 0.7,
+    db_search_terms: [c.q],
+    est_per100: roundedPer100(c.food),
+    _dbName: c.food.name,
+  }));
+  const claim = {
+    items: claimItems.map(({ _dbName, ...item }) => item),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: p.meal,
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
 function makeSampleOnce() {
+  if (rand() < ADDON_FRAC) return makeAddonSample();
   const shape = pick(MEAL_SHAPES);
   const entries = []; // {kind:'item', item, cat} | {kind:'dish', dish}
   for (const slot of shape.slots) {

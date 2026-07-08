@@ -384,6 +384,32 @@ const SPECS = [
       { query: 'quinoa cooked', grams: 185 },
     ],
   },
+  // Base + add-on ("X with Y"): the model was dropping the add-on. Held out so
+  // the retrain that adds these to synthetic data can be measured, not leaked.
+  {
+    id: 'toast-butter',
+    text: 'toast with butter',
+    components: [
+      { query: 'bread whole wheat commercially prepared toasted', grams: 26 },
+      { query: 'butter salted', grams: 9 },
+    ],
+  },
+  {
+    id: 'bratwurst-mustard',
+    text: 'a bratwurst with dijon mustard',
+    components: [
+      { query: 'bratwurst pork cooked', grams: 85 },
+      { query: 'mustard prepared yellow', grams: 6 },
+    ],
+  },
+  {
+    id: 'fries-ketchup',
+    text: 'french fries with ketchup',
+    components: [
+      { query: 'fast foods potato french fried', grams: 115 },
+      { query: 'catsup', grams: 17 },
+    ],
+  },
 ];
 
 // Same normalization + ranking as the app's searchFoods (mobile/src/lib/foods.ts)
