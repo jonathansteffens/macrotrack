@@ -85,12 +85,27 @@ function escapeLike(token: string): string {
 const STOPWORDS = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
 
 /**
+ * Where a USDA search may draw from. 'common' is the curated manual-search
+ * subset (foods.common = 1) — used when a person types a food, so results
+ * aren't buried under hundreds of near-duplicate reference entries. 'all' is
+ * the full table, used by the AI resolver so the model's search terms can
+ * resolve against everything. See the `common` flag in tools/build-food-db.mjs.
+ */
+export type SearchScope = 'common' | 'all';
+
+/**
  * Tokenized search over custom foods (first) and the bundled USDA table.
  * Stopwords are dropped, and every remaining token must start a word in the
  * normalized name (word-boundary prefix match). Results whose name starts
- * with the first token rank first, then shorter names.
+ * with the first token rank first, then shorter names. Manual typing uses the
+ * 'common' subset; if that finds nothing, it falls back to the full table so
+ * obscure foods stay reachable.
  */
-export async function searchFoods(query: string, limit = 50): Promise<FoodItem[]> {
+export async function searchFoods(
+  query: string,
+  limit = 50,
+  scope: SearchScope = 'common'
+): Promise<FoodItem[]> {
   const all = normName(query).split(' ').filter(Boolean);
   const meaningful = all.filter((t) => !STOPWORDS.has(t));
   const tokens = meaningful.length > 0 ? meaningful : all;
@@ -99,19 +114,45 @@ export async function searchFoods(query: string, limit = 50): Promise<FoodItem[]
   const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
   const params = tokens.map((t) => `% ${escapeLike(t)}%`);
   const prefix = `${escapeLike(tokens[0])}%`;
-  const orderBy = `CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm)`;
+  // Rank: exact whole-word match on the first token first (so "egg" beats
+  // "eggplant", "salmon" beats "salmonberries"), then names starting with it.
+  const wholeWord = `CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+  const wholeWordParam = `% ${escapeLike(tokens[0])} %`;
+  const wordStart = `CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
 
   const custom = await getUserDb().getAllAsync<FoodRow>(
-    `SELECT * FROM custom_foods WHERE ${where} ORDER BY ${orderBy} LIMIT 10`,
+    `SELECT * FROM custom_foods WHERE ${where}
+     ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT 10`,
     ...params,
+    wholeWordParam,
     prefix
   );
-  const usda = await getFoodsDb().getAllAsync<FoodRow>(
-    `SELECT * FROM foods WHERE ${where} ORDER BY ${orderBy} LIMIT ?`,
-    ...params,
-    prefix,
-    limit
-  );
+
+  const queryUsda = (commonOnly: boolean) =>
+    commonOnly
+      ? // Manual search: restrict to the common subset, whole-word match first,
+        // then primary generics (common = 2) above everyday foods (= 1).
+        getFoodsDb().getAllAsync<FoodRow>(
+          `SELECT * FROM foods WHERE ${where} AND common >= 1
+           ORDER BY ${wholeWord}, common DESC, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+          ...params,
+          wholeWordParam,
+          prefix,
+          limit
+        )
+      : // Resolver ('all'): plain relevance ranking, kept identical to the
+        // eval/generator search mirrors so model terms resolve consistently.
+        getFoodsDb().getAllAsync<FoodRow>(
+          `SELECT * FROM foods WHERE ${where} ORDER BY ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+          ...params,
+          prefix,
+          limit
+        );
+  let usda = await queryUsda(scope === 'common');
+  // Nothing in the curated subset? Fall back to the full table so a manual
+  // search for something obscure still finds it.
+  if (usda.length === 0 && scope === 'common') usda = await queryUsda(false);
+
   return [...custom.map(customRowToFood), ...usda.map(usdaRowToFood)];
 }
 

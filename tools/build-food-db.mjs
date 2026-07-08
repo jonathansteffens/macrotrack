@@ -214,35 +214,62 @@ const seenNames = new Set(merged.map((f) => f.name_norm));
 merged.push(...svFoods.filter((f) => !seenNames.has(f.name_norm)));
 console.log(`Merged: ${merged.length} foods (${srFoods.length + fnFoods.length + svFoods.length - merged.length} duplicates dropped)`);
 
-// ---------- Consumer-core filter ----------
-// The raw merge is an exhaustive reference set; trim it to what a person would
-// actually log so search isn't buried in near-duplicates. SR + Foundation stay
-// (the model + the SFT/eval pipeline resolve gold labels against their names).
-// From FNDDS we keep only prepared/mixed *dishes* (burrito bowl, latte, pad
-// thai) — its single-food entries just duplicate SR with different wording, and
-// its "skin eaten / not eaten / NS as to cooking method" variants are survey
-// artifacts. Baby foods and exact name duplicates go too.
-const DISH_WORDS =
-  /\b(sandwich|sub|burrito|taco|tostada|pizza|calzone|stromboli|soup|chowder|bisque|salad|slaw|stew|chili|casserole|burger|cheeseburger|wrap|bowl|nachos|quesadilla|enchilada|tamale|fajita|lasagna|ravioli|gnocchi|spaghetti|macaroni|curry|stir[- ]?fry|fried rice|lo mein|pad thai|ramen|pho|sushi|dumpling|potsticker|pot pie|parmesan|alfredo|gumbo|jambalaya|risotto|paella|omelet|frittata|quiche|scramble|benedict|hash|smoothie|shake|latte|frappe|frappuccino|cappuccino|macchiato|mocha|americano|parfait|platter|combo|nuggets|tenders|tots|fries)\b/i;
-const JOIN_WORDS = /\b(and|with|over|topped)\b/i;
-const NOISE = /\bskin( \/ coating)?( not)? eaten\b|\bcoating( not)? eaten\b|\bns as to\b/i;
-const isDish = (name) => {
-  const head = name.split(',')[0];
-  return DISH_WORDS.test(name) || JOIN_WORDS.test(name) || /[A-Z]{3,}/.test(head); // brand caps
-};
-
-const coreSeen = new Set();
+// ---------- Common flag (manual-search subset) ----------
+// The full merge stays in the DB: the on-device model's search terms — and the
+// SFT/eval pipeline's gold labels — resolve against ALL of it, for best
+// coverage. But manual typing in the app searches only foods flagged
+// `common = 1`: a clean consumer subset so "rice" isn't buried under 300 real
+// matches. That subset is FNDDS "what people eat" (clean names like "Banana,
+// raw", "Chicken breast"), minus its "skin eaten / NS as to cooking method"
+// survey artifacts, plus SR's branded fast-food/restaurant items.
+const dedup = new Set();
 const core = merged.filter((f) => {
-  if (coreSeen.has(f.name_norm)) return false; // exact duplicate row
-  if (f.category === 'Baby Foods' || /^babyfood/i.test(f.name)) return false;
-  if (f.data_type === 'survey') {
-    if (NOISE.test(f.name)) return false; // as-eaten survey artifacts
-    if (!isDish(f.name)) return false; // single food already covered by SR
-  }
-  coreSeen.add(f.name_norm);
+  if (dedup.has(f.name_norm)) return false; // drop exact duplicate rows
+  dedup.add(f.name_norm);
   return true;
 });
-console.log(`Consumer core: ${core.length} foods (${merged.length - core.length} trimmed)`);
+
+// `common` is a manual-search priority tier:
+//   2 = primary generic — a single food, further specified with comma
+//       qualifiers ("Rice, white, cooked", "Banana, raw", "Chicken, ..., breast,
+//       ... roasted"). These rank first when a person types a food.
+//   1 = other everyday foods — compound/prepared items people eat (FNDDS dishes,
+//       "Rice milk", branded fast food).
+//   0 = reference-only — not shown for manual typing (the AI resolver still uses
+//       it). Baby foods and FNDDS as-eaten survey artifacts land here.
+const NOISE = /\bskin( \/ coating)?( not)? eaten\b|\bcoating( not)? eaten\b|\bns as to\b/i;
+const SR_BRAND_CATS = new Set(['Fast Foods', 'Restaurant Foods']);
+const QUALIFIER =
+  /^(raw|cooked|boiled|baked|roasted|grilled|fried|steamed|dried|fresh|frozen|canned|whole|skim|nonfat|lowfat|low fat|reduced fat|2%|1%|nfs|ns|plain|unsalted|salted|sweetened|unsweetened|with|without|meat|skin|light|dark|regular|prepared|enriched|white|brown|red|green|ripe|large|medium|small|extra|part|solids|drained|instant|from|includes|commercially|smooth|creamy|chunky|ground|sliced|shredded|crumbled|fluid|powder|mix)\b/i;
+const isPrimaryGeneric = (name) => {
+  const comma = name.indexOf(',');
+  if (comma < 0) return false; // no qualifiers → compound noun, not a generic
+  const head = name.slice(0, comma).trim();
+  if (head.split(/\s+/).length > 3) return false; // long head = a specific dish
+  if (/fast ?foods?|restaurant/i.test(head) || /[A-Z]{3,}/.test(head)) return false; // brand/category head, not a food ("Fast Foods, Fried Chicken...")
+  const after = name.slice(comma + 1).trim();
+  return QUALIFIER.test(after); // "Rice, WHITE" yes; "Rice, a la ..." no
+};
+// Clean SR/Foundation lean cuts ("Chicken, ..., breast, meat only, cooked,
+// roasted") — the canonical cooked meats people track, which FNDDS only carries
+// as "skin eaten / not eaten" noise. Promote them into the manual subset.
+const LEAN_CUT = /\bmeat only\b/i;
+const COOKED = /\b(cooked|roasted|braised|grilled|broiled|stewed|baked)\b/i;
+for (const f of core) {
+  const babyOrNoise =
+    f.category === 'Baby Foods' || /^babyfood/i.test(f.name) || (f.data_type === 'survey' && NOISE.test(f.name));
+  f.common = babyOrNoise
+    ? 0
+    : isPrimaryGeneric(f.name)
+      ? 2
+      : f.data_type === 'survey' || SR_BRAND_CATS.has(f.category)
+        ? 1
+        : LEAN_CUT.test(f.name) && COOKED.test(f.name)
+          ? 1
+          : 0;
+}
+const tally = (t) => core.filter((f) => f.common === t).length;
+console.log(`Foods: ${core.length} total | common tiers — primary ${tally(2)}, everyday ${tally(1)}, reference-only ${tally(0)}`);
 
 mkdirSync(dirname(OUT), { recursive: true });
 if (existsSync(OUT)) rmSync(OUT);
@@ -268,9 +295,11 @@ db.exec(`
     calcium_mg REAL,
     iron_mg REAL,
     potassium_mg REAL,
+    common INTEGER NOT NULL DEFAULT 0,
     portions_json TEXT NOT NULL
   );
   CREATE INDEX idx_foods_name_norm ON foods(name_norm);
+  CREATE INDEX idx_foods_common ON foods(common);
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 `);
 
@@ -278,19 +307,19 @@ const insert = db.prepare(`
   INSERT INTO foods (id, name, name_norm, category, data_type, kcal, protein,
                      carbs, fat, fiber, sugar, sodium_mg, sat_fat,
                      cholesterol_mg, calcium_mg, iron_mg, potassium_mg,
-                     portions_json)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     common, portions_json)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 db.exec('BEGIN');
 for (const f of core) {
   insert.run(f.id, f.name, f.name_norm, f.category, f.data_type, f.kcal,
     f.protein, f.carbs, f.fat, f.fiber, f.sugar, f.sodium_mg, f.sat_fat,
-    f.cholesterol_mg, f.calcium_mg, f.iron_mg, f.potassium_mg, f.portions_json);
+    f.cholesterol_mg, f.calcium_mg, f.iron_mg, f.potassium_mg, f.common, f.portions_json);
 }
 db.exec('COMMIT');
 
 const setMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
-setMeta.run('schema_version', '2');
+setMeta.run('schema_version', '3');
 setMeta.run('food_count', String(core.length));
 setMeta.run('sources', 'USDA FDC SR Legacy 2018-04; Foundation 2025-12-18; FNDDS 2021-2023');
 setMeta.run('built_at', new Date().toISOString());

@@ -28,7 +28,9 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
   const terms = [...item.db_search_terms, item.name];
   let candidates: FoodItem[] = [];
   for (const term of terms) {
-    candidates = await searchFoods(term, 6);
+    // 'all' — the model's search terms resolve against the full database, not
+    // just the curated manual-search subset, for the best chance of a match.
+    candidates = await searchFoods(term, 6, 'all');
     if (candidates.length > 0) break;
   }
   return {

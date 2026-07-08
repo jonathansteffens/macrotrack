@@ -6,13 +6,22 @@ FoodData Central CSV dumps: SR Legacy (~7.8k foods, includes the branded
 preferred on name collisions) + FNDDS survey foods (restaurant/mixed dishes
 like "Burrito bowl, with beans", "Pad Thai", "Coffee, Latte").
 
-The raw merge (~13.4k) is then passed through a **consumer-core filter** down
-to ~10k: SR + Foundation stay (the model + SFT/eval pipeline resolve gold
-labels against their names), but from FNDDS only prepared/mixed *dishes* are
-kept — its single-food entries just duplicate SR with different wording, and
-its "skin eaten / not eaten / NS as to cooking method" variants are survey
-artifacts. Baby foods and exact-name duplicates are dropped too. Bump
-`FOODS_DB_VERSION` in `mobile/src/lib/db.ts` after any rebuild.
+The full merge (~13.3k, exact-name dupes dropped) is kept — the on-device
+model's search terms and the SFT/eval pipeline's gold labels resolve against
+**all** of it. But each food also gets a `common` tier (0/1/2) that drives a
+cleaner **manual** search:
+
+- `2` primary generic — a single food further specified with comma qualifiers
+  ("Rice, white, cooked", "Banana, raw", "Chicken, …, breast, meat only,
+  roasted"). Ranked first when a person types a food.
+- `1` everyday food — FNDDS dishes, branded fast food, "Rice milk".
+- `0` reference-only — baby foods, FNDDS "skin eaten / NS as to cooking method"
+  survey artifacts. Hidden from manual typing; the AI resolver still uses them.
+
+`searchFoods(query, limit, scope)` in `mobile/src/lib/foods.ts` filters to
+`common >= 1` for manual typing (`scope: 'common'`, the default) and uses the
+whole table for the AI resolver (`scope: 'all'`). Bump `FOODS_DB_VERSION` in
+`mobile/src/lib/db.ts` after any rebuild.
 
 Nutrients are stored **per 100 g**: kcal, protein, carbs, fat, fiber, sugar,
 sodium, saturated fat, cholesterol, calcium, iron, potassium. Household
