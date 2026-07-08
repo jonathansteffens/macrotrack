@@ -50,7 +50,18 @@ const PARAPHRASE_CONCURRENCY = parseInt(arg('paraphrase-concurrency', '8'), 10);
 const PARAPHRASE_FRAC = parseFloat(arg('paraphrase-frac', '1'));
 // Fraction of samples that are a "base + add-on" pair ("toast with butter"),
 // teaching the model to emit the add-on as its own item (it was dropping them).
-const ADDON_FRAC = parseFloat(arg('addon-frac', '0.18'));
+const ADDON_FRAC = parseFloat(arg('addon-frac', '0.22'));
+// Fraction that is a single branded fast-food menu item ("a Baconator"),
+// teaching one resolving item instead of decomposing into generics.
+const BRANDED_FRAC = parseFloat(arg('branded-frac', '0.06'));
+// Fraction that lists 2-4 arbitrary foods explicitly ("a bowl with X, Y, Z"),
+// teaching the model to emit exactly the listed ingredients instead of
+// pattern-matching one of the fixed DISHES templates.
+const INGREDIENT_FRAC = parseFloat(arg('ingredient-frac', '0.08'));
+// Fraction that is a single bare ambiguous food ("a soda") needing a
+// clarifying question, as opposed to the vague-item case inside a multi-item
+// meal (see ~15% vagueIdx logic below).
+const CLARIFY_FRAC = parseFloat(arg('single-clarify-frac', '0.035'));
 
 // Deterministic RNG (mulberry32) so datasets are reproducible
 let s = SEED >>> 0;
@@ -134,12 +145,12 @@ const POOLS = {
   fat: [
     { q: 'oil olive salad or cooking', name: 'olive oil', units: [{ kind: 'measure', unit: 'tablespoon', g: 14, fractions: false }] },
     { q: 'oil canola', name: 'canola oil', units: [{ kind: 'measure', unit: 'tablespoon', g: 14, fractions: false }] },
-    { q: 'butter salted', name: 'butter', units: [{ kind: 'measure', unit: 'tablespoon', g: 14, fractions: false }] },
+    { q: 'butter salted', name: 'butter', units: [{ kind: 'measure', unit: 'tablespoon', g: 14, fractions: false }, { kind: 'count', unit: 'pat', g: 5, min: 1, max: 2 }, { kind: 'count', unit: 'stick', g: 113, min: 1, max: 1 }] },
     { q: 'peanut butter smooth style with salt', name: 'peanut butter', units: [{ kind: 'measure', unit: 'tablespoon', g: 16, fractions: false }] },
     { q: 'nuts almond butter plain', name: 'almond butter', units: [{ kind: 'measure', unit: 'tablespoon', g: 16, fractions: false }] },
     { q: 'avocados raw all commercial varieties', name: 'avocado', units: [{ kind: 'count', unit: 'half avocado', g: 100, min: 1, max: 2 }] },
-    { q: 'nuts almonds', name: 'almonds', units: [{ kind: 'g', min: 15, max: 45 }, { kind: 'count', unit: 'handful', g: 28, min: 1, max: 2 }] },
-    { q: 'walnuts english', name: 'walnuts', units: [{ kind: 'g', min: 15, max: 40 }, { kind: 'count', unit: 'handful', g: 28, min: 1, max: 1 }] },
+    { q: 'nuts almonds', name: 'almonds', units: [{ kind: 'g', min: 15, max: 45 }, { kind: 'count', unit: 'handful', g: 28, min: 1, max: 2 }, { kind: 'measure', unit: 'cup', g: 143, fractions: true }] },
+    { q: 'walnuts english', name: 'walnuts', units: [{ kind: 'g', min: 15, max: 40 }, { kind: 'count', unit: 'handful', g: 28, min: 1, max: 1 }, { kind: 'measure', unit: 'cup', g: 117, fractions: true }] },
     { q: 'salad dressing ranch regular', name: 'ranch dressing', units: [{ kind: 'measure', unit: 'tablespoon', g: 15, fractions: false }] },
     { q: 'salad dressing mayonnaise regular', name: 'mayonnaise', units: [{ kind: 'measure', unit: 'tablespoon', g: 14, fractions: false }] },
     { q: 'cream sour cultured', name: 'sour cream', units: [{ kind: 'measure', unit: 'tablespoon', g: 12, fractions: false }] },
@@ -176,17 +187,47 @@ const POOLS = {
     { q: 'snacks granola bars hard plain', name: 'granola bar', units: [{ kind: 'count', unit: 'granola bar', g: 25, min: 1, max: 2 }] },
     { q: 'snacks trail mix regular', name: 'trail mix', units: [{ kind: 'g', min: 30, max: 60 }] },
     { q: 'hummus commercial', name: 'hummus', units: [{ kind: 'measure', unit: 'tablespoon', g: 15, fractions: false }] },
+    { q: 'protein bar', name: 'protein bar', units: [{ kind: 'count', unit: 'protein bar', g: 60, min: 1, max: 1 }] },
+    { q: 'snacks rice cakes brown rice', name: 'rice cake', units: [{ kind: 'count', unit: 'rice cake', g: 9, min: 2, max: 4 }] },
   ],
   drink: [
     { q: 'orange juice raw', name: 'orange juice', units: [{ kind: 'measure', unit: 'cup', g: 248, fractions: false }] },
     { q: 'beverages carbonated cola regular', name: 'regular cola', units: [{ kind: 'count', unit: 'can', g: 368, min: 1, max: 1 }] },
     { q: 'beer regular all', name: 'regular beer', units: [{ kind: 'count', unit: 'can', g: 356, min: 1, max: 2 }] },
     { q: 'milk whole 3.25', name: 'whole milk', units: [{ kind: 'measure', unit: 'cup', g: 244, fractions: false }] },
+    // unit names avoid ending in "tea"/"smoothie" (matching the item name's
+    // last word) — that would trip renderComponent's same-word shortcut and
+    // drop the "bubble"/"fruit" qualifier, rendering as a bare "one medium".
+    { q: 'tea bubble', name: 'bubble tea', units: [{ kind: 'g', min: 400, max: 700 }, { kind: 'count', unit: 'medium cup', g: 500, min: 1, max: 1 }] },
+    { q: 'smoothie fruit', name: 'fruit smoothie', units: [{ kind: 'g', min: 300, max: 500 }, { kind: 'count', unit: 'medium cup', g: 400, min: 1, max: 1 }] },
   ],
   fastfood: [
     { q: 'fast foods potato french fried', name: 'french fries', units: [{ kind: 'count', unit: 'medium serving', g: 115, min: 1, max: 1 }, { kind: 'g', min: 70, max: 170 }] },
     { q: 'taco beef hard shell', name: 'beef tacos', units: [{ kind: 'count', unit: 'beef taco', g: 100, min: 1, max: 3 }] },
     { q: 'pizza cheese regular crust frozen cooked', name: 'cheese pizza', units: [{ kind: 'count', unit: 'slice', g: 107, min: 1, max: 3 }] },
+  ],
+  // Complete, single-item dishes: NFS/standard-recipe DB entries that already
+  // capture the whole dish (per the app's own guidance — decompose mixed
+  // dishes "unless the dish is a packaged/standard item"). These fix the
+  // adversarial failures where the model decomposed "leftover lasagna" or
+  // "chili" into unrelated generic ingredients instead of emitting the one
+  // dish. NOTE: "lasagna" only resolves to the meatless DB entry (no separate
+  // meat-lasagna row exists) — still a sensible food, just not meat-specific.
+  dish: [
+    { q: 'chili con carne with beans canned', name: 'chili', units: [{ kind: 'g', min: 220, max: 420 }, { kind: 'count', unit: 'bowl', g: 300, min: 1, max: 1 }] },
+    { q: 'lasagna', name: 'lasagna', units: [{ kind: 'g', min: 200, max: 400 }, { kind: 'count', unit: 'piece', g: 255, min: 1, max: 2 }] },
+    { q: 'pad thai', name: 'pad thai', units: [{ kind: 'g', min: 250, max: 450 }, { kind: 'count', unit: 'serving', g: 350, min: 1, max: 1 }] },
+    { q: 'shepherds pie', name: "shepherd's pie", units: [{ kind: 'g', min: 250, max: 400 }, { kind: 'count', unit: 'serving', g: 300, min: 1, max: 1 }] },
+    { q: 'macaroni cheese', name: 'mac and cheese', units: [{ kind: 'measure', unit: 'cup', g: 200, fractions: true }, { kind: 'g', min: 150, max: 350 }] },
+    { q: 'fried rice', name: 'fried rice', units: [{ kind: 'measure', unit: 'cup', g: 198, fractions: true }, { kind: 'g', min: 150, max: 350 }] },
+    { q: 'chicken fried rice', name: 'chicken fried rice', units: [{ kind: 'g', min: 250, max: 450 }, { kind: 'count', unit: 'serving', g: 350, min: 1, max: 1 }] },
+    { q: 'beef stew canned', name: 'beef stew', units: [{ kind: 'g', min: 250, max: 400 }, { kind: 'count', unit: 'bowl', g: 300, min: 1, max: 1 }] },
+    { q: 'chicken pot pie frozen', name: 'chicken pot pie', units: [{ kind: 'count', unit: 'serving', g: 250, min: 1, max: 1 }] },
+    // unit name is 'serving', not 'bowl' — renderComponent collapses the
+    // phrase to just the unit name when its last word matches the food
+    // name's last word (e.g. "fried egg" unit + "fried eggs" name), which
+    // would otherwise render this as the content-free "a bowl".
+    { q: 'burrito bowl', name: 'burrito bowl', units: [{ kind: 'g', min: 350, max: 550 }, { kind: 'count', unit: 'serving', g: 450, min: 1, max: 1 }] },
   ],
 };
 
@@ -216,6 +257,26 @@ const DISHES = {
       { q: 'beverages protein powder whey', name: 'whey protein powder', g: 30, prep: null },
       { q: 'milk whole 3.25', name: 'whole milk', g: 244, prep: null },
       { q: 'bananas raw', name: 'banana', g: 118, prep: null },
+    ] },
+    // Named-ingredient coverage: "cereal with milk" was resolving to a
+    // protein shake, and "bacon egg and cheese on a bagel" / "breakfast
+    // burrito with eggs sausage cheese" were dropping the egg or substituting
+    // rice+beans — these teach the exact named components instead.
+    { text: 'a bowl of cereal with milk', components: [
+      { q: 'cereal ready to eat', name: 'cereal', g: 40, prep: null },
+      { q: 'milk reduced fat fluid 2', name: '2% milk', g: 240, prep: null },
+    ] },
+    { text: 'a bacon, egg, and cheese on a bagel', components: [
+      { q: 'bagels plain enriched', name: 'bagel', g: 99, prep: null },
+      { q: 'egg whole cooked scrambled', name: 'scrambled egg', g: 61, prep: 'scrambled' },
+      { q: 'pork cured bacon cooked', name: 'bacon', g: 18, prep: null },
+      { q: 'cheese american', name: 'american cheese', g: 21, prep: null },
+    ] },
+    { text: 'a breakfast burrito with eggs, sausage, and cheese', components: [
+      { q: 'tortillas ready to bake or fry flour shelf stable', name: 'flour tortilla', g: 70, prep: null },
+      { q: 'egg whole cooked scrambled', name: 'scrambled eggs', g: 122, prep: 'scrambled' },
+      { q: 'pork sausage link patty cooked', name: 'breakfast sausage', g: 54, prep: null },
+      { q: 'cheese cheddar', name: 'shredded cheese', g: 28, prep: null },
     ] },
   ],
   main: [
@@ -284,6 +345,21 @@ const DISHES = {
       { q: 'salad dressing ranch regular', name: 'ranch dressing', g: 30, prep: null },
       { q: 'tomatoes red ripe raw', name: 'cherry tomatoes', g: 62, prep: null },
     ] },
+    { text: 'a chicken caesar salad', components: [
+      { q: 'lettuce cos or romaine raw', name: 'romaine lettuce', g: 130, prep: null },
+      { q: 'chicken breast meat only roasted', name: 'grilled chicken', g: 120, prep: 'grilled' },
+      { q: 'salad dressing caesar', name: 'caesar dressing', g: 30, prep: null },
+      { q: 'cheese parmesan grated', name: 'parmesan', g: 10, prep: null },
+      { q: 'croutons seasoned', name: 'croutons', g: 15, prep: null },
+    ] },
+  ],
+  snack: [
+    { text: 'a plate of nachos', components: [
+      { q: 'snacks tortilla chips plain', name: 'tortilla chips', g: 85, prep: null },
+      { q: 'cheese cheddar', name: 'melted cheddar', g: 56, prep: 'melted' },
+      { q: 'beans refried canned', name: 'refried beans', g: 60, prep: null },
+      { q: 'salsa', name: 'salsa', g: 30, prep: null },
+    ] },
   ],
 };
 
@@ -311,19 +387,40 @@ const ADDON_PAIRS = [
   { meal: 'dinner', base: { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 158 }, addon: { q: 'soy sauce made from soy and wheat shoyu', name: 'soy sauce', g: 16 } },
   { meal: 'snack', base: { q: 'apples raw skin', name: 'apple', g: 182, phrase: 'an apple' }, addon: { q: 'peanut butter smooth style with salt', name: 'peanut butter', g: 16 } },
   { meal: 'snack', base: { q: 'snacks tortilla chips plain', name: 'tortilla chips', g: 28 }, addon: { q: 'salsa', name: 'salsa', g: 30 } },
+  // coverage-v2: sauces/dips on proteins & sides (the reported gap — "fried
+  // chicken wing with bbq sauce" returned only the wing; condiments broadly weak)
+  { meal: 'dinner', base: { q: 'chicken wing fried coated from raw', name: 'fried chicken wings', g: 100, phrase: 'fried chicken wings' }, addon: { q: 'sauce barbecue', name: 'bbq sauce', g: 30 } },
+  { meal: 'dinner', base: { q: 'chicken wing fried coated from raw', name: 'fried chicken wings', g: 100, phrase: 'fried chicken wings' }, addon: { q: 'sauce ready to serve pepper or hot', name: 'hot sauce', g: 24 } },
+  { meal: 'lunch', base: { q: 'chicken nuggets', name: 'chicken nuggets', g: 96, phrase: 'chicken nuggets' }, addon: { q: 'sauce barbecue', name: 'bbq sauce', g: 28 } },
+  { meal: 'lunch', base: { q: 'chicken nuggets', name: 'chicken nuggets', g: 96, phrase: 'chicken nuggets' }, addon: { q: 'salad dressing ranch regular', name: 'ranch', g: 28 } },
+  { meal: 'dinner', base: { q: 'chicken breast meat only roasted', name: 'grilled chicken', g: 120 }, addon: { q: 'sauce barbecue', name: 'bbq sauce', g: 28 } },
+  { meal: 'dinner', base: { q: 'frankfurter beef', name: 'hot dog', g: 48, phrase: 'a hot dog' }, addon: { q: 'mustard prepared yellow', name: 'mustard', g: 8 } },
+  { meal: 'snack', base: { q: 'pretzels soft', name: 'soft pretzel', g: 115, phrase: 'a soft pretzel' }, addon: { q: 'mustard prepared yellow', name: 'mustard', g: 12 } },
+  { meal: 'dinner', base: { q: 'broccoli cooked boiled drained without salt', name: 'steamed broccoli', g: 156 }, addon: { q: 'cheese sauce', name: 'cheese sauce', g: 30 } },
+  { meal: 'dinner', base: { q: 'pasta cooked enriched without added salt', name: 'pasta', g: 140 }, addon: { q: 'cheese parmesan grated', name: 'parmesan', g: 10 } },
+  { meal: 'breakfast', base: { q: 'biscuit', name: 'biscuit', g: 60, phrase: 'a biscuit' }, addon: { q: 'gravy', name: 'gravy', g: 60 } },
+  { meal: 'breakfast', base: { q: 'egg whole cooked scrambled', name: 'scrambled eggs', g: 122 }, addon: { q: 'catsup', name: 'ketchup', g: 15 } },
+  { meal: 'lunch', base: { q: 'fast foods potato french fried', name: 'french fries', g: 115 }, addon: { q: 'salad dressing mayonnaise regular', name: 'mayo', g: 20 } },
+  { meal: 'dinner', base: { q: 'taco beef hard shell', name: 'beef tacos', g: 100, phrase: 'beef tacos' }, addon: { q: 'salsa', name: 'salsa', g: 30 } },
+  { meal: 'dinner', base: { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 158 }, addon: { q: 'sauce hot chile sriracha', name: 'sriracha', g: 12 } },
 ];
 
-const ADDON_TEMPLATES = ['{b} with {a}', '{b} with {a}', '{b} topped with {a}', '{b} w/ {a}', '{b} and {a}'];
+// Phrasing variety for the base+add-on pattern. "{b} with {a}" is dominant (the
+// exact form the model was dropping); reversed "{a} on {b}" and side phrasings
+// teach that the add-on is a real item regardless of position/wording.
+const ADDON_TEMPLATES = ['{b} with {a}', '{b} with {a}', '{b} topped with {a}', '{b} w/ {a}', '{b} and {a}', '{a} on {b}', '{b}, {a} on the side'];
 
 const MEAL_SHAPES = [
   { meal: 'breakfast', slots: [['protein', 'dairy'], ['starch', 'fruit'], ['drink', null, null]], prefix: ['for breakfast I had', 'breakfast:', 'this morning I ate'] },
   { meal: 'breakfast', slots: [['dish:breakfast'], ['drink', null]], prefix: ['for breakfast I had', 'breakfast was', ''] },
   { meal: 'lunch', slots: [['protein'], ['starch', 'vegetable'], ['vegetable', 'fat', null], ['snack', null, null, null]], prefix: ['for lunch:', 'lunch was', 'I had for lunch'] },
   { meal: 'lunch', slots: [['dish:main'], ['snack', 'vegetable', null], ['drink', null, null]], prefix: ['for lunch:', 'lunch was', 'had'] },
+  { meal: 'lunch', slots: [['dish'], ['drink', null]], prefix: ['for lunch:', 'lunch was', 'grabbed'] },
   { meal: 'dinner', slots: [['protein'], ['starch'], ['vegetable', null], ['fat', null], ['drink', null, null, null]], prefix: ['dinner:', 'tonight I had', 'for dinner I ate'] },
   { meal: 'dinner', slots: [['dish:main'], ['vegetable', null, null], ['drink', null, null]], prefix: ['dinner:', 'tonight I had', 'for dinner'] },
+  { meal: 'dinner', slots: [['dish'], ['drink', null, null]], prefix: ['dinner:', 'tonight I had', 'for dinner I had'] },
   { meal: 'dinner', slots: [['fastfood'], ['fastfood', null, null], ['drink', null]], prefix: ['dinner was', 'grabbed', 'tonight I had'] },
-  { meal: 'snack', slots: [['fruit', 'snackfat', 'dairy', 'snack', 'snack']], prefix: ['snack:', 'just ate', ''] },
+  { meal: 'snack', slots: [['fruit', 'snackfat', 'dairy', 'snack', 'snack', 'dish:snack']], prefix: ['snack:', 'just ate', ''] },
 ];
 
 // ---- Resolve pool foods against the DB (ground truth) ----
@@ -365,6 +462,89 @@ for (const pair of ADDON_PAIRS) {
   }
 }
 
+// ---- Single ambiguous foods that should trigger a clarifying question on
+// their own (not just inside a multi-item meal). Each carries a best-guess
+// resolving food at low confidence, per the system prompt's "below 0.6 means
+// real uncertainty about what the food is" — the question, not the guess, is
+// the point.
+// NOTE: the best-guess q for "a soda"/"a beer" deliberately avoids the plain
+// "cola, regular" / "beer, regular, all" DB rows — those exact single-item
+// combos are eval cases (cola-can, beer-can), so the eval hold-out below
+// would silently regenerate every single draw of them, and the scenario
+// would never actually appear in the output. A different (still sensible)
+// guess sidesteps that without weakening the "ask before assuming" lesson.
+const SINGLE_CLARIFY = [
+  { text: 'a soda', q: 'beverages cola or pepper types', name: 'soda', g: 355, question: 'Regular or diet?' },
+  { text: 'a coffee', q: 'coffee brewed prepared with tap water', name: 'coffee', g: 240, question: 'Black, or with milk and sugar?' },
+  { text: 'a burger', q: 'fast foods cheeseburger single patty plain', name: 'cheeseburger', g: 170, question: 'Just the patty, or a full cheeseburger with bun and toppings?' },
+  { text: 'some chicken', q: 'chicken breast meat only roasted', name: 'chicken', g: 150, question: 'Roughly how much, and was it fried, grilled, or baked?' },
+  { text: 'a sandwich', q: 'club sandwich', name: 'sandwich', g: 220, question: "What kind of sandwich, and what's on it?" },
+  { text: 'a bowl of soup', q: 'soup chicken noodle', name: 'soup', g: 245, question: 'What kind of soup, and about how big a bowl?' },
+  { text: 'a beer', q: 'beer light', name: 'beer', g: 356, question: 'What kind, and what size?' },
+  { text: 'a salad', q: 'lettuce and tomato salad', name: 'salad', g: 150, question: "What's in it, and is there dressing on it?" },
+];
+for (const c of SINGLE_CLARIFY) {
+  c.food = search(c.q);
+  if (!c.food) throw new Error(`Single-clarify food not found in DB: "${c.q}"`);
+}
+
+// ---- Shared "base" foods for the explicit-ingredient-list sample type
+// (rice under a bowl, tortilla around a burrito/wrap) ----
+const INGREDIENT_BASES = {
+  rice: { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 150 },
+  tortilla: { q: 'tortillas ready to bake or fry flour shelf stable', name: 'flour tortilla', g: 70 },
+};
+for (const b of Object.values(INGREDIENT_BASES)) {
+  b.food = search(b.q);
+  if (!b.food) throw new Error(`Ingredient base not found in DB: "${b.q}"`);
+}
+
+// ---- Branded fast-food items: one exact menu item, one gold entry ----
+// Real users often name a specific menu item ("a Baconator") rather than
+// listing ingredients; foods.db's branded rows (data_type='branded') let us
+// teach a single resolving item instead of decomposing into generics. Only
+// keep rows that (a) belong to a recognizable chain, (b) have a clean item
+// name, and (c) resolve back to themselves through the app's own search —
+// apostrophes in chain names ("Wendy's") tokenize into a stray "s" token that
+// doesn't always re-match, so e.g. the original "Wendy's Baconator" fails to
+// self-resolve (it matches "Son of Baconator" instead) and is excluded
+// rather than shipped with a broken db_search_term.
+const BRANDED_CHAINS = [
+  "McDonald's", 'Burger King', "Wendy's", 'Taco Bell', 'KFC', 'Chick-fil-A',
+  "Domino's", 'Chipotle', "Arby's", 'Dairy Queen', 'Sonic', 'Popeyes',
+  'Del Taco', 'Jack in the Box', 'Panda Express', "Jimmy John's",
+  "Papa John's", 'Little Caesars', "Denny's", 'IHOP',
+];
+const BRANDED_CASUAL = {
+  "McDonald's": 'mcdonalds', "Wendy's": 'wendys', "Domino's": 'dominos', "Arby's": 'arbys',
+  "Jimmy John's": 'jimmy johns', "Papa John's": 'papa johns', "Denny's": 'dennys',
+  'Chick-fil-A': 'chick-fil-a', 'Jack in the Box': 'jack in the box', 'Burger King': 'burger king',
+  'Taco Bell': 'taco bell', 'KFC': 'kfc', 'Chipotle': 'chipotle', 'Dairy Queen': 'dairy queen',
+  'Sonic': 'sonic', 'Popeyes': 'popeyes', 'Del Taco': 'del taco', 'Panda Express': 'panda express',
+  'Little Caesars': 'little caesars', 'IHOP': 'ihop',
+};
+const BRANDED = (() => {
+  const rows = db.prepare("SELECT name, kcal, protein, carbs, fat, portions_json FROM foods WHERE data_type = 'branded'").all();
+  const out = [];
+  for (const r of rows) {
+    const chain = BRANDED_CHAINS.find((c) => r.name.startsWith(c));
+    if (!chain) continue;
+    const item = r.name.slice(chain.length).trim().replace(/^,\s*/, '');
+    if (!item || item.length > 45 || /,/.test(item)) continue;
+    let portions;
+    try { portions = JSON.parse(r.portions_json); } catch { continue; }
+    const grams = portions?.[0]?.grams;
+    if (!grams || grams < 20 || grams > 900) continue;
+    const resolved = search(r.name);
+    if (!resolved || resolved.name !== r.name) continue; // must resolve back to itself
+    out.push({ dbName: r.name, chain, item, grams, food: r });
+  }
+  return out;
+})();
+if (BRANDED.length < 50) {
+  console.warn(`WARNING: only ${BRANDED.length} branded foods resolved cleanly — chain list or DB may have changed.`);
+}
+
 // ---- Eval hold-out: never generate a meal whose food set matches an eval case ----
 const comboKey = (names) => [...new Set(names)].sort().join(' | ');
 const EVAL_COMBOS = (() => {
@@ -379,7 +559,11 @@ const EVAL_COMBOS = (() => {
 
 // ---- Rendering ----
 
-const numberWords = ['zero', 'one', 'two', 'three', 'four'];
+const numberWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+  'eight', 'nine', 'ten', 'eleven', 'twelve'];
+// Render a count as a word/phrase; "a dozen" for 12, digits above the table.
+const nWord = (n) => (n === 12 && rand() < 0.5 ? 'a dozen' : numberWords[n] ?? String(n));
+const OZ_G = 28.3495;
 const FRACTION_PHRASES = [
   { phrase: 'half a', f: 0.5 },
   { phrase: 'a', f: 1 },
@@ -408,19 +592,29 @@ function renderComponent(item, vague) {
     return { phrase, grams: mid, vague: true };
   }
   if (unit.kind === 'g') {
+    // ~25% of the time state the weight in ounces (teaches oz→g: "8 oz of steak")
+    if (rand() < 0.25 && unit.max >= 40) {
+      const oz = randInt(Math.max(1, Math.round(unit.min / OZ_G)), Math.max(2, Math.round(unit.max / OZ_G)));
+      return { phrase: `${oz} oz of ${item.name}`, grams: Math.round(oz * OZ_G) };
+    }
     const g = randInt(unit.min, unit.max);
     return { phrase: `${g} ${pick(['g', 'grams'])} of ${item.name}`, grams: g };
   }
   if (unit.kind === 'count') {
-    const n = randInt(unit.min, unit.max);
+    // ~12% bulk quantities ("ten tacos", "a dozen wings", "8 cookies") so the
+    // model learns explicit large counts scale — capped to a realistic total.
+    let n;
+    const bulkable = unit.g <= 120 && !/stick|handful|can|bag|fillet|bowl|serving|small|medium|large|half/i.test(unit.unit);
+    if (bulkable && rand() < 0.15) n = randInt(5, Math.min(12, Math.max(6, Math.floor(1100 / unit.g))));
+    else n = randInt(unit.min, unit.max);
     const unitLast = unit.unit.split(' ').pop();
     const nameLast = item.name.split(' ').pop();
     // Unit already names the food ("fried egg", "medium banana") →
     // "two fried eggs"; otherwise "two slices of bacon"
     const phrase =
       singular(unitLast) === singular(nameLast)
-        ? `${numberWords[n]} ${inflectLast(unit.unit, n)}`
-        : `${numberWords[n]} ${inflectLast(unit.unit, n)} of ${item.name}`;
+        ? `${nWord(n)} ${inflectLast(unit.unit, n)}`
+        : `${nWord(n)} ${inflectLast(unit.unit, n)} of ${item.name}`;
     return { phrase, grams: n * unit.g };
   }
   // measure (cup / tablespoon)
@@ -432,6 +626,21 @@ const jitter = (g) => Math.max(5, Math.round(g * (0.85 + rand() * 0.3)));
 
 function makeAddonSample() {
   const p = pick(ADDON_PAIRS);
+  // Contrast: ~25% render the BASE ALONE (claim = base only). Without these the
+  // model learns P(add-on | base) as a prior and starts hallucinating second
+  // items on plain inputs ("fries" → fries + ketchup it was never told about);
+  // the contrast teaches that the add-on exists only when the text says so.
+  if (rand() < 0.25) {
+    const claimItems = [{
+      name: p.base.name, grams: jitter(p.base.g), prep: null, confidence: 0.7,
+      db_search_terms: [p.base.q], est_per100: roundedPer100(p.base.food), _dbName: p.base.food.name,
+    }];
+    return {
+      text: p.base.phrase ?? p.base.name,
+      claim: { items: claimItems.map(({ _dbName, ...i }) => i), needs_clarification: false, questions: [], meal_guess: p.meal },
+      combo: comboKey(claimItems.map((i) => i._dbName)),
+    };
+  }
   const comps = [p.base, p.addon, ...(p.extra ? [p.extra] : [])];
   const tmpl = p.extra ? '{b} with {a} and {e}' : pick(ADDON_TEMPLATES);
   const text = tmpl
@@ -456,8 +665,136 @@ function makeAddonSample() {
   return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
 }
 
+// A branded menu item starts with a digit/hash ("6 Nuggets", "#1 Pepe
+// Sandwich", "1/4 lb GrillBurger") where "a " reads wrong; leave those bare.
+const articleize = (item) => (/^[\d#]/.test(item) ? item : `a ${item}`);
+
+function brandedMealGuess(item) {
+  if (/breakfast|pancake|biscuit|hash brown|scramble|omelet|french toast|waffle/i.test(item)) return 'breakfast';
+  return pick(['lunch', 'dinner']);
+}
+
+function makeBrandedSample() {
+  const b = pick(BRANDED);
+  const itemLc = b.item.toLowerCase();
+  const chainCasual = BRANDED_CASUAL[b.chain] ?? b.chain.toLowerCase();
+  const withArticle = articleize(itemLc);
+  const text = pick([
+    withArticle,
+    `${withArticle} from ${chainCasual}`,
+    `a ${chainCasual} ${itemLc}`,
+    `got ${withArticle} from ${chainCasual}`,
+    `had ${withArticle} at ${chainCasual}`,
+  ]);
+  const claimItems = [{
+    name: itemLc,
+    grams: b.grams,
+    prep: null,
+    confidence: 0.9,
+    db_search_terms: [b.dbName],
+    est_per100: roundedPer100(b.food),
+    _dbName: b.dbName,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: brandedMealGuess(b.item),
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// Explicit ingredient list ("a bowl with X, Y, and Z") — the fixed DISHES /
+// MEAL_SHAPES templates teach a small set of memorized shapes (a "burrito"
+// always means tortilla+rice+beans+meat+cheese). This picks 2-4 arbitrary
+// pool foods and renders them as a plainly-listed bowl/wrap/burrito/plate, so
+// the gold claim is EXACTLY what the text names — teaching the model to read
+// the user's list rather than pattern-match a memorized dish.
+// 'snackfat' (avocado/nuts/peanut butter), not the full 'fat' pool — oils and
+// dressings read oddly as a bare listed "ingredient" ("a bowl with chicken,
+// rice, and olive oil"), whereas avocado/nuts are things people actually name.
+const INGREDIENT_CATS = ['protein', 'starch', 'vegetable', 'snackfat', 'dairy', 'fruit'];
+const INGREDIENT_TEMPLATES = [
+  { render: (list) => `a bowl with ${list}`, base: null },
+  { render: (list) => `a bowl with ${list}, over rice`, base: 'rice' },
+  { render: (list) => `${list}, over rice`, base: 'rice' },
+  { render: (list) => `a wrap with ${list}`, base: 'tortilla' },
+  { render: (list) => `a burrito with ${list}`, base: 'tortilla' },
+  { render: (list) => `a plate with ${list}`, base: null },
+  { render: (list) => list, base: null },
+];
+
+function makeIngredientSample() {
+  const n = randInt(2, 4);
+  const items = [];
+  while (items.length < n) {
+    const it = pick(POOLS[pick(INGREDIENT_CATS)]);
+    if (!items.includes(it)) items.push(it);
+  }
+  const tmpl = pick(INGREDIENT_TEMPLATES);
+  const rendered = items.map((it) => ({ item: it, grams: renderComponent(it, false).grams }));
+  const names = rendered.map((r) => r.item.name);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}` : names[0];
+  const text = tmpl.render(list);
+  const claimItems = rendered.map((r) => ({
+    name: r.item.name,
+    grams: r.grams,
+    prep: null,
+    confidence: 0.7,
+    db_search_terms: [r.item.q],
+    est_per100: roundedPer100(r.item.food),
+    _dbName: r.item.food.name,
+  }));
+  if (tmpl.base) {
+    const b = INGREDIENT_BASES[tmpl.base];
+    claimItems.push({
+      name: b.name,
+      grams: jitter(b.g),
+      prep: null,
+      confidence: 0.7,
+      db_search_terms: [b.q],
+      est_per100: roundedPer100(b.food),
+      _dbName: b.food.name,
+    });
+  }
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: pick(['lunch', 'dinner']),
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// A bare ambiguous food with no quantity or qualifier — the generator only
+// produced vague/clarifying samples inside multi-item meals before; this
+// covers the single-item under-asking gap (fixes 5 in the coverage pass).
+function makeSingleClarifySample() {
+  const c = pick(SINGLE_CLARIFY);
+  const claimItems = [{
+    name: c.name,
+    grams: c.g,
+    prep: null,
+    confidence: 0.45,
+    db_search_terms: [c.q],
+    est_per100: roundedPer100(c.food),
+    _dbName: c.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: true,
+    questions: [c.question],
+    meal_guess: 'snack',
+  };
+  return { text: c.text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
 function makeSampleOnce() {
-  if (rand() < ADDON_FRAC) return makeAddonSample();
+  const r = rand();
+  if (r < ADDON_FRAC) return makeAddonSample();
+  if (r < ADDON_FRAC + BRANDED_FRAC) return makeBrandedSample();
+  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC) return makeIngredientSample();
+  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC + CLARIFY_FRAC) return makeSingleClarifySample();
   const shape = pick(MEAL_SHAPES);
   const entries = []; // {kind:'item', item, cat} | {kind:'dish', dish}
   for (const slot of shape.slots) {
