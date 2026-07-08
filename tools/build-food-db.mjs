@@ -3,6 +3,7 @@
 // Inputs (download + extract first, see tools/README.md):
 //   tools/data/sr_legacy/FoodData_Central_sr_legacy_food_csv_2018-04/
 //   tools/data/foundation/FoodData_Central_foundation_food_csv_2025-12-18/
+//   tools/data/survey/FoodData_Central_survey_food_csv_2024-10-31/   (FNDDS)
 //
 // Output: mobile/assets/foods.db
 //   foods(id, name, name_norm, category, data_type, kcal, protein, carbs,
@@ -20,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SR_DIR = join(ROOT, 'data', 'sr_legacy', 'FoodData_Central_sr_legacy_food_csv_2018-04');
 const FN_DIR = join(ROOT, 'data', 'foundation', 'FoodData_Central_foundation_food_csv_2025-12-18');
+const SV_DIR = join(ROOT, 'data', 'survey', 'FoodData_Central_survey_food_csv_2024-10-31');
 const OUT = join(ROOT, '..', 'mobile', 'assets', 'foods.db');
 
 // ---------- CSV parsing (RFC 4180) ----------
@@ -60,20 +62,23 @@ function loadCsv(dir, name) {
 
 // ---------- Nutrient extraction ----------
 
-// nutrient_id preference order per macro (first found wins)
+// nutrient_id preference order per macro (first found wins). FDC ids first;
+// the sub-1000 fallbacks are legacy nutrient *numbers*, which the FNDDS dump
+// uses in its food_nutrient.csv instead of FDC ids (no collision — FDC ids
+// start at 1001).
 const NUTRIENTS = {
-  kcal:           ['1008', '2047', '2048'], // Energy, Atwater General, Atwater Specific
-  protein:        ['1003'],
-  fat:            ['1004', '1085'],         // Total lipid, Total fat (NLEA)
-  carbs:          ['1005', '1050'],         // By difference, by summation
-  fiber:          ['1079', '2033'],         // Total dietary, AOAC 2011.25
-  sugar:          ['2000', '1063'],         // Total sugars, Sugars NLEA
-  sodium_mg:      ['1093'],
-  sat_fat:        ['1258'],                 // Fatty acids, total saturated (g)
-  cholesterol_mg: ['1253'],                 // Cholesterol (mg)
-  calcium_mg:     ['1087'],                 // Calcium, Ca (mg)
-  iron_mg:        ['1089'],                 // Iron, Fe (mg)
-  potassium_mg:   ['1092'],                 // Potassium, K (mg)
+  kcal:           ['1008', '2047', '2048', '208'], // Energy, Atwater General, Atwater Specific
+  protein:        ['1003', '203'],
+  fat:            ['1004', '1085', '204'],         // Total lipid, Total fat (NLEA)
+  carbs:          ['1005', '1050', '205'],         // By difference, by summation
+  fiber:          ['1079', '2033', '291'],         // Total dietary, AOAC 2011.25
+  sugar:          ['2000', '1063', '269'],         // Total sugars, Sugars NLEA
+  sodium_mg:      ['1093', '307'],
+  sat_fat:        ['1258', '606'],                 // Fatty acids, total saturated (g)
+  cholesterol_mg: ['1253', '601'],                 // Cholesterol (mg)
+  calcium_mg:     ['1087', '301'],                 // Calcium, Ca (mg)
+  iron_mg:        ['1089', '303'],                 // Iron, Fe (mg)
+  potassium_mg:   ['1092', '306'],                 // Potassium, K (mg)
 };
 
 function extractNutrients(dir) {
@@ -109,7 +114,7 @@ function extractNutrients(dir) {
 
 // ---------- Portions ----------
 
-function extractPortions(dir) {
+function extractPortions(dir, style = 'standard') {
   const units = new Map(
     loadCsv(dir, 'measure_unit.csv').rows.map((r) => [r[0], r[1]])
   );
@@ -118,13 +123,21 @@ function extractPortions(dir) {
   for (const r of rows) {
     const grams = parseFloat(r[idx.gram_weight]);
     if (!grams || grams <= 0) continue;
-    const amount = r[idx.amount] ? parseFloat(r[idx.amount]) : null;
-    const unitName = units.get(r[idx.measure_unit_id]);
-    const unit = unitName && unitName !== 'undetermined' ? unitName : '';
-    const modifier = (r[idx.modifier] || '').trim();
-    const desc = (r[idx.portion_description] || '').trim();
-    let label = [amount != null && amount !== 0 ? trimNum(amount) : '', unit, modifier || desc]
-      .filter(Boolean).join(' ').trim();
+    let label;
+    if (style === 'survey') {
+      // FNDDS: the human-readable measure is portion_description ("1 cup");
+      // modifier is an internal numeric code, and measure_unit is undetermined.
+      label = (r[idx.portion_description] || '').trim();
+      if (!label || /^quantity not specified$/i.test(label)) continue;
+    } else {
+      const amount = r[idx.amount] ? parseFloat(r[idx.amount]) : null;
+      const unitName = units.get(r[idx.measure_unit_id]);
+      const unit = unitName && unitName !== 'undetermined' ? unitName : '';
+      const modifier = (r[idx.modifier] || '').trim();
+      const desc = (r[idx.portion_description] || '').trim();
+      label = [amount != null && amount !== 0 ? trimNum(amount) : '', unit, modifier || desc]
+        .filter(Boolean).join(' ').trim();
+    }
     if (!label) continue;
     let list = byFood.get(r[idx.fdc_id]);
     if (!list) { list = []; byFood.set(r[idx.fdc_id], list); }
@@ -139,17 +152,23 @@ function trimNum(n) {
 
 // ---------- Foods ----------
 
+// Apostrophes are dropped (not split) so "McDONALD'S" matches a search for
+// "mcdonalds". MUST stay in sync with normName in mobile/src/lib/foods.ts.
 function normName(s) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return s.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function extractFoods(dir, wantedDataType, dataTypeLabel) {
+function extractFoods(dir, wantedDataType, dataTypeLabel, style = 'standard') {
+  // FNDDS categorizes via WWEIA (food_category_id holds the WWEIA number);
+  // SR/Foundation use the shared food_category table.
   const categories = new Map(
-    loadCsv(dir, 'food_category.csv').rows.map((r) => [r[0], r[2]])
+    style === 'survey'
+      ? loadCsv(dir, 'wweia_food_category.csv').rows.map((r) => [r[0], r[1]])
+      : loadCsv(dir, 'food_category.csv').rows.map((r) => [r[0], r[2]])
   );
   const { rows, idx } = loadCsv(dir, 'food.csv');
   const nutrients = extractNutrients(dir);
-  const portions = extractPortions(dir);
+  const portions = extractPortions(dir, style);
   const foods = [];
   for (const r of rows) {
     if (r[idx.data_type] !== wantedDataType) continue;
@@ -183,10 +202,17 @@ console.log('Loading Foundation...');
 const fnFoods = extractFoods(FN_DIR, 'foundation_food', 'foundation');
 console.log(`  ${fnFoods.length} foods`);
 
-// Dedup: exact normalized-name matches prefer Foundation (newer analysis)
+console.log('Loading FNDDS survey foods...');
+const svFoods = extractFoods(SV_DIR, 'survey_fndds_food', 'survey', 'survey');
+console.log(`  ${svFoods.length} foods`);
+
+// Dedup by exact normalized name: Foundation (newest analysis) wins over SR;
+// both win over FNDDS (survey values are recipe-derived, not lab-analyzed).
 const fnNames = new Set(fnFoods.map((f) => f.name_norm));
 const merged = [...fnFoods, ...srFoods.filter((f) => !fnNames.has(f.name_norm))];
-console.log(`Merged: ${merged.length} foods (${srFoods.length + fnFoods.length - merged.length} SR duplicates dropped)`);
+const seenNames = new Set(merged.map((f) => f.name_norm));
+merged.push(...svFoods.filter((f) => !seenNames.has(f.name_norm)));
+console.log(`Merged: ${merged.length} foods (${srFoods.length + fnFoods.length + svFoods.length - merged.length} duplicates dropped)`);
 
 mkdirSync(dirname(OUT), { recursive: true });
 if (existsSync(OUT)) rmSync(OUT);
@@ -236,7 +262,7 @@ db.exec('COMMIT');
 const setMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
 setMeta.run('schema_version', '2');
 setMeta.run('food_count', String(merged.length));
-setMeta.run('sources', 'USDA FDC SR Legacy 2018-04; Foundation 2025-12-18');
+setMeta.run('sources', 'USDA FDC SR Legacy 2018-04; Foundation 2025-12-18; FNDDS 2021-2023');
 setMeta.run('built_at', new Date().toISOString());
 
 db.exec('VACUUM');

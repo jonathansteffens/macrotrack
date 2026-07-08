@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
+import { normName } from './norm';
+
 /**
  * Two databases:
  *  - foods.db  — read-only bundled USDA data, copied from assets on first
@@ -9,7 +11,7 @@ import * as SQLite from 'expo-sqlite';
  *                barcode cache, settings. Never overwritten.
  */
 
-const FOODS_DB_VERSION = 3;
+const FOODS_DB_VERSION = 4;
 
 let foodsDb: SQLite.SQLiteDatabase | null = null;
 let userDb: SQLite.SQLiteDatabase | null = null;
@@ -150,6 +152,18 @@ export async function initDb(): Promise<void> {
   ];
   for (const stmt of migrations) {
     await userDb.execAsync(stmt).catch(() => {});
+  }
+
+  // Re-normalize custom food names if the normalization rules changed (e.g.
+  // apostrophe handling). Cheap: custom foods number in the dozens at most.
+  const customRows = await userDb.getAllAsync<{ id: number; name: string; name_norm: string }>(
+    'SELECT id, name, name_norm FROM custom_foods'
+  );
+  for (const r of customRows) {
+    const norm = normName(r.name);
+    if (norm !== r.name_norm) {
+      await userDb.runAsync('UPDATE custom_foods SET name_norm = ? WHERE id = ?', norm, r.id);
+    }
   }
 
   // Re-import the bundled food DB when the app ships a newer build of it.

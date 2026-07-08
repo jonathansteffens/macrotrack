@@ -1,6 +1,9 @@
 import { getFoodsDb, getUserDb } from './db';
+import { normName } from './norm';
 import { getRecipe, recipeToFood } from './recipes';
 import type { FoodItem, Macros, Portion } from './types';
+
+export { normName };
 
 type FoodRow = {
   id: number;
@@ -72,14 +75,6 @@ function customRowToFood(r: FoodRow): FoodItem {
     unit: r.unit === 'ml' ? 'ml' : 'g',
     portions: parsePortions(r.portions_json),
   };
-}
-
-export function normName(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function escapeLike(token: string): string {
