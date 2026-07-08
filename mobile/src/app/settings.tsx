@@ -230,9 +230,9 @@ function OnDeviceModel({
         <ThemedText type="small">Download on-device model ({sizeGb} GB, Wi-Fi recommended)</ThemedText>
       </Pressable>
       <ThemedText type="small" style={{ color: MacroColors.carbs }}>
-        ⚠ Large one-time download, and the model runs entirely on your phone — a recent
-        device with plenty of RAM is recommended. On older or lower-memory phones,
-        estimates may be slow (tens of seconds) or may not run smoothly.
+        ⚠ One-time download, and the model runs entirely on your phone. On a recent
+        device an estimate takes a few seconds; on older or lower-memory phones it
+        may be slower.
       </ThemedText>
     </View>
   );

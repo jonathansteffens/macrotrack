@@ -15,11 +15,11 @@ even for iOS):
 
 ## Prerequisites specific to this app (do before either store)
 
-- [ ] **Real model hosting.** The ~1.9 GB GGUF is downloaded at runtime from a
-      GitHub release — fine for personal scale, not a real CDN. Move to proper
-      hosting (HF, R2/S3, a CDN) and update `MODEL_BASE_URL` in
-      `mobile/src/lib/ai/local-model.ts`.
-- [ ] **Model license check.** Confirm the shipped model's license (Qwen2.5 /
+- [ ] **Real model hosting.** The ~0.5 GB GGUF (Qwen3.5-0.8B, `text-v1`
+      release) is downloaded at runtime from a GitHub release — fine for
+      personal scale, not a real CDN. Move to proper hosting (HF, R2/S3, a CDN)
+      and update `MODEL_BASE_URL` in `mobile/src/lib/ai/local-model.ts`.
+- [ ] **Model license check.** Confirm the shipped model's license (Qwen3.5 /
       the retrained small model) permits app distribution for the intended use
       (personal vs commercial).
 - [ ] **Data attribution.** Add credits for USDA FoodData Central (public

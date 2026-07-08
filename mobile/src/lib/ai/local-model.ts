@@ -9,8 +9,8 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
 
 /**
  * On-device model manager for the fine-tuned MacroTrack estimator
- * (Qwen2.5-VL-3B QLoRA → GGUF, run via llama.rn). Owns the model files
- * (download / presence / delete) and the llama.rn context lifecycle.
+ * (Qwen3.5-0.8B text QLoRA → GGUF Q4_K_M, run via llama.rn). Owns the model
+ * files (download / presence / delete) and the llama.rn context lifecycle.
  *
  * llama.rn is a native module that only exists in an Expo **dev build** — it
  * is absent in Expo Go and on web. This file is the native implementation;
@@ -18,23 +18,22 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
  * never enters the web bundle. See docs/integration-notes.md.
  */
 
-// ---- Model artifacts (host these; SHA-256s are in models/README.md) ----
-// Upload the exp2 GGUFs to this base (HF repo, release asset, or your CDN) and
-// point MODEL_BASE_URL at it. Sizes are checked after download as a cheap
-// integrity guard.
+// ---- Model artifacts (hosted on a public GitHub release) ----
+// The GGUF lives on the `text-v1` release. sizeBytes is byte-exact and checked
+// after download as a cheap integrity guard (sha256 5777ca4e…ede0, in
+// models/README.md).
 const MODEL_BASE_URL =
-  'https://github.com/jonathansteffens/macrotrack/releases/download/model-v1';
+  'https://github.com/jonathansteffens/macrotrack/releases/download/text-v1';
 
 type ModelFile = { name: string; sizeBytes: number };
 
 const TEXT_MODEL: ModelFile = {
-  name: 'macrotrack-estimator-q4_k_m.gguf',
-  sizeBytes: 1_929_900_928,
+  name: 'macrotrack-text-0.8b-q4_k_m.gguf',
+  sizeBytes: 529_296_640,
 };
-// The vision projector (mmproj, ~1.3 GB) is intentionally NOT downloaded or
-// loaded — the app is text-only for now (faster, lighter, more reliable). To
-// restore photo estimates: add the MMPROJ file back here and re-enable
-// ctx.initMultimodal() in loadContext below.
+// Text-only: there is no vision projector. The model estimates from a text
+// description of the meal. To restore photo estimates you'd swap in a
+// vision-capable GGUF + mmproj and re-enable ctx.initMultimodal() below.
 const MODEL_FILES = [TEXT_MODEL];
 
 export const LOCAL_MODEL_TOTAL_BYTES = MODEL_FILES.reduce((s, f) => s + f.sizeBytes, 0);
@@ -117,8 +116,9 @@ export async function deleteLocalModel(): Promise<void> {
 
 // ---- llama.rn context: lazy singleton + serialized access ----
 //
-// The context holds the ~2.5 GB working set; load it on first use and release
-// it when the app backgrounds (releaseLocalContext). completion() is not
+// The context holds the model weights + KV cache (~0.6 GB working set); load it
+// on first use and release it when the app backgrounds (releaseLocalContext).
+// completion() is not
 // re-entrant, so all access is serialized through a promise chain. llama.rn is
 // imported dynamically so it's only touched in a dev build with the model
 // present — never at module-load time (which would crash in Expo Go).
@@ -133,7 +133,7 @@ async function loadContext(): Promise<LlamaContext> {
   const { initLlama } = await import('llama.rn');
   const ctx = await initLlama({
     model: fileFor(TEXT_MODEL).uri,
-    n_ctx: 4096, // system (~600) + one image (~1300) + claim fits comfortably
+    n_ctx: 4096, // system prompt (~600) + meal description + claim fit comfortably
     n_gpu_layers: 99, // Metal (iOS) / GPU-delegate (Android); falls back to CPU
     // Pin to the performance cores. Most modern Android SoCs have ~4 big cores
     // (Tensor G2: 2×X1 + 2×A78); spilling onto the little A55 cores usually
