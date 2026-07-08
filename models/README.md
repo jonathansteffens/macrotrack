@@ -1,11 +1,35 @@
 # MacroTrack local estimator — model artifacts
 
+## ★ Text-only model (ships now) — `text-v1`
+
+The app is text-only, so the on-device estimator is now a small **text** model:
+fine-tuned **Qwen3.5-0.8B** (LoRA), text → FoodClaim JSON. 3.6× smaller and
+~2.8× faster on-device than the 3B below, and beats it on every text metric.
+See `docs/finetune-text-report.md`; pipeline in `tools/finetune/*text*`.
+
+| File | Size (bytes) | Purpose |
+|---|---|---|
+| `macrotrack-text-0.8b-q4_k_m.gguf` | 529,296,640 | **deployment** text model (llama.rn) |
+| `mt-0.8b-q5_k_m.gguf` | 577,998,080 | quality-max alternative (+49 MB, −7% speed) |
+| `mt-2b-q4_k_m.gguf` | 1,274,395,904 | higher-quality fallback (2× slower/bigger) |
+
+```
+5777ca4e2abb439d30dbf4e3dceadd421fac0cd0d62e2e4e3443138c1bc8ede0  macrotrack-text-0.8b-q4_k_m.gguf
+```
+
+No mmproj (text only). No thinking/reasoning config needed — non-thinking is
+baked into the GGUF chat template. Host on release tag `text-v1`.
+
+---
+
+## Vision model (prior, `model-v1`) — kept for history
+
 Fine-tuned **Qwen2.5-VL-3B-Instruct** (QLoRA) for the on-device food
-estimator. These are the **exp2** artifacts (vision encoder unfrozen), which
-ship. Produced by the Phase 3 pipeline in `tools/finetune/` — see
-`docs/finetune-report.md` for eval results and `docs/integration-notes.md`
-for llama.rn wiring. GGUFs are **not** committed (gitignored); rebuild from
-`runs/exp2/config.json` or fetch from the release/HF mirror.
+estimator. These are the **exp2** artifacts (vision encoder unfrozen). Produced
+by the Phase 3 pipeline in `tools/finetune/` — see `docs/finetune-report.md`
+for eval results and `docs/integration-notes.md` for llama.rn wiring. GGUFs are
+**not** committed (gitignored); rebuild from `runs/exp2/config.json` or fetch
+from the release/HF mirror.
 
 ## Files
 

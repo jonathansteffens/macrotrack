@@ -1,0 +1,13 @@
+{
+  "base_model": "Qwen/Qwen3.5-0.8B",
+  "out_dir": "runs/text-0.8b",
+  "seed": 1,
+  "lora_r": 16, "lora_alpha": 16, "lora_dropout": 0.0,
+  "load_in_4bit": false,
+  "lr": 2e-4, "lr_scheduler": "cosine", "epochs": 1,
+  "batch_size": 16, "grad_accum": 2,
+  "warmup_ratio": 0.03, "weight_decay": 0.01,
+  "max_seq_len": 2048,
+  "text_sft": "data/sft/sft-text.jsonl",
+  "holdout_frac": 0.01, "probe_every_steps": 400, "probe_n": 24
+}
