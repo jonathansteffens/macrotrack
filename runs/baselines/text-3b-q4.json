@@ -1,0 +1,2504 @@
+{
+  "summary": {
+    "model": "local",
+    "baseUrl": "http://127.0.0.1:8033/v1",
+    "cases": 52,
+    "jsonValidity": 1,
+    "kcalMape": 0.33287185539006514,
+    "proteinMae": 3.7388382086538456,
+    "itemCountAcc": 0.9230769230769231,
+    "dbMatchRate": 0.95,
+    "clarificationRate": 0.019230769230769232
+  },
+  "rows": [
+    {
+      "id": "chicken-rice",
+      "valid": true,
+      "kcalExp": 455.5,
+      "kcalPred": 455.5,
+      "kcalApe": 0,
+      "proteinErr": 0.034000000000006025,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "roasted chicken breast",
+            "grams": 150,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken breast roasted meat only"
+            ],
+            "est_per100": {
+              "kcal": 165,
+              "protein": 31,
+              "carbs": 0,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "white rice",
+            "grams": 160,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "rice white long grain cooked"
+            ],
+            "est_per100": {
+              "kcal": 130,
+              "protein": 2.7,
+              "carbs": 30.7,
+              "fat": 0.6
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "eggs-toast",
+      "valid": true,
+      "kcalExp": 261.3,
+      "kcalPred": 247.82,
+      "kcalApe": 0.0515882127822427,
+      "proteinErr": 1.0141999999999989,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "scrambled eggs",
+            "grams": 122,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "egg whole cooked scrambled"
+            ],
+            "est_per100": {
+              "kcal": 149,
+              "protein": 10,
+              "carbs": 1.6,
+              "fat": 11
+            }
+          },
+          {
+            "name": "whole wheat toast",
+            "grams": 26,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bread whole wheat commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 306,
+              "protein": 13.7,
+              "carbs": 51.4,
+              "fat": 4.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "banana",
+      "valid": true,
+      "kcalExp": 105,
+      "kcalPred": 101.46,
+      "kcalApe": 0.03371428571428577,
+      "proteinErr": 0.05740000000000012,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "banana",
+            "grams": 114,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "banana raw"
+            ],
+            "est_per100": {
+              "kcal": 55,
+              "protein": 1,
+              "carbs": 18,
+              "fat": 0.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "greek-yogurt",
+      "valid": true,
+      "kcalExp": 149.5,
+      "kcalPred": 76.25,
+      "kcalApe": 0.4899665551839465,
+      "proteinErr": 12.325,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "plain nonfat greek yogurt",
+            "grams": 125,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "yogurt greek plain nonfat"
+            ],
+            "est_per100": {
+              "kcal": 59,
+              "protein": 7,
+              "carbs": 3.6,
+              "fat": 0.4
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "pb-sandwich",
+      "valid": true,
+      "kcalExp": 336.8,
+      "kcalPred": 349.35,
+      "kcalApe": 0.03726247030878863,
+      "proteinErr": 0.47859999999999836,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "white bread",
+            "grams": 52,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bread white commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 267,
+              "protein": 9.4,
+              "carbs": 51.4,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "peanut butter",
+            "grams": 35,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "peanut butter smooth style with salt"
+            ],
+            "est_per100": {
+              "kcal": 597,
+              "protein": 19.6,
+              "carbs": 22.8,
+              "fat": 51.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "milk-2pct",
+      "valid": true,
+      "kcalExp": 122,
+      "kcalPred": 122,
+      "kcalApe": 0,
+      "proteinErr": 0.0259999999999998,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "2% milk",
+            "grams": 244,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "milk reduced fat fluid 2"
+            ],
+            "est_per100": {
+              "kcal": 52,
+              "protein": 3.5,
+              "carbs": 4.9,
+              "fat": 1.9
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "avocado-half",
+      "valid": true,
+      "kcalExp": 160,
+      "kcalPred": 126.4,
+      "kcalApe": 0.20999999999999996,
+      "proteinErr": 0.41999999999999993,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "avocado",
+            "grams": 79,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "avocados raw all commercial varieties"
+            ],
+            "est_per100": {
+              "kcal": 164,
+              "protein": 8.1,
+              "carbs": 4.9,
+              "fat": 14.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "olive-oil",
+      "valid": true,
+      "kcalExp": 123.8,
+      "kcalPred": 123.76,
+      "kcalApe": 0.00032310177705970956,
+      "proteinErr": 0,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "olive oil",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "olive oil"
+            ],
+            "est_per100": {
+              "kcal": 884,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 88.5
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "salmon",
+      "valid": true,
+      "kcalExp": 206,
+      "kcalPred": 182,
+      "kcalApe": 0.11650485436893204,
+      "proteinErr": 3.34,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cooked atlantic salmon",
+            "grams": 100,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "salmon atlantique cuit"
+            ],
+            "est_per100": {
+              "kcal": 149,
+              "protein": 22.6,
+              "carbs": 0,
+              "fat": 10.4
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "apple",
+      "valid": true,
+      "kcalExp": 94.6,
+      "kcalPred": 85.28,
+      "kcalApe": 0.09852008456659613,
+      "proteinErr": 0.0736,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "apple",
+            "grams": 164,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "apples raw skin"
+            ],
+            "est_per100": {
+              "kcal": 43,
+              "protein": 0.3,
+              "carbs": 18.3,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "oatmeal-honey",
+      "valid": true,
+      "kcalExp": 230,
+      "kcalPred": 178.39744,
+      "kcalApe": 0.22435895652173918,
+      "proteinErr": 0.2572000000000001,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cooked oatmeal",
+            "grams": 243,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "oats regular and quick cooked"
+            ],
+            "est_per100": {
+              "kcal": 68,
+              "protein": 2.5,
+              "carbs": 22,
+              "fat": 1.2
+            }
+          },
+          {
+            "name": "honey",
+            "grams": 16,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "honey raw"
+            ],
+            "est_per100": {
+              "kcal": 433,
+              "protein": 0,
+              "carbs": 40.1,
+              "fat": 54.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "burrito-decomposed",
+      "valid": true,
+      "kcalExp": 565.7,
+      "kcalPred": 556.37,
+      "kcalApe": 0.016492840728301292,
+      "proteinErr": 0.30860000000000554,
+      "items": 4,
+      "itemsExp": 4,
+      "matched": 4,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "flour tortilla",
+            "grams": 70,
+            "prep": null,
+            "confidence": 0.7,
+            "db_search_terms": [
+              "tortillas ready to bake or fry flour shelf stable"
+            ],
+            "est_per100": {
+              "kcal": 297,
+              "protein": 8,
+              "carbs": 49.6,
+              "fat": 7.6
+            }
+          },
+          {
+            "name": "white rice",
+            "grams": 82,
+            "prep": null,
+            "confidence": 0.7,
+            "db_search_terms": [
+              "rice white long grain cooked"
+            ],
+            "est_per100": {
+              "kcal": 130,
+              "protein": 2.7,
+              "carbs": 28.5,
+              "fat": 0.6
+            }
+          },
+          {
+            "name": "black beans",
+            "grams": 86,
+            "prep": null,
+            "confidence": 0.7,
+            "db_search_terms": [
+              "beans black mature seeds cooked boiled"
+            ],
+            "est_per100": {
+              "kcal": 132,
+              "protein": 8.9,
+              "carbs": 20.6,
+              "fat": 0.5
+            }
+          },
+          {
+            "name": "grilled chicken breast",
+            "grams": 85,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken breast meat only roasted skinless"
+            ],
+            "est_per100": {
+              "kcal": 165,
+              "protein": 31.8,
+              "carbs": 0,
+              "fat": 3.6
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "turkey-sandwich",
+      "valid": true,
+      "kcalExp": 460.5,
+      "kcalPred": 400.63,
+      "kcalApe": 0.13001085776330076,
+      "proteinErr": 4.128799999999998,
+      "items": 4,
+      "itemsExp": 4,
+      "matched": 4,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "whole wheat bread",
+            "grams": 45,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bread whole wheat commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 220,
+              "protein": 12,
+              "carbs": 42,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "deli turkey breast",
+            "grams": 78,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "turkey breast deli cooked"
+            ],
+            "est_per100": {
+              "kcal": 204,
+              "protein": 27.4,
+              "carbs": 3.1,
+              "fat": 1.9
+            }
+          },
+          {
+            "name": "swiss cheese",
+            "grams": 27,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese swiss"
+            ],
+            "est_per100": {
+              "kcal": 284,
+              "protein": 27,
+              "carbs": 1.4,
+              "fat": 28
+            }
+          },
+          {
+            "name": "mayonnaise",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "salad dressing mayonnaise regular"
+            ],
+            "est_per100": {
+              "kcal": 680,
+              "protein": 0.6,
+              "carbs": 0.9,
+              "fat": 71.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "steak-potato",
+      "valid": true,
+      "kcalExp": 677.7,
+      "kcalPred": 405.04999999999995,
+      "kcalApe": 0.402316659288771,
+      "proteinErr": 43.964200000000005,
+      "items": 3,
+      "itemsExp": 3,
+      "matched": 3,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "grilled sirloin steak",
+            "grams": 82,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beef top sirloin steak cooked"
+            ],
+            "est_per100": {
+              "kcal": 188,
+              "protein": 30,
+              "carbs": 0,
+              "fat": 6.8
+            }
+          },
+          {
+            "name": "baked potato",
+            "grams": 173,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "potatoes baked flesh and skin"
+            ],
+            "est_per100": {
+              "kcal": 44,
+              "protein": 2.3,
+              "carbs": 18.4,
+              "fat": 0.2
+            }
+          },
+          {
+            "name": "butter",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "butter salted"
+            ],
+            "est_per100": {
+              "kcal": 717,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 81
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "shrimp-pasta",
+      "valid": true,
+      "kcalExp": 634.1,
+      "kcalPred": 683.06,
+      "kcalApe": 0.07721179624664867,
+      "proteinErr": 4.649999999999999,
+      "items": 4,
+      "itemsExp": 3,
+      "matched": 4,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cooked shrimp",
+            "grams": 150,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "shrimp cooked"
+            ],
+            "est_per100": {
+              "kcal": 119,
+              "protein": 22.8,
+              "carbs": 0,
+              "fat": 1.3
+            }
+          },
+          {
+            "name": "cooked pasta",
+            "grams": 140,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "pasta cooked enriched without added salt"
+            ],
+            "est_per100": {
+              "kcal": 158,
+              "protein": 5.3,
+              "carbs": 21.8,
+              "fat": 0.4
+            }
+          },
+          {
+            "name": "olive oil",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "oil olive salad or cooking"
+            ],
+            "est_per100": {
+              "kcal": 884,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 81
+            }
+          },
+          {
+            "name": "cooked pasta",
+            "grams": 120,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "pasta cooked enriched without added salt"
+            ],
+            "est_per100": {
+              "kcal": 158,
+              "protein": 5.3,
+              "carbs": 21.8,
+              "fat": 0.4
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "tilapia-broccoli",
+      "valid": true,
+      "kcalExp": 272.2,
+      "kcalPred": 253,
+      "kcalApe": 0.07053637031594412,
+      "proteinErr": 3.9547000000000025,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "baked tilapia",
+            "grams": 155,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "fish tilapia cooked dry heat"
+            ],
+            "est_per100": {
+              "kcal": 179,
+              "protein": 26.6,
+              "carbs": 0,
+              "fat": 3.4
+            }
+          },
+          {
+            "name": "steamed broccoli",
+            "grams": 156,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "broccoli cooked boiled drained without salt"
+            ],
+            "est_per100": {
+              "kcal": 31,
+              "protein": 2.4,
+              "carbs": 7.2,
+              "fat": 0.4
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "turkey-rice-bowl",
+      "valid": true,
+      "kcalExp": 469.2,
+      "kcalPred": 446.79,
+      "kcalApe": 0.047762148337595844,
+      "proteinErr": 1.6713999999999913,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cooked ground turkey",
+            "grams": 108,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "turkey ground cooked"
+            ],
+            "est_per100": {
+              "kcal": 206,
+              "protein": 27.4,
+              "carbs": 0,
+              "fat": 15
+            }
+          },
+          {
+            "name": "brown rice",
+            "grams": 185,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "rice brown long grain cooked"
+            ],
+            "est_per100": {
+              "kcal": 123,
+              "protein": 2.7,
+              "carbs": 25.6,
+              "fat": 1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "pancakes-syrup",
+      "valid": true,
+      "kcalExp": 390.6,
+      "kcalPred": 400.5,
+      "kcalApe": 0.025345622119815607,
+      "proteinErr": 1.423000000000001,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "frozen pancakes",
+            "grams": 150,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "pancakes frozen commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 292,
+              "protein": 9.7,
+              "carbs": 33.9,
+              "fat": 6.2
+            }
+          },
+          {
+            "name": "maple syrup",
+            "grams": 30,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "maple syrup"
+            ],
+            "est_per100": {
+              "kcal": 408,
+              "protein": 0,
+              "carbs": 4.6,
+              "fat": 0
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "bagel-cream-cheese",
+      "valid": true,
+      "kcalExp": 362.9,
+      "kcalPred": 451.3182,
+      "kcalApe": 0.24364342794158175,
+      "proteinErr": 3.476155000000002,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cream cheese",
+            "grams": 30,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cream cheese"
+            ],
+            "est_per100": {
+              "kcal": 350,
+              "protein": 4.4,
+              "carbs": 5.3,
+              "fat": 31.8
+            }
+          },
+          {
+            "name": "plain bagel",
+            "grams": 132,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bagels plain enriched"
+            ],
+            "est_per100": {
+              "kcal": 264,
+              "protein": 10.6,
+              "carbs": 50.4,
+              "fat": 1.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "cereal-milk",
+      "valid": true,
+      "kcalExp": 229.5,
+      "kcalPred": 256.4,
+      "kcalApe": 0.11721132897603476,
+      "proteinErr": 0.4389999999999983,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "corn flakes",
+            "grams": 35,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cereals corn flakes"
+            ],
+            "est_per100": {
+              "kcal": 383,
+              "protein": 5.2,
+              "carbs": 88.1,
+              "fat": 0.9
+            }
+          },
+          {
+            "name": "2% milk",
+            "grams": 244,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "milk reduced fat 2"
+            ],
+            "est_per100": {
+              "kcal": 52,
+              "protein": 3.5,
+              "carbs": 4.9,
+              "fat": 3.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "french-toast",
+      "valid": true,
+      "kcalExp": 349.7,
+      "kcalPred": 334.1,
+      "kcalApe": 0.044609665427509194,
+      "proteinErr": 0.01559999999999917,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "french toast",
+            "grams": 130,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "french toast prepared"
+            ],
+            "est_per100": {
+              "kcal": 222,
+              "protein": 7.3,
+              "carbs": 25,
+              "fat": 10.7
+            }
+          },
+          {
+            "name": "maple syrup",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "maple syrup"
+            ],
+            "est_per100": {
+              "kcal": 408,
+              "protein": 0,
+              "carbs": 4.6,
+              "fat": 0
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "granola-yogurt",
+      "valid": true,
+      "kcalExp": 447.7,
+      "kcalPred": 447.74,
+      "kcalApe": 0.00008934554389104415,
+      "proteinErr": 0.026299999999999102,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "granola",
+            "grams": 61,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "granola homemade"
+            ],
+            "est_per100": {
+              "kcal": 461,
+              "protein": 11,
+              "carbs": 55,
+              "fat": 20
+            }
+          },
+          {
+            "name": "plain nonfat greek yogurt",
+            "grams": 245,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "yogurt greek plain nonfat 245 g"
+            ],
+            "est_per100": {
+              "kcal": 53,
+              "protein": 7,
+              "carbs": 3.6,
+              "fat": 1.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "cheeseburger",
+      "valid": true,
+      "kcalExp": 431,
+      "kcalPred": 434.35,
+      "kcalApe": 0.007772621809744832,
+      "proteinErr": 1.5805000000000007,
+      "items": 3,
+      "itemsExp": 3,
+      "matched": 3,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "beef patty",
+            "grams": 85,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beef ground 80 lean 20 patty cooked broiled"
+            ],
+            "est_per100": {
+              "kcal": 290,
+              "protein": 25.9,
+              "carbs": 0,
+              "fat": 18.4
+            }
+          },
+          {
+            "name": "hamburger bun",
+            "grams": 40,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "buns hamburger plain"
+            ],
+            "est_per100": {
+              "kcal": 272,
+              "protein": 9.8,
+              "carbs": 50.1,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "american cheese",
+            "grams": 27,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese american"
+            ],
+            "est_per100": {
+              "kcal": 270,
+              "protein": 17.3,
+              "carbs": 6.4,
+              "fat": 21.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "fries-medium",
+      "valid": true,
+      "kcalExp": 358.8,
+      "kcalPred": 358.79999999999995,
+      "kcalApe": 1.5842647397103682e-16,
+      "proteinErr": 0.04449999999999976,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "french fries",
+            "grams": 115,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "fast foods potato french fried"
+            ],
+            "est_per100": {
+              "kcal": 322,
+              "protein": 3.4,
+              "carbs": 41.4,
+              "fat": 14.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "cheese-pizza",
+      "valid": true,
+      "kcalExp": 573.5,
+      "kcalPred": 573.52,
+      "kcalApe": 0.00003487358326064832,
+      "proteinErr": 0.029599999999998516,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cheese pizza",
+            "grams": 214,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "pizza cheese regular crust frozen cooked"
+            ],
+            "est_per100": {
+              "kcal": 268,
+              "protein": 10.4,
+              "carbs": 29,
+              "fat": 11.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "beef-tacos",
+      "valid": true,
+      "kcalExp": 452,
+      "kcalPred": 452,
+      "kcalApe": 0,
+      "proteinErr": 0.019999999999999574,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "beef tacos",
+            "grams": 200,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "taco beef hard shell"
+            ],
+            "est_per100": {
+              "kcal": 226,
+              "protein": 8.9,
+              "carbs": 25.9,
+              "fat": 12.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "hot-dog",
+      "valid": true,
+      "kcalExp": 277.3,
+      "kcalPred": 291.81,
+      "kcalApe": 0.052326000721240495,
+      "proteinErr": 0.1064999999999987,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "beef hot dog",
+            "grams": 51,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beef hot dog cooked"
+            ],
+            "est_per100": {
+              "kcal": 326,
+              "protein": 11,
+              "carbs": 2,
+              "fat": 27
+            }
+          },
+          {
+            "name": "plain bun",
+            "grams": 45,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "rolls plain"
+            ],
+            "est_per100": {
+              "kcal": 274,
+              "protein": 9.4,
+              "carbs": 50.1,
+              "fat": 3.6
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "orange-juice",
+      "valid": true,
+      "kcalExp": 111.6,
+      "kcalPred": 111.6,
+      "kcalApe": 0,
+      "proteinErr": 0.03600000000000003,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "orange juice",
+            "grams": 248,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "orange juice"
+            ],
+            "est_per100": {
+              "kcal": 45,
+              "protein": 0.7,
+              "carbs": 10.6,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "cola-can",
+      "valid": true,
+      "kcalExp": 154.6,
+      "kcalPred": 154.56,
+      "kcalApe": 0.0002587322121603625,
+      "proteinErr": 0,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "regular cola",
+            "grams": 368,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beverages carbonated cola regular"
+            ],
+            "est_per100": {
+              "kcal": 42,
+              "protein": 0,
+              "carbs": 10.6,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "beer-can",
+      "valid": true,
+      "kcalExp": 153.1,
+      "kcalPred": 152.65,
+      "kcalApe": 0.002939255388634805,
+      "proteinErr": 0.03299999999999992,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "regular beer",
+            "grams": 355,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "regular beer"
+            ],
+            "est_per100": {
+              "kcal": 40.9,
+              "protein": 0.5,
+              "carbs": 1.3,
+              "fat": 0.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "ice-cream-bowl",
+      "valid": true,
+      "kcalExp": 273.2,
+      "kcalPred": 273.24,
+      "kcalApe": 0.0001464128843338963,
+      "proteinErr": 0.020000000000000462,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "vanilla ice cream",
+            "grams": 132,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "ice cream vanilla"
+            ],
+            "est_per100": {
+              "kcal": 207,
+              "protein": 3.5,
+              "carbs": 29.1,
+              "fat": 11
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "cookies",
+      "valid": true,
+      "kcalExp": 133.2,
+      "kcalPred": 412.38,
+      "kcalApe": 2.095945945945946,
+      "proteinErr": 34.8876,
+      "items": 2,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "baked chicken breast",
+            "grams": 110,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken breast roasted skinless"
+            ],
+            "est_per100": {
+              "kcal": 165,
+              "protein": 31,
+              "carbs": 0,
+              "fat": 3.4
+            }
+          },
+          {
+            "name": "chocolate chip cookies",
+            "grams": 52,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cookies chocolate chip commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 444,
+              "protein": 3.8,
+              "carbs": 53.9,
+              "fat": 19.8
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "chips",
+      "valid": true,
+      "kcalExp": 149,
+      "kcalPred": 79.8,
+      "kcalApe": 0.4644295302013423,
+      "proteinErr": 0.8415000000000001,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "plain potato chips",
+            "grams": 15,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "potatoes cooked baked salted"
+            ],
+            "est_per100": {
+              "kcal": 88,
+              "protein": 3.4,
+              "carbs": 19.6,
+              "fat": 1.9
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "popcorn",
+      "valid": true,
+      "kcalExp": 92.9,
+      "kcalPred": 886.23,
+      "kcalApe": 8.539612486544671,
+      "proteinErr": 26.5326,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "air-popped popcorn",
+            "grams": 229,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "popcorn air-popped"
+            ],
+            "est_per100": {
+              "kcal": 387,
+              "protein": 12,
+              "carbs": 68,
+              "fat": 0.9
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "dark-chocolate",
+      "valid": true,
+      "kcalExp": 119.6,
+      "kcalPred": 119.60000000000001,
+      "kcalApe": 1.1881985547827762e-16,
+      "proteinErr": 0.04200000000000004,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "dark chocolate",
+            "grams": 20,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "dark chocolate 85 cacao"
+            ],
+            "est_per100": {
+              "kcal": 470,
+              "protein": 7.8,
+              "carbs": 47.9,
+              "fat": 43.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "hummus-carrots",
+      "valid": true,
+      "kcalExp": 183,
+      "kcalPred": 75.35,
+      "kcalApe": 0.5882513661202186,
+      "proteinErr": 3.4675000000000002,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "baby carrots",
+            "grams": 100,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "carrots raw"
+            ],
+            "est_per100": {
+              "kcal": 41,
+              "protein": 0.9,
+              "carbs": 10.4,
+              "fat": 0.2
+            }
+          },
+          {
+            "name": "hummus",
+            "grams": 15,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "hummus commercial"
+            ],
+            "est_per100": {
+              "kcal": 229,
+              "protein": 7.2,
+              "carbs": 14.9,
+              "fat": 17.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "chicken-stir-fry",
+      "valid": true,
+      "kcalExp": 688.5,
+      "kcalPred": 688.46,
+      "kcalApe": 0.000058097312999220946,
+      "proteinErr": 0.03920000000000101,
+      "items": 4,
+      "itemsExp": 4,
+      "matched": 4,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "chicken breast",
+            "grams": 150,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken breast meat only roasted"
+            ],
+            "est_per100": {
+              "kcal": 165,
+              "protein": 31,
+              "carbs": 0,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "mixed vegetables",
+            "grams": 182,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "vegetables mixed frozen cooked boiled"
+            ],
+            "est_per100": {
+              "kcal": 60,
+              "protein": 2.9,
+              "carbs": 13.1,
+              "fat": 0.2
+            }
+          },
+          {
+            "name": "canola oil",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "oil canola"
+            ],
+            "est_per100": {
+              "kcal": 884.7,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 100
+            }
+          },
+          {
+            "name": "white rice",
+            "grams": 160,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "rice white long grain cooked"
+            ],
+            "est_per100": {
+              "kcal": 130,
+              "protein": 2.7,
+              "carbs": 30.7,
+              "fat": 0.6
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "spaghetti-beef",
+      "valid": true,
+      "kcalExp": 750,
+      "kcalPred": 729.15,
+      "kcalApe": 0.02780000000000003,
+      "proteinErr": 1.6606999999999985,
+      "items": 3,
+      "itemsExp": 3,
+      "matched": 3,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cooked spaghetti",
+            "grams": 390,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "spaghetti cooked enriched without added salt"
+            ],
+            "est_per100": {
+              "kcal": 157,
+              "protein": 5.3,
+              "carbs": 31.8,
+              "fat": 0.9
+            }
+          },
+          {
+            "name": "marinara sauce",
+            "grams": 107,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "sauce marinara ready serve"
+            ],
+            "est_per100": {
+              "kcal": 20,
+              "protein": 1.4,
+              "carbs": 2.7,
+              "fat": 0.4
+            }
+          },
+          {
+            "name": "cooked ground beef",
+            "grams": 100,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beef ground patty cooked"
+            ],
+            "est_per100": {
+              "kcal": 250,
+              "protein": 22.6,
+              "carbs": 0,
+              "fat": 17.4
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "chicken-caesar-salad",
+      "valid": true,
+      "kcalExp": 385.7,
+      "kcalPred": 385.68,
+      "kcalApe": 0.00005185377236189217,
+      "proteinErr": 0.003399999999992076,
+      "items": 4,
+      "itemsExp": 4,
+      "matched": 4,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "grilled chicken breast",
+            "grams": 100,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken breast meat only roasted"
+            ],
+            "est_per100": {
+              "kcal": 165,
+              "protein": 31,
+              "carbs": 0,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "romaine lettuce",
+            "grams": 94,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "lettuce cos or romaine raw"
+            ],
+            "est_per100": {
+              "kcal": 17,
+              "protein": 1.4,
+              "carbs": 3.4,
+              "fat": 0.7
+            }
+          },
+          {
+            "name": "caesar dressing",
+            "grams": 30,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "salad dressing caesar regular"
+            ],
+            "est_per100": {
+              "kcal": 44,
+              "protein": 1.2,
+              "carbs": 3.8,
+              "fat": 2.2
+            }
+          },
+          {
+            "name": "grated parmesan",
+            "grams": 10,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese parmesan grated"
+            ],
+            "est_per100": {
+              "kcal": 424,
+              "protein": 29,
+              "carbs": 3,
+              "fat": 31
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "pbj-sandwich",
+      "valid": true,
+      "kcalExp": 392.4,
+      "kcalPred": 373.14,
+      "kcalApe": 0.04908256880733943,
+      "proteinErr": 0.2408999999999999,
+      "items": 3,
+      "itemsExp": 3,
+      "matched": 3,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "white bread",
+            "grams": 52,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bread white commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 272,
+              "protein": 9.4,
+              "carbs": 49.2,
+              "fat": 3.6
+            }
+          },
+          {
+            "name": "peanut butter",
+            "grams": 32,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "peanut butter smooth style with salt"
+            ],
+            "est_per100": {
+              "kcal": 597,
+              "protein": 19.2,
+              "carbs": 44.1,
+              "fat": 41.7
+            }
+          },
+          {
+            "name": "jam",
+            "grams": 15,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "jams preserves"
+            ],
+            "est_per100": {
+              "kcal": 275,
+              "protein": 0.4,
+              "carbs": 68.9,
+              "fat": 12.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "quesadilla",
+      "valid": true,
+      "kcalExp": 452.7,
+      "kcalPred": 452.69999999999993,
+      "kcalApe": 1.255653166794964e-16,
+      "proteinErr": 0.013000000000001677,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "flour tortilla",
+            "grams": 70,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "tortillas ready to bake or fry flour shelf stable"
+            ],
+            "est_per100": {
+              "kcal": 297,
+              "protein": 8,
+              "carbs": 49.6,
+              "fat": 7.6
+            }
+          },
+          {
+            "name": "shredded cheddar",
+            "grams": 60,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese cheddar"
+            ],
+            "est_per100": {
+              "kcal": 383,
+              "protein": 28.3,
+              "carbs": 4.4,
+              "fat": 31.7
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "omelet-cheese",
+      "valid": true,
+      "kcalExp": 404.2,
+      "kcalPred": 601.69,
+      "kcalApe": 0.4885947550717468,
+      "proteinErr": 7.305699999999998,
+      "items": 3,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cheese pizza",
+            "grams": 107,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "pizza cheese cheese pizza crust thin crust frozen cooked"
+            ],
+            "est_per100": {
+              "kcal": 268,
+              "protein": 11,
+              "carbs": 27.4,
+              "fat": 12.7
+            }
+          },
+          {
+            "name": "fried eggs",
+            "grams": 102,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "eggs cooked fried"
+            ],
+            "est_per100": {
+              "kcal": 194,
+              "protein": 13.6,
+              "carbs": 1.2,
+              "fat": 10.7
+            }
+          },
+          {
+            "name": "shredded cheddar",
+            "grams": 30,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese cheddar"
+            ],
+            "est_per100": {
+              "kcal": 408,
+              "protein": 23.3,
+              "carbs": 2.4,
+              "fat": 34.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "grapes",
+      "valid": true,
+      "kcalExp": 104.2,
+      "kcalPred": 141.76635,
+      "kcalApe": 0.360521593090211,
+      "proteinErr": 0.40871875,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "red grapes",
+            "grams": 165,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "grapes red"
+            ],
+            "est_per100": {
+              "kcal": 61,
+              "protein": 0.7,
+              "carbs": 15,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "watermelon",
+      "valid": true,
+      "kcalExp": 91.2,
+      "kcalPred": 67.5,
+      "kcalApe": 0.2598684210526316,
+      "proteinErr": 0.5274999999999999,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "diced watermelon",
+            "grams": 225,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "watermelon raw"
+            ],
+            "est_per100": {
+              "kcal": 30,
+              "protein": 0.6,
+              "carbs": 8.2,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "sweet-potato",
+      "valid": true,
+      "kcalExp": 102.6,
+      "kcalPred": 99.00000000000001,
+      "kcalApe": 0.035087719298245425,
+      "proteinErr": 0.08899999999999997,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 1,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "baked sweet potato",
+            "grams": 110,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "sweet potato cooked baked skin"
+            ],
+            "est_per100": {
+              "kcal": 92,
+              "protein": 2,
+              "carbs": 20.8,
+              "fat": 0.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "corn-butter",
+      "valid": true,
+      "kcalExp": 122.3,
+      "kcalPred": 95.37,
+      "kcalApe": 0.2201962387571545,
+      "proteinErr": 0.13949999999999996,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "kernels",
+            "grams": 90,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "corn on the cob"
+            ],
+            "est_per100": {
+              "kcal": 98,
+              "protein": 3.1,
+              "carbs": 19.6,
+              "fat": 1.2
+            }
+          },
+          {
+            "name": "butter",
+            "grams": 1,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "butter salted"
+            ],
+            "est_per100": {
+              "kcal": 717,
+              "protein": 0.8,
+              "carbs": 0.1,
+              "fat": 81.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "edamame",
+      "valid": true,
+      "kcalExp": 187.6,
+      "kcalPred": 183.92000000000002,
+      "kcalApe": 0.019616204690831442,
+      "proteinErr": 1.4760000000000026,
+      "items": 1,
+      "itemsExp": 1,
+      "matched": 0,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "shelled edamame",
+            "grams": 152,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "edamame shelled cooked"
+            ],
+            "est_per100": {
+              "kcal": 121,
+              "protein": 11.2,
+              "carbs": 8.9,
+              "fat": 5.2
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "snack"
+      }
+    },
+    {
+      "id": "almond-butter-toast",
+      "valid": true,
+      "kcalExp": 257.4,
+      "kcalPred": 174.39296000000002,
+      "kcalApe": 0.32248267288267274,
+      "proteinErr": 5.0300256,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "whole wheat toast",
+            "grams": 28,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "bread whole wheat commercially prepared"
+            ],
+            "est_per100": {
+              "kcal": 306,
+              "protein": 16,
+              "carbs": 51,
+              "fat": 4.1
+            }
+          },
+          {
+            "name": "almond butter",
+            "grams": 16,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "almond butter smooth style with salt"
+            ],
+            "est_per100": {
+              "kcal": 617,
+              "protein": 21,
+              "carbs": 32.4,
+              "fat": 51.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "cottage-blueberries",
+      "valid": true,
+      "kcalExp": 237.1,
+      "kcalPred": 158.13366200000002,
+      "kcalApe": 0.33305077182623355,
+      "proteinErr": 10.359687499999998,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "cottage cheese",
+            "grams": 132,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "cheese cottage lowfat 2 milkfat"
+            ],
+            "est_per100": {
+              "kcal": 84,
+              "protein": 11,
+              "carbs": 4.6,
+              "fat": 2
+            }
+          },
+          {
+            "name": "blueberries",
+            "grams": 74,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "blueberries raw"
+            ],
+            "est_per100": {
+              "kcal": 63.9,
+              "protein": 0.7,
+              "carbs": 14.4,
+              "fat": 0.3
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "lunch"
+      }
+    },
+    {
+      "id": "rice-beans-oil",
+      "valid": true,
+      "kcalExp": 558.8,
+      "kcalPred": 636.0799999999999,
+      "kcalApe": 0.13829634931997134,
+      "proteinErr": 5.083199999999998,
+      "items": 4,
+      "itemsExp": 3,
+      "matched": 3,
+      "asked": true,
+      "claim": {
+        "items": [
+          {
+            "name": "white rice",
+            "grams": 160,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "rice white long grain cooked"
+            ],
+            "est_per100": {
+              "kcal": 130,
+              "protein": 2.7,
+              "carbs": 28.5,
+              "fat": 0.3
+            }
+          },
+          {
+            "name": "black beans",
+            "grams": 172,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "beans black mature seeds cooked boiled"
+            ],
+            "est_per100": {
+              "kcal": 132,
+              "protein": 8.9,
+              "carbs": 20.6,
+              "fat": 0.5
+            }
+          },
+          {
+            "name": "olive oil",
+            "grams": 14,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "oil olive salad or cooking"
+            ],
+            "est_per100": {
+              "kcal": 884,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 81
+            }
+          },
+          {
+            "name": "fried eggs",
+            "grams": 42,
+            "prep": null,
+            "confidence": 0.2,
+            "db_search_terms": [],
+            "est_per100": {
+              "kcal": 184,
+              "protein": 12,
+              "carbs": 1.6,
+              "fat": 10.4
+            }
+          }
+        ],
+        "needs_clarification": true,
+        "questions": [
+          "was the fried eggs cooked in oil or dry-grilled?",
+          "is the tablespoon of olive oil for dressing?"
+        ],
+        "meal_guess": "dinner"
+      }
+    },
+    {
+      "id": "protein-shake",
+      "valid": true,
+      "kcalExp": 227.6,
+      "kcalPred": 227.6,
+      "kcalApe": 0,
+      "proteinErr": 0.012999999999994571,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "whey protein powder",
+            "grams": 30,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "whey protein powder"
+            ],
+            "est_per100": {
+              "kcal": 352,
+              "protein": 44,
+              "carbs": 1,
+              "fat": 1
+            }
+          },
+          {
+            "name": "2% milk",
+            "grams": 244,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "milk reduced fat 2"
+            ],
+            "est_per100": {
+              "kcal": 40.2,
+              "protein": 3.5,
+              "carbs": 4.9,
+              "fat": 3.1
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "breakfast"
+      }
+    },
+    {
+      "id": "chicken-thighs-quinoa",
+      "valid": true,
+      "kcalExp": 490.5,
+      "kcalPred": 915,
+      "kcalApe": 0.8654434250764526,
+      "proteinErr": 12.304999999999993,
+      "items": 2,
+      "itemsExp": 2,
+      "matched": 2,
+      "asked": false,
+      "claim": {
+        "items": [
+          {
+            "name": "roasted chicken thighs",
+            "grams": 150,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "chicken thigh roasted skinless bone-in"
+            ],
+            "est_per100": {
+              "kcal": 176.5,
+              "protein": 21.8,
+              "carbs": 0,
+              "fat": 8.4
+            }
+          },
+          {
+            "name": "cooked quinoa",
+            "grams": 185,
+            "prep": null,
+            "confidence": 0.95,
+            "db_search_terms": [
+              "quinoa cooked"
+            ],
+            "est_per100": {
+              "kcal": 123,
+              "protein": 3.6,
+              "carbs": 21.9,
+              "fat": 1.5
+            }
+          }
+        ],
+        "needs_clarification": false,
+        "questions": [],
+        "meal_guess": "dinner"
+      }
+    }
+  ]
+}

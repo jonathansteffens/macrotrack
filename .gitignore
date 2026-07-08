@@ -7,8 +7,10 @@ data/
 models/*
 !models/README.md
 runs/*/checkpoints/
-runs/*/merged/
+runs/*/merged*/
 runs/dryrun/
+runs/text-dry/
+runs/*/config.resolved.json
 unsloth_compiled_cache/
 tools/finetune/sft-*.jsonl
 tools/finetune/*.jsonl
