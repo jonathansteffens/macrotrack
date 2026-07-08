@@ -18,6 +18,11 @@ export type Macros = {
   fiber: number | null;
   sugar: number | null;
   sodiumMg: number | null;
+  satFat: number | null;
+  cholesterolMg: number | null;
+  calciumMg: number | null;
+  ironMg: number | null;
+  potassiumMg: number | null;
 };
 
 export type Portion = { label: string; grams: number };
@@ -53,14 +58,3 @@ export type LogEntry = {
   macros: Macros;
   source: FoodSource | 'manual' | 'ai_estimate';
 };
-
-/** A null goal means "track the amount, but don't set a target." */
-export type Goals = {
-  kcal: number | null;
-  protein: number | null;
-  carbs: number | null;
-  fat: number | null;
-  fiber: number | null;
-};
-
-export const DEFAULT_GOALS: Goals = { kcal: 2000, protein: 150, carbs: 200, fat: 65, fiber: 30 };

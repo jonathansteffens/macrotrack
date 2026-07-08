@@ -26,13 +26,20 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-/** Accent colors for calories and each macro, used in bars and charts. */
+/** Accent colors for calories and each tracked nutrient, used in bars and charts. */
 export const MacroColors = {
   kcal: '#208AEF',
   protein: '#E4645C',
   carbs: '#E8A33D',
   fat: '#3FA98E',
   fiber: '#8E7CC3',
+  sugar: '#EC6F9E',
+  sodium: '#4FA8C4',
+  satFat: '#C58B5C',
+  cholesterol: '#C56AC0',
+  calcium: '#6B7FD0',
+  iron: '#B15A45',
+  potassium: '#4FA576',
 } as const;
 
 export const Fonts = Platform.select({

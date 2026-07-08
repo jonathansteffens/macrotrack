@@ -8,7 +8,33 @@ export const ZERO_MACROS: Macros = {
   fiber: 0,
   sugar: 0,
   sodiumMg: 0,
+  satFat: 0,
+  cholesterolMg: 0,
+  calciumMg: 0,
+  ironMg: 0,
+  potassiumMg: 0,
 };
+
+/** Nullable per-100g nutrients: scaled proportionally, kept null if absent. */
+const NULLABLE_KEYS = [
+  'fiber',
+  'sugar',
+  'sodiumMg',
+  'satFat',
+  'cholesterolMg',
+  'calciumMg',
+  'ironMg',
+  'potassiumMg',
+] as const;
+
+function scaleNullable(m: Macros, f: number): Pick<Macros, (typeof NULLABLE_KEYS)[number]> {
+  const out = {} as Pick<Macros, (typeof NULLABLE_KEYS)[number]>;
+  for (const k of NULLABLE_KEYS) {
+    const v = m[k];
+    out[k] = v != null ? v * f : null;
+  }
+  return out;
+}
 
 /** Scale per-100g values to a gram amount. */
 export function scaleMacros(per100: Macros, grams: number): Macros {
@@ -18,9 +44,7 @@ export function scaleMacros(per100: Macros, grams: number): Macros {
     protein: per100.protein * f,
     carbs: per100.carbs * f,
     fat: per100.fat * f,
-    fiber: per100.fiber != null ? per100.fiber * f : null,
-    sugar: per100.sugar != null ? per100.sugar * f : null,
-    sodiumMg: per100.sodiumMg != null ? per100.sodiumMg * f : null,
+    ...scaleNullable(per100, f),
   };
 }
 
@@ -31,22 +55,19 @@ export function rescaleMacros(macros: Macros, factor: number): Macros {
     protein: macros.protein * factor,
     carbs: macros.carbs * factor,
     fat: macros.fat * factor,
-    fiber: macros.fiber != null ? macros.fiber * factor : null,
-    sugar: macros.sugar != null ? macros.sugar * factor : null,
-    sodiumMg: macros.sodiumMg != null ? macros.sodiumMg * factor : null,
+    ...scaleNullable(macros, factor),
   };
 }
 
 export function addMacros(a: Macros, b: Macros): Macros {
-  return {
+  const out = {
     kcal: a.kcal + b.kcal,
     protein: a.protein + b.protein,
     carbs: a.carbs + b.carbs,
     fat: a.fat + b.fat,
-    fiber: (a.fiber ?? 0) + (b.fiber ?? 0),
-    sugar: (a.sugar ?? 0) + (b.sugar ?? 0),
-    sodiumMg: (a.sodiumMg ?? 0) + (b.sodiumMg ?? 0),
-  };
+  } as Macros;
+  for (const k of NULLABLE_KEYS) out[k] = (a[k] ?? 0) + (b[k] ?? 0);
+  return out;
 }
 
 /** Parse user-entered decimal text ("1.5" or "1,5"). Null if not a number. */

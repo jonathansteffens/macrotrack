@@ -1,5 +1,5 @@
 import { getUserDb } from './db';
-import { addMacros, scaleMacros, ZERO_MACROS } from './macros';
+import { addMacros, rescaleMacros, scaleMacros, ZERO_MACROS } from './macros';
 import type { FoodItem, Macros } from './types';
 
 /**
@@ -133,17 +133,8 @@ export function recipeTotals(recipe: Recipe): Macros {
 
 /** Macros for one serving = total ÷ servings. */
 export function recipePerServing(recipe: Recipe): Macros {
-  const total = recipeTotals(recipe);
   const s = Math.max(recipe.servings, 0.1);
-  return {
-    kcal: total.kcal / s,
-    protein: total.protein / s,
-    carbs: total.carbs / s,
-    fat: total.fat / s,
-    fiber: total.fiber != null ? total.fiber / s : null,
-    sugar: total.sugar != null ? total.sugar / s : null,
-    sodiumMg: total.sodiumMg != null ? total.sodiumMg / s : null,
-  };
+  return rescaleMacros(recipeTotals(recipe), 1 / s);
 }
 
 /**
@@ -153,17 +144,8 @@ export function recipePerServing(recipe: Recipe): Macros {
  */
 export function recipeToFood(recipe: Recipe): FoodItem {
   const totalGrams = recipeTotalGrams(recipe);
-  const total = recipeTotals(recipe);
   const f = totalGrams > 0 ? 100 / totalGrams : 0;
-  const per100: Macros = {
-    kcal: total.kcal * f,
-    protein: total.protein * f,
-    carbs: total.carbs * f,
-    fat: total.fat * f,
-    fiber: total.fiber != null ? total.fiber * f : null,
-    sugar: total.sugar != null ? total.sugar * f : null,
-    sodiumMg: total.sodiumMg != null ? total.sodiumMg * f : null,
-  };
+  const per100: Macros = rescaleMacros(recipeTotals(recipe), f);
   const servingGrams = totalGrams / Math.max(recipe.servings, 0.1);
   const portions =
     totalGrams > 0

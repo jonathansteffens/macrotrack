@@ -19,6 +19,11 @@ type EntryRow = {
   fiber: number | null;
   sugar: number | null;
   sodium_mg: number | null;
+  sat_fat: number | null;
+  cholesterol_mg: number | null;
+  calcium_mg: number | null;
+  iron_mg: number | null;
+  potassium_mg: number | null;
   source: string;
 };
 
@@ -41,6 +46,11 @@ function rowToEntry(r: EntryRow): LogEntry {
       fiber: r.fiber,
       sugar: r.sugar,
       sodiumMg: r.sodium_mg,
+      satFat: r.sat_fat,
+      cholesterolMg: r.cholesterol_mg,
+      calciumMg: r.calcium_mg,
+      ironMg: r.iron_mg,
+      potassiumMg: r.potassium_mg,
     },
     source: r.source as LogEntry['source'],
   };
@@ -54,8 +64,9 @@ export async function logFood(
   const res = await getUserDb().runAsync(
     `INSERT INTO log_entries
        (day, ts, meal, food_name, food_ref, quantity_desc, grams,
-        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, unit, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     opts.day,
     new Date().toISOString(),
     opts.meal,
@@ -70,6 +81,11 @@ export async function logFood(
     m.fiber,
     m.sugar,
     m.sodiumMg,
+    m.satFat,
+    m.cholesterolMg,
+    m.calciumMg,
+    m.ironMg,
+    m.potassiumMg,
     food.unit ?? 'g',
     food.source
   );
@@ -91,8 +107,9 @@ export async function logAiEstimate(opts: {
   const res = await getUserDb().runAsync(
     `INSERT INTO log_entries
        (day, ts, meal, food_name, food_ref, quantity_desc, grams,
-        kcal, protein, carbs, fat, fiber, sugar, sodium_mg, unit, source)
-     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'g', 'ai_estimate')`,
+        kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source)
+     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'g', 'ai_estimate')`,
     opts.day,
     new Date().toISOString(),
     opts.meal,
@@ -105,7 +122,12 @@ export async function logAiEstimate(opts: {
     opts.macros.fat,
     opts.macros.fiber,
     opts.macros.sugar,
-    opts.macros.sodiumMg
+    opts.macros.sodiumMg,
+    opts.macros.satFat,
+    opts.macros.cholesterolMg,
+    opts.macros.calciumMg,
+    opts.macros.ironMg,
+    opts.macros.potassiumMg
   );
   return res.lastInsertRowId;
 }
@@ -135,9 +157,17 @@ export async function dayTotals(day: string): Promise<Macros> {
     fiber: number | null;
     sugar: number | null;
     sodium_mg: number | null;
+    sat_fat: number | null;
+    cholesterol_mg: number | null;
+    calcium_mg: number | null;
+    iron_mg: number | null;
+    potassium_mg: number | null;
   }>(
     `SELECT SUM(kcal) kcal, SUM(protein) protein, SUM(carbs) carbs, SUM(fat) fat,
-            SUM(fiber) fiber, SUM(sugar) sugar, SUM(sodium_mg) sodium_mg
+            SUM(fiber) fiber, SUM(sugar) sugar, SUM(sodium_mg) sodium_mg,
+            SUM(sat_fat) sat_fat, SUM(cholesterol_mg) cholesterol_mg,
+            SUM(calcium_mg) calcium_mg, SUM(iron_mg) iron_mg,
+            SUM(potassium_mg) potassium_mg
      FROM log_entries WHERE day = ?`,
     day
   );
@@ -150,6 +180,11 @@ export async function dayTotals(day: string): Promise<Macros> {
     fiber: r.fiber,
     sugar: r.sugar,
     sodiumMg: r.sodium_mg,
+    satFat: r.sat_fat,
+    cholesterolMg: r.cholesterol_mg,
+    calciumMg: r.calcium_mg,
+    ironMg: r.iron_mg,
+    potassiumMg: r.potassium_mg,
   };
 }
 
@@ -167,7 +202,8 @@ export async function updateEntryQuantity(
   const m = rescaleMacros(entry.macros, newGrams / entry.grams);
   await getUserDb().runAsync(
     `UPDATE log_entries SET grams = ?, quantity_desc = ?,
-       kcal = ?, protein = ?, carbs = ?, fat = ?, fiber = ?, sugar = ?, sodium_mg = ?
+       kcal = ?, protein = ?, carbs = ?, fat = ?, fiber = ?, sugar = ?, sodium_mg = ?,
+       sat_fat = ?, cholesterol_mg = ?, calcium_mg = ?, iron_mg = ?, potassium_mg = ?
      WHERE id = ?`,
     newGrams,
     newQuantityDesc,
@@ -178,6 +214,11 @@ export async function updateEntryQuantity(
     m.fiber,
     m.sugar,
     m.sodiumMg,
+    m.satFat,
+    m.cholesterolMg,
+    m.calciumMg,
+    m.ironMg,
+    m.potassiumMg,
     id
   );
 }

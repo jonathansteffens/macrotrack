@@ -41,6 +41,11 @@ export default function CustomFoodScreen() {
   const [fiber, setFiber] = useState('');
   const [sugar, setSugar] = useState('');
   const [sodium, setSodium] = useState('');
+  const [satFat, setSatFat] = useState('');
+  const [cholesterol, setCholesterol] = useState('');
+  const [calcium, setCalcium] = useState('');
+  const [iron, setIron] = useState('');
+  const [potassium, setPotassium] = useState('');
   const [servingLabel, setServingLabel] = useState('');
   const [servingGrams, setServingGrams] = useState('');
   const [unit, setUnit] = useState<'g' | 'ml'>('g');
@@ -70,6 +75,11 @@ export default function CustomFoodScreen() {
           fiber: parseDecimal(fiber),
           sugar: parseDecimal(sugar),
           sodiumMg: parseDecimal(sodium),
+          satFat: parseDecimal(satFat),
+          cholesterolMg: parseDecimal(cholesterol),
+          calciumMg: parseDecimal(calcium),
+          ironMg: parseDecimal(iron),
+          potassiumMg: parseDecimal(potassium),
         },
         portions,
         barcode: params.barcode ?? null,
@@ -151,6 +161,11 @@ export default function CustomFoodScreen() {
             <NumField label="Fiber (g)" value={fiber} onChange={setFiber} style={inputStyle} />
             <NumField label="Sugar (g)" value={sugar} onChange={setSugar} style={inputStyle} />
             <NumField label="Sodium (mg)" value={sodium} onChange={setSodium} style={inputStyle} />
+            <NumField label="Sat fat (g)" value={satFat} onChange={setSatFat} style={inputStyle} />
+            <NumField label="Cholesterol (mg)" value={cholesterol} onChange={setCholesterol} style={inputStyle} />
+            <NumField label="Calcium (mg)" value={calcium} onChange={setCalcium} style={inputStyle} />
+            <NumField label="Iron (mg)" value={iron} onChange={setIron} style={inputStyle} />
+            <NumField label="Potassium (mg)" value={potassium} onChange={setPotassium} style={inputStyle} />
           </View>
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>

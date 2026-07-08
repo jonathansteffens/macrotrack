@@ -9,30 +9,24 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, dayLabel, todayKey } from '@/lib/dates';
-import { getGoals } from '@/lib/goals';
 import { dayTotals, entriesForDay } from '@/lib/log';
 import { fmtKcal, ZERO_MACROS } from '@/lib/macros';
+import { NUTRIENTS, nutrientValue } from '@/lib/nutrients';
 import { saveTemplate } from '@/lib/templates';
-import {
-  DEFAULT_GOALS,
-  MEAL_LABELS,
-  MEALS,
-  type LogEntry,
-  type Macros,
-  type MealType,
-} from '@/lib/types';
+import { defaultTracking, getTracking } from '@/lib/tracking';
+import { MEAL_LABELS, MEALS, type LogEntry, type Macros, type MealType } from '@/lib/types';
 
 export default function TodayScreen() {
   const theme = useTheme();
   const [day, setDay] = useState(todayKey());
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [totals, setTotals] = useState<Macros>(ZERO_MACROS);
-  const [goals, setGoals] = useState(DEFAULT_GOALS);
+  const [tracking, setTracking] = useState(defaultTracking());
 
   const load = useCallback(async () => {
     setEntries(await entriesForDay(day));
     setTotals(await dayTotals(day));
-    setGoals(await getGoals());
+    setTracking(await getTracking());
   }, [day]);
 
   useFocusEffect(
@@ -41,7 +35,10 @@ export default function TodayScreen() {
     }, [load])
   );
 
-  const remaining = goals.kcal != null ? goals.kcal - totals.kcal : null;
+  const kcalCfg = tracking.kcal;
+  const remaining =
+    kcalCfg.enabled && kcalCfg.goal != null ? kcalCfg.goal - totals.kcal : null;
+  const enabledNutrients = NUTRIENTS.filter((n) => tracking[n.key].enabled);
 
   return (
     <ThemedView style={styles.root}>
@@ -78,29 +75,36 @@ export default function TodayScreen() {
           showsVerticalScrollIndicator={false}>
           {/* Summary card */}
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
-            <View style={styles.kcalRow}>
-              <ThemedText type="subtitle">{fmtKcal(totals.kcal)}</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                {goals.kcal != null ? ` / ${fmtKcal(goals.kcal)} kcal` : ' kcal'}
-              </ThemedText>
-              {remaining != null && (
-                <View style={styles.remainingBox}>
-                  <ThemedText
-                    type="small"
-                    themeColor="textSecondary"
-                    style={remaining < 0 && { color: MacroColors.protein }}>
-                    {remaining >= 0
-                      ? `${fmtKcal(remaining)} left`
-                      : `${fmtKcal(-remaining)} over`}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-            <MacroBar label="Calories" value={totals.kcal} goal={goals.kcal} color={MacroColors.kcal} unit="" />
-            <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color={MacroColors.protein} />
-            <MacroBar label="Carbs" value={totals.carbs} goal={goals.carbs} color={MacroColors.carbs} />
-            <MacroBar label="Fat" value={totals.fat} goal={goals.fat} color={MacroColors.fat} />
-            <MacroBar label="Fiber" value={totals.fiber ?? 0} goal={goals.fiber} color={MacroColors.fiber} />
+            {kcalCfg.enabled && (
+              <View style={styles.kcalRow}>
+                <ThemedText type="subtitle">{fmtKcal(totals.kcal)}</ThemedText>
+                <ThemedText themeColor="textSecondary">
+                  {kcalCfg.goal != null ? ` / ${fmtKcal(kcalCfg.goal)} kcal` : ' kcal'}
+                </ThemedText>
+                {remaining != null && (
+                  <View style={styles.remainingBox}>
+                    <ThemedText
+                      type="small"
+                      themeColor="textSecondary"
+                      style={remaining < 0 && { color: MacroColors.protein }}>
+                      {remaining >= 0
+                        ? `${fmtKcal(remaining)} left`
+                        : `${fmtKcal(-remaining)} over`}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            )}
+            {enabledNutrients.map((n) => (
+              <MacroBar
+                key={n.key}
+                label={n.label}
+                value={nutrientValue(totals, n.key)}
+                goal={tracking[n.key].goal}
+                color={n.color}
+                unit={n.unit}
+              />
+            ))}
           </ThemedView>
 
           {/* Meals */}

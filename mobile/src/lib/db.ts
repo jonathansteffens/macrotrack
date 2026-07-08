@@ -9,7 +9,7 @@ import * as SQLite from 'expo-sqlite';
  *                barcode cache, settings. Never overwritten.
  */
 
-const FOODS_DB_VERSION = 2;
+const FOODS_DB_VERSION = 3;
 
 let foodsDb: SQLite.SQLiteDatabase | null = null;
 let userDb: SQLite.SQLiteDatabase | null = null;
@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS custom_foods (
   fiber REAL,
   sugar REAL,
   sodium_mg REAL,
+  sat_fat REAL,
+  cholesterol_mg REAL,
+  calcium_mg REAL,
+  iron_mg REAL,
+  potassium_mg REAL,
   portions_json TEXT NOT NULL DEFAULT '[]',
   barcode TEXT,
   created_at TEXT NOT NULL
@@ -45,6 +50,11 @@ CREATE TABLE IF NOT EXISTS barcode_cache (
   fiber REAL,
   sugar REAL,
   sodium_mg REAL,
+  sat_fat REAL,
+  cholesterol_mg REAL,
+  calcium_mg REAL,
+  iron_mg REAL,
+  potassium_mg REAL,
   portions_json TEXT NOT NULL DEFAULT '[]',
   fetched_at TEXT NOT NULL
 );
@@ -65,6 +75,11 @@ CREATE TABLE IF NOT EXISTS log_entries (
   fiber REAL,
   sugar REAL,
   sodium_mg REAL,
+  sat_fat REAL,
+  cholesterol_mg REAL,
+  calcium_mg REAL,
+  iron_mg REAL,
+  potassium_mg REAL,
   source TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_log_day ON log_entries(day);
@@ -123,11 +138,17 @@ export async function initDb(): Promise<void> {
 
   // Additive column migrations for existing installs. ALTER throws if the
   // column already exists; we ignore that (it just means the migration ran).
-  for (const stmt of [
+  const nutrientCols = ['sat_fat', 'cholesterol_mg', 'calcium_mg', 'iron_mg', 'potassium_mg'];
+  const migrations = [
     "ALTER TABLE barcode_cache ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE custom_foods ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE log_entries ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
-  ]) {
+    // Extra nutrients added later — nullable, so existing rows read as "unknown".
+    ...['barcode_cache', 'custom_foods', 'log_entries'].flatMap((t) =>
+      nutrientCols.map((c) => `ALTER TABLE ${t} ADD COLUMN ${c} REAL`)
+    ),
+  ];
+  for (const stmt of migrations) {
     await userDb.execAsync(stmt).catch(() => {});
   }
 

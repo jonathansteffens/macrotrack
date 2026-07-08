@@ -14,6 +14,11 @@ type FoodRow = {
   fiber: number | null;
   sugar: number | null;
   sodium_mg: number | null;
+  sat_fat: number | null;
+  cholesterol_mg: number | null;
+  calcium_mg: number | null;
+  iron_mg: number | null;
+  potassium_mg: number | null;
   portions_json: string;
   unit?: string | null;
 };
@@ -27,6 +32,11 @@ function rowMacros(r: FoodRow): Macros {
     fiber: r.fiber,
     sugar: r.sugar,
     sodiumMg: r.sodium_mg,
+    satFat: r.sat_fat ?? null,
+    cholesterolMg: r.cholesterol_mg ?? null,
+    calciumMg: r.calcium_mg ?? null,
+    ironMg: r.iron_mg ?? null,
+    potassiumMg: r.potassium_mg ?? null,
   };
 }
 
@@ -165,8 +175,10 @@ export type CustomFoodInput = {
 export async function createCustomFood(input: CustomFoodInput): Promise<FoodItem> {
   const res = await getUserDb().runAsync(
     `INSERT INTO custom_foods
-       (name, name_norm, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, barcode, unit, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, name_norm, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg,
+        portions_json, barcode, unit, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.name.trim(),
     normName(input.name),
     input.brand?.trim() || null,
@@ -177,6 +189,11 @@ export async function createCustomFood(input: CustomFoodInput): Promise<FoodItem
     input.per100.fiber,
     input.per100.sugar,
     input.per100.sodiumMg,
+    input.per100.satFat,
+    input.per100.cholesterolMg,
+    input.per100.calciumMg,
+    input.per100.ironMg,
+    input.per100.potassiumMg,
     JSON.stringify(input.portions ?? []),
     input.barcode ?? null,
     input.unit ?? 'g',

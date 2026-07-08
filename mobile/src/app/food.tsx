@@ -18,7 +18,22 @@ import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
-import { MEAL_LABELS, MEALS, type FoodItem, type MealType } from '@/lib/types';
+import { NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
+import { MEAL_LABELS, MEALS, type FoodItem, type Macros, type MealType } from '@/lib/types';
+
+/** The four core macros have their own cells; everything else lists here. */
+const CORE_KEYS = new Set<NutrientKey>(['kcal', 'protein', 'carbs', 'fat']);
+
+/** "Fiber 3 g · Sodium 120 mg · …" for every non-core nutrient that has data. */
+function extraNutrientLine(m: Macros): string {
+  return NUTRIENTS.filter((n) => !CORE_KEYS.has(n.key) && m[n.key] != null)
+    .map((n) => {
+      const v = m[n.key] as number;
+      const val = n.unit === 'mg' ? String(Math.round(v)) : fmtGrams(v);
+      return `${n.label} ${val}${n.unit ? ` ${n.unit}` : ''}`;
+    })
+    .join('  ·  ');
+}
 
 export default function FoodScreen() {
   const theme = useTheme();
@@ -140,11 +155,9 @@ export default function FoodScreen() {
             <PreviewCell label="Carbs" value={preview ? `${fmtGrams(preview.carbs)} g` : '–'} color={MacroColors.carbs} />
             <PreviewCell label="Fat" value={preview ? `${fmtGrams(preview.fat)} g` : '–'} color={MacroColors.fat} />
           </ThemedView>
-          {preview && (preview.fiber != null || preview.sodiumMg != null) && (
+          {preview && extraNutrientLine(preview) !== '' && (
             <ThemedText type="small" themeColor="textSecondary">
-              {preview.fiber != null ? `Fiber ${fmtGrams(preview.fiber)} g` : ''}
-              {preview.fiber != null && preview.sodiumMg != null ? ' · ' : ''}
-              {preview.sodiumMg != null ? `Sodium ${fmtKcal(preview.sodiumMg)} mg` : ''}
+              {extraNutrientLine(preview)}
             </ThemedText>
           )}
 

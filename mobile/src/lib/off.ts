@@ -66,6 +66,14 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
   if (sodiumG != null) sodiumMg = sodiumG * 1000;
   else if (saltG != null) sodiumMg = (saltG / 2.5) * 1000;
 
+  // Saturated fat is reported in grams; cholesterol/minerals in grams → mg.
+  const satFat = num(n['saturated-fat_100g']);
+  const gToMg = (g: number | null) => (g != null ? g * 1000 : null);
+  const cholesterolMg = gToMg(num(n['cholesterol_100g']));
+  const calciumMg = gToMg(num(n['calcium_100g']));
+  const ironMg = gToMg(num(n['iron_100g']));
+  const potassiumMg = gToMg(num(n['potassium_100g']));
+
   const portions: Portion[] = [];
   const servingQty = num(p.serving_quantity);
   const servingUnit = (p.serving_quantity_unit ?? 'g') as string;
@@ -85,8 +93,10 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
 
   await getUserDb().runAsync(
     `INSERT OR REPLACE INTO barcode_cache
-       (barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg, portions_json, unit, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg,
+        portions_json, unit, fetched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     barcode,
     name,
     (p.brands ?? '').split(',')[0].trim() || null,
@@ -97,6 +107,11 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     num(n['fiber_100g']),
     num(n['sugars_100g']),
     sodiumMg,
+    satFat,
+    cholesterolMg,
+    calciumMg,
+    ironMg,
+    potassiumMg,
     JSON.stringify(portions),
     unit,
     new Date().toISOString()

@@ -6,7 +6,8 @@
 //
 // Output: mobile/assets/foods.db
 //   foods(id, name, name_norm, category, data_type, kcal, protein, carbs,
-//         fat, fiber, sugar, sodium_mg, portions_json)   -- nutrients per 100 g
+//         fat, fiber, sugar, sodium_mg, sat_fat, cholesterol_mg, calcium_mg,
+//         iron_mg, potassium_mg, portions_json)          -- nutrients per 100 g
 //   meta(key, value)
 //
 // Usage: node tools/build-food-db.mjs
@@ -61,13 +62,18 @@ function loadCsv(dir, name) {
 
 // nutrient_id preference order per macro (first found wins)
 const NUTRIENTS = {
-  kcal:      ['1008', '2047', '2048'], // Energy, Atwater General, Atwater Specific
-  protein:   ['1003'],
-  fat:       ['1004', '1085'],         // Total lipid, Total fat (NLEA)
-  carbs:     ['1005', '1050'],         // By difference, by summation
-  fiber:     ['1079', '2033'],         // Total dietary, AOAC 2011.25
-  sugar:     ['2000', '1063'],         // Total sugars, Sugars NLEA
-  sodium_mg: ['1093'],
+  kcal:           ['1008', '2047', '2048'], // Energy, Atwater General, Atwater Specific
+  protein:        ['1003'],
+  fat:            ['1004', '1085'],         // Total lipid, Total fat (NLEA)
+  carbs:          ['1005', '1050'],         // By difference, by summation
+  fiber:          ['1079', '2033'],         // Total dietary, AOAC 2011.25
+  sugar:          ['2000', '1063'],         // Total sugars, Sugars NLEA
+  sodium_mg:      ['1093'],
+  sat_fat:        ['1258'],                 // Fatty acids, total saturated (g)
+  cholesterol_mg: ['1253'],                 // Cholesterol (mg)
+  calcium_mg:     ['1087'],                 // Calcium, Ca (mg)
+  iron_mg:        ['1089'],                 // Iron, Fe (mg)
+  potassium_mg:   ['1092'],                 // Potassium, K (mg)
 };
 
 function extractNutrients(dir) {
@@ -201,6 +207,11 @@ db.exec(`
     fiber REAL,
     sugar REAL,
     sodium_mg REAL,
+    sat_fat REAL,
+    cholesterol_mg REAL,
+    calcium_mg REAL,
+    iron_mg REAL,
+    potassium_mg REAL,
     portions_json TEXT NOT NULL
   );
   CREATE INDEX idx_foods_name_norm ON foods(name_norm);
@@ -209,18 +220,21 @@ db.exec(`
 
 const insert = db.prepare(`
   INSERT INTO foods (id, name, name_norm, category, data_type, kcal, protein,
-                     carbs, fat, fiber, sugar, sodium_mg, portions_json)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     carbs, fat, fiber, sugar, sodium_mg, sat_fat,
+                     cholesterol_mg, calcium_mg, iron_mg, potassium_mg,
+                     portions_json)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 db.exec('BEGIN');
 for (const f of merged) {
   insert.run(f.id, f.name, f.name_norm, f.category, f.data_type, f.kcal,
-    f.protein, f.carbs, f.fat, f.fiber, f.sugar, f.sodium_mg, f.portions_json);
+    f.protein, f.carbs, f.fat, f.fiber, f.sugar, f.sodium_mg, f.sat_fat,
+    f.cholesterol_mg, f.calcium_mg, f.iron_mg, f.potassium_mg, f.portions_json);
 }
 db.exec('COMMIT');
 
 const setMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
-setMeta.run('schema_version', '1');
+setMeta.run('schema_version', '2');
 setMeta.run('food_count', String(merged.length));
 setMeta.run('sources', 'USDA FDC SR Legacy 2018-04; Foundation 2025-12-18');
 setMeta.run('built_at', new Date().toISOString());

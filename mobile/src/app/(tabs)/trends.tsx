@@ -10,29 +10,20 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { shortLabel } from '@/lib/dates';
-import { getGoals } from '@/lib/goals';
 import { fmtGrams, parseDecimal } from '@/lib/macros';
+import { NUTRIENTS, NUTRIENTS_BY_KEY, type NutrientKey } from '@/lib/nutrients';
+import { defaultTracking, getTracking } from '@/lib/tracking';
 import { getTrends, type DayTotal, type TrendSummary } from '@/lib/trends';
-import { DEFAULT_GOALS, type Goals } from '@/lib/types';
 import { logWeight, weightTrend, type WeightEntry } from '@/lib/weights';
 
 const RANGES = [7, 30, 90] as const;
-const METRICS = [
-  { key: 'kcal', label: 'Calories', color: MacroColors.kcal, unit: 'kcal' },
-  { key: 'protein', label: 'Protein', color: MacroColors.protein, unit: 'g' },
-  { key: 'carbs', label: 'Carbs', color: MacroColors.carbs, unit: 'g' },
-  { key: 'fat', label: 'Fat', color: MacroColors.fat, unit: 'g' },
-  { key: 'fiber', label: 'Fiber', color: MacroColors.fiber, unit: 'g' },
-] as const;
-
-type MetricKey = (typeof METRICS)[number]['key'];
 
 export default function TrendsScreen() {
   const theme = useTheme();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
-  const [metric, setMetric] = useState<MetricKey>('kcal');
+  const [metric, setMetric] = useState<NutrientKey>('kcal');
   const [trends, setTrends] = useState<TrendSummary | null>(null);
-  const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
+  const [tracking, setTracking] = useState(defaultTracking());
   const [weight, setWeight] = useState<{
     series: number[];
     entries: WeightEntry[];
@@ -47,7 +38,7 @@ export default function TrendsScreen() {
   useFocusEffect(
     useCallback(() => {
       getTrends(range).then(setTrends);
-      getGoals().then(setGoals);
+      getTracking().then(setTracking);
       loadWeight();
     }, [range, loadWeight])
   );
@@ -60,20 +51,18 @@ export default function TrendsScreen() {
     loadWeight();
   };
 
-  const m = METRICS.find((x) => x.key === metric)!;
-  const values = trends?.days.map((d) => d[metric]) ?? [];
+  const enabledNutrients = NUTRIENTS.filter((n) => tracking[n.key].enabled);
+  // Fall back to the first tracked nutrient if the selected one was turned off.
+  const activeKey: NutrientKey = enabledNutrients.some((n) => n.key === metric)
+    ? metric
+    : (enabledNutrients[0]?.key ?? 'kcal');
+  const m = NUTRIENTS_BY_KEY[activeKey];
+  const goal = tracking[activeKey].goal;
+  const values = trends?.days.map((d) => d.values[activeKey]) ?? [];
   const labels = trends?.days.map((d) => shortLabel(d.day)) ?? [];
-  const movingAvg = trends ? movingAverage(trends.days, (d) => d[metric]) : [];
-  const avg =
-    trends == null
-      ? 0
-      : {
-          kcal: trends.avgKcal,
-          protein: trends.avgProtein,
-          carbs: trends.avgCarbs,
-          fat: trends.avgFat,
-          fiber: trends.avgFiber,
-        }[metric];
+  const movingAvg = trends ? movingAverage(trends.days, (d) => d.values[activeKey]) : [];
+  const avg = trends ? trends.averages[activeKey] : 0;
+  const unitSuffix = m.unit ? ` ${m.unit}` : '';
 
   return (
     <ThemedView style={styles.root}>
@@ -90,14 +79,14 @@ export default function TrendsScreen() {
             ))}
           </View>
 
-          {/* Metric selector */}
+          {/* Metric selector — only the nutrients being tracked */}
           <View style={styles.chipRow}>
-            {METRICS.map((x) => (
+            {enabledNutrients.map((n) => (
               <Chip
-                key={x.key}
-                label={x.label}
-                selected={metric === x.key}
-                onPress={() => setMetric(x.key)}
+                key={n.key}
+                label={n.label}
+                selected={activeKey === n.key}
+                onPress={() => setMetric(n.key)}
               />
             ))}
           </View>
@@ -107,7 +96,7 @@ export default function TrendsScreen() {
             <View style={styles.chartHeader}>
               <ThemedText type="smallBold">{m.label}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {goals[metric] != null ? 'goal (dashed) · ' : ''}7-day avg (line)
+                {goal != null ? 'goal (dashed) · ' : ''}7-day avg (line)
               </ThemedText>
             </View>
             {trends && trends.loggedDays > 0 ? (
@@ -115,7 +104,7 @@ export default function TrendsScreen() {
                 values={values}
                 labels={labels}
                 color={m.color}
-                goal={goals[metric] ?? undefined}
+                goal={goal ?? undefined}
                 overlay={movingAvg}
               />
             ) : (
@@ -130,7 +119,7 @@ export default function TrendsScreen() {
             <View style={styles.statsRow}>
               <StatCard
                 label={`Avg ${m.label.toLowerCase()}`}
-                value={`${Math.round(avg)} ${m.unit}`}
+                value={`${Math.round(avg)}${unitSuffix}`}
                 sub="on logged days"
               />
               <StatCard

@@ -48,9 +48,16 @@ export function resolvedMacros(item: ResolvedItem): Macros {
     protein: item.claim.est_per100.protein * f,
     carbs: item.claim.est_per100.carbs * f,
     fat: item.claim.est_per100.fat * f,
+    // The model only estimates the four core macros; the rest are unknown
+    // unless the item resolves to a database food.
     fiber: null,
     sugar: null,
     sodiumMg: null,
+    satFat: null,
+    cholesterolMg: null,
+    calciumMg: null,
+    ironMg: null,
+    potassiumMg: null,
   };
 }
 
