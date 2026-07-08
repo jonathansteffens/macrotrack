@@ -8,15 +8,15 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
-  TextInput,
   View,
 } from 'react-native';
 
+import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTrackingEditor } from '@/hooks/use-tracking-editor';
 import {
   deleteLocalModel,
   downloadLocalModel,
@@ -26,52 +26,20 @@ import {
 } from '@/lib/ai/local-model';
 import { exportFoodLog, exportTrainingData } from '@/lib/export';
 import { getFoodDbInfo } from '@/lib/foods';
-import { parseDecimal } from '@/lib/macros';
-import { NUTRIENTS, NUTRIENTS_BY_KEY, type NutrientKey } from '@/lib/nutrients';
-import { getTracking, setTracking, type TrackingConfig } from '@/lib/tracking';
-
-type GoalText = Record<NutrientKey, string>;
-
-const emptyGoalText = () =>
-  Object.fromEntries(NUTRIENTS.map((n) => [n.key, ''])) as GoalText;
+import { NUTRIENTS } from '@/lib/nutrients';
+import { setTracking } from '@/lib/tracking';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const [enabled, setEnabled] = useState<Record<NutrientKey, boolean>>(() =>
-    Object.fromEntries(NUTRIENTS.map((n) => [n.key, n.defaultEnabled])) as Record<
-      NutrientKey,
-      boolean
-    >
-  );
-  const [goalText, setGoalText] = useState<GoalText>(emptyGoalText);
+  const editor = useTrackingEditor();
   const [dbInfo, setDbInfo] = useState<{ count: number; sources: string } | null>(null);
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
 
   useEffect(() => {
-    getTracking().then((cfg) => {
-      const en = {} as Record<NutrientKey, boolean>;
-      const gt = emptyGoalText();
-      for (const n of NUTRIENTS) {
-        en[n.key] = cfg[n.key].enabled;
-        gt[n.key] = cfg[n.key].goal != null ? String(Math.round(cfg[n.key].goal!)) : '';
-      }
-      setEnabled(en);
-      setGoalText(gt);
-    });
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
   }, []);
-
-  const toggle = (key: NutrientKey) => {
-    const turningOn = !enabled[key];
-    setEnabled((prev) => ({ ...prev, [key]: turningOn }));
-    // Seed a suggested goal the first time a nutrient is switched on.
-    if (turningOn && !goalText[key]) {
-      const def = NUTRIENTS_BY_KEY[key].defaultGoal;
-      if (def != null) setGoalText((prev) => ({ ...prev, [key]: String(def) }));
-    }
-  };
 
   const downloadModel = async () => {
     setDownloadPct(0);
@@ -100,17 +68,10 @@ export default function SettingsScreen() {
   };
 
   const save = async () => {
-    // For enabled nutrients, a blank goal means "no target"; a non-blank goal
-    // must be a number. Disabled nutrients keep whatever goal they had.
-    const num = (t: string): number | null => (t.trim() ? parseDecimal(t) : null);
-    const invalid = (t: string) => t.trim() !== '' && parseDecimal(t) == null;
-    if (NUTRIENTS.some((n) => enabled[n.key] && invalid(goalText[n.key]))) {
+    const config = editor.buildConfig();
+    if (!config) {
       Alert.alert('Invalid goal', 'Goals must be numbers, or left blank for no target.');
       return;
-    }
-    const config = {} as TrackingConfig;
-    for (const n of NUTRIENTS) {
-      config[n.key] = { enabled: enabled[n.key], goal: num(goalText[n.key]) };
     }
     await setTracking(config);
     router.back();
@@ -134,10 +95,10 @@ export default function SettingsScreen() {
                 label={n.label}
                 unit={n.unit}
                 color={n.color}
-                enabled={enabled[n.key]}
-                goal={goalText[n.key]}
-                onToggle={() => toggle(n.key)}
-                onGoal={(t) => setGoalText((prev) => ({ ...prev, [n.key]: t }))}
+                enabled={editor.enabled[n.key]}
+                goal={editor.goalText[n.key]}
+                onToggle={() => editor.toggle(n.key)}
+                onGoal={(t) => editor.setGoal(n.key, t)}
               />
             ))}
           </View>
@@ -261,62 +222,6 @@ function OnDeviceModel({
   );
 }
 
-function NutrientRow({
-  label,
-  unit,
-  color,
-  enabled,
-  goal,
-  onToggle,
-  onGoal,
-}: {
-  label: string;
-  unit: string;
-  color: string;
-  enabled: boolean;
-  goal: string;
-  onToggle: () => void;
-  onGoal: (v: string) => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={styles.nutrientRow}>
-      <Switch
-        value={enabled}
-        onValueChange={onToggle}
-        trackColor={{ true: color }}
-        thumbColor={Platform.OS === 'android' ? (enabled ? color : undefined) : undefined}
-      />
-      <ThemedText
-        type="small"
-        themeColor={enabled ? 'text' : 'textSecondary'}
-        style={styles.nutrientLabel}>
-        {label}
-      </ThemedText>
-      {enabled && (
-        <View style={styles.goalEntry}>
-          <TextInput
-            style={[
-              styles.goalInput,
-              { backgroundColor: theme.backgroundElement, color: theme.text },
-            ]}
-            value={goal}
-            onChangeText={onGoal}
-            keyboardType="number-pad"
-            placeholder="no goal"
-            placeholderTextColor={theme.textSecondary}
-          />
-          {unit ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.goalUnit}>
-              {unit}
-            </ThemedText>
-          ) : null}
-        </View>
-      )}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
@@ -325,30 +230,6 @@ const styles = StyleSheet.create({
   },
   nutrientList: {
     gap: Spacing.two,
-  },
-  nutrientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  nutrientLabel: {
-    flex: 1,
-  },
-  goalEntry: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  goalInput: {
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minWidth: 84,
-    textAlign: 'right',
-  },
-  goalUnit: {
-    width: 26,
   },
   sectionTitle: {
     marginTop: Spacing.three,
