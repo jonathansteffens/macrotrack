@@ -11,7 +11,7 @@ import { normName } from './norm';
  *                barcode cache, settings. Never overwritten.
  */
 
-const FOODS_DB_VERSION = 4;
+const FOODS_DB_VERSION = 5;
 
 let foodsDb: SQLite.SQLiteDatabase | null = null;
 let userDb: SQLite.SQLiteDatabase | null = null;

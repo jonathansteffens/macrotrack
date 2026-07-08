@@ -3,9 +3,17 @@
 Builds `mobile/assets/foods.db` (bundled generic-food database) from USDA
 FoodData Central CSV dumps: SR Legacy (~7.8k foods, includes the branded
 "Fast Foods"/"Restaurant Foods" categories) + Foundation Foods (~400 foods,
-preferred on name collisions) + FNDDS survey foods (~5.4k as-eaten dishes —
-mixed meals, restaurant/fast-food items like "Burrito bowl, with beans" and
-"Big Mac (McDonalds)"; lowest dedup priority since values are recipe-derived).
+preferred on name collisions) + FNDDS survey foods (restaurant/mixed dishes
+like "Burrito bowl, with beans", "Pad Thai", "Coffee, Latte").
+
+The raw merge (~13.4k) is then passed through a **consumer-core filter** down
+to ~10k: SR + Foundation stay (the model + SFT/eval pipeline resolve gold
+labels against their names), but from FNDDS only prepared/mixed *dishes* are
+kept — its single-food entries just duplicate SR with different wording, and
+its "skin eaten / not eaten / NS as to cooking method" variants are survey
+artifacts. Baby foods and exact-name duplicates are dropped too. Bump
+`FOODS_DB_VERSION` in `mobile/src/lib/db.ts` after any rebuild.
+
 Nutrients are stored **per 100 g**: kcal, protein, carbs, fat, fiber, sugar,
 sodium, saturated fat, cholesterol, calcium, iron, potassium. Household
 portion labels with gram weights are stored as JSON per food.

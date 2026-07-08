@@ -214,6 +214,36 @@ const seenNames = new Set(merged.map((f) => f.name_norm));
 merged.push(...svFoods.filter((f) => !seenNames.has(f.name_norm)));
 console.log(`Merged: ${merged.length} foods (${srFoods.length + fnFoods.length + svFoods.length - merged.length} duplicates dropped)`);
 
+// ---------- Consumer-core filter ----------
+// The raw merge is an exhaustive reference set; trim it to what a person would
+// actually log so search isn't buried in near-duplicates. SR + Foundation stay
+// (the model + the SFT/eval pipeline resolve gold labels against their names).
+// From FNDDS we keep only prepared/mixed *dishes* (burrito bowl, latte, pad
+// thai) — its single-food entries just duplicate SR with different wording, and
+// its "skin eaten / not eaten / NS as to cooking method" variants are survey
+// artifacts. Baby foods and exact name duplicates go too.
+const DISH_WORDS =
+  /\b(sandwich|sub|burrito|taco|tostada|pizza|calzone|stromboli|soup|chowder|bisque|salad|slaw|stew|chili|casserole|burger|cheeseburger|wrap|bowl|nachos|quesadilla|enchilada|tamale|fajita|lasagna|ravioli|gnocchi|spaghetti|macaroni|curry|stir[- ]?fry|fried rice|lo mein|pad thai|ramen|pho|sushi|dumpling|potsticker|pot pie|parmesan|alfredo|gumbo|jambalaya|risotto|paella|omelet|frittata|quiche|scramble|benedict|hash|smoothie|shake|latte|frappe|frappuccino|cappuccino|macchiato|mocha|americano|parfait|platter|combo|nuggets|tenders|tots|fries)\b/i;
+const JOIN_WORDS = /\b(and|with|over|topped)\b/i;
+const NOISE = /\bskin( \/ coating)?( not)? eaten\b|\bcoating( not)? eaten\b|\bns as to\b/i;
+const isDish = (name) => {
+  const head = name.split(',')[0];
+  return DISH_WORDS.test(name) || JOIN_WORDS.test(name) || /[A-Z]{3,}/.test(head); // brand caps
+};
+
+const coreSeen = new Set();
+const core = merged.filter((f) => {
+  if (coreSeen.has(f.name_norm)) return false; // exact duplicate row
+  if (f.category === 'Baby Foods' || /^babyfood/i.test(f.name)) return false;
+  if (f.data_type === 'survey') {
+    if (NOISE.test(f.name)) return false; // as-eaten survey artifacts
+    if (!isDish(f.name)) return false; // single food already covered by SR
+  }
+  coreSeen.add(f.name_norm);
+  return true;
+});
+console.log(`Consumer core: ${core.length} foods (${merged.length - core.length} trimmed)`);
+
 mkdirSync(dirname(OUT), { recursive: true });
 if (existsSync(OUT)) rmSync(OUT);
 const db = new DatabaseSync(OUT);
@@ -252,7 +282,7 @@ const insert = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 db.exec('BEGIN');
-for (const f of merged) {
+for (const f of core) {
   insert.run(f.id, f.name, f.name_norm, f.category, f.data_type, f.kcal,
     f.protein, f.carbs, f.fat, f.fiber, f.sugar, f.sodium_mg, f.sat_fat,
     f.cholesterol_mg, f.calcium_mg, f.iron_mg, f.potassium_mg, f.portions_json);
@@ -261,7 +291,7 @@ db.exec('COMMIT');
 
 const setMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
 setMeta.run('schema_version', '2');
-setMeta.run('food_count', String(merged.length));
+setMeta.run('food_count', String(core.length));
 setMeta.run('sources', 'USDA FDC SR Legacy 2018-04; Foundation 2025-12-18; FNDDS 2021-2023');
 setMeta.run('built_at', new Date().toISOString());
 
