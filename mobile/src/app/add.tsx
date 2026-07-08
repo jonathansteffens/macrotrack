@@ -7,6 +7,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { dismissAiOffer, recordManualSearch, shouldShowAiOffer } from '@/lib/ai-offer';
+import { LOCAL_MODEL_TOTAL_BYTES } from '@/lib/ai/local-model';
 import { todayKey } from '@/lib/dates';
 import { recentFoods, searchFoods } from '@/lib/foods';
 import { fmtKcal } from '@/lib/macros';
@@ -18,20 +20,25 @@ import {
   templateKcal,
   type MealTemplate,
 } from '@/lib/templates';
-import type { FoodItem, MealType } from '@/lib/types';
+import { mealForTime, type FoodItem, type MealType } from '@/lib/types';
 
 export default function AddFoodScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ day?: string; meal?: string }>();
   const day = params.day ?? todayKey();
-  const meal = params.meal ?? 'snack';
+  // May be undefined — downstream screens guess a meal from the time of day.
+  const meal = params.meal;
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [recents, setRecents] = useState<FoodItem[]>([]);
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [aiOffer, setAiOffer] = useState(false);
   const searchId = useRef(0);
+  // The lifetime search counter bumps at most once per screen visit, so
+  // keystroke-debounced re-searches don't inflate it.
+  const countedSearch = useRef(false);
 
   // Reload on focus so a recipe/template created in a pushed modal shows on return.
   useFocusEffect(
@@ -39,6 +46,7 @@ export default function AddFoodScreen() {
       recentFoods().then(setRecents);
       listTemplates().then(setTemplates);
       listRecipes().then(setRecipes);
+      shouldShowAiOffer().then(setAiOffer);
     }, [])
   );
 
@@ -49,6 +57,13 @@ export default function AddFoodScreen() {
       async () => {
         const found = q ? await searchFoods(q) : [];
         if (searchId.current === id) setResults(found);
+        if (q && !countedSearch.current) {
+          countedSearch.current = true;
+          recordManualSearch()
+            .then(shouldShowAiOffer)
+            .then(setAiOffer)
+            .catch(() => {});
+        }
       },
       q ? 200 : 0
     );
@@ -59,7 +74,7 @@ export default function AddFoodScreen() {
     router.push({ pathname: '/food', params: { ref: food.ref, day, meal } });
 
   const applyTemplate = async (t: MealTemplate) => {
-    await logTemplate(t, day, meal as MealType);
+    await logTemplate(t, day, (meal as MealType | undefined) ?? mealForTime());
     router.back();
   };
 
@@ -122,6 +137,29 @@ export default function AddFoodScreen() {
           <ThemedText type="small">＋ Custom food</ThemedText>
         </Pressable>
       </View>
+
+      {/* Cold-start AI offer: appears after the 3rd lifetime manual search,
+          gone forever once dismissed (or once the model is downloaded). */}
+      {aiOffer && (
+        <ThemedView type="backgroundElement" style={styles.aiOfferCard}>
+          <Pressable style={styles.aiOfferBody} onPress={() => router.push('/settings')}>
+            <ThemedText type="small">
+              ✨ You could have typed “eggs and toast” — want the on-device AI? One-time{' '}
+              {Math.round(LOCAL_MODEL_TOTAL_BYTES / (1024 * 1024))} MB download.
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            onPress={() => {
+              setAiOffer(false);
+              dismissAiOffer();
+            }}>
+            <ThemedText type="small" themeColor="textSecondary">
+              ✕
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
+      )}
 
       <FlatList
         data={data}
@@ -243,6 +281,17 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     paddingVertical: Spacing.two + 2,
     alignItems: 'center',
+  },
+  aiOfferCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+  },
+  aiOfferBody: {
+    flex: 1,
   },
   listContent: {
     paddingBottom: Spacing.five,

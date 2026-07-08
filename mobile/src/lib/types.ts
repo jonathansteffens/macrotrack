@@ -9,6 +9,19 @@ export const MEAL_LABELS: Record<MealType, string> = {
   snack: 'Snacks',
 };
 
+/**
+ * Best-guess meal when the user hasn't picked one, from the time of day:
+ * 5–10:30am breakfast, 10:30am–3pm lunch, 5–9pm dinner, otherwise a snack.
+ * Entries can always be re-filed later from the entry editor.
+ */
+export function mealForTime(date = new Date()): MealType {
+  const mins = date.getHours() * 60 + date.getMinutes();
+  if (mins >= 5 * 60 && mins < 10 * 60 + 30) return 'breakfast';
+  if (mins >= 10 * 60 + 30 && mins < 15 * 60) return 'lunch';
+  if (mins >= 17 * 60 && mins < 21 * 60) return 'dinner';
+  return 'snack';
+}
+
 /** Nutrient amounts. For foods these are per 100 g; for log entries, per entry. */
 export type Macros = {
   kcal: number;

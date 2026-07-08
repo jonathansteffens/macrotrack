@@ -85,7 +85,7 @@ export default function CustomFoodScreen() {
         barcode: params.barcode ?? null,
         unit,
       });
-      if (params.day && params.meal) {
+      if (params.day) {
         router.replace({
           pathname: '/food',
           params: { ref: food.ref, day: params.day, meal: params.meal },

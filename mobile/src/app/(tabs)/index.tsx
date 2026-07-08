@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,13 +8,22 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { syncCheckinNotification } from '@/lib/checkin';
 import { addDays, dayLabel, todayKey } from '@/lib/dates';
-import { dayTotals, entriesForDay } from '@/lib/log';
+import { usualComboForMeal, type UsualCombo } from '@/lib/habits';
+import { dayTotals, entriesForDay, mealsLoggedOn, relogEntries } from '@/lib/log';
 import { fmtKcal, ZERO_MACROS } from '@/lib/macros';
 import { NUTRIENTS, nutrientValue } from '@/lib/nutrients';
 import { saveTemplate } from '@/lib/templates';
 import { defaultTracking, getTracking } from '@/lib/tracking';
-import { MEAL_LABELS, MEALS, type LogEntry, type Macros, type MealType } from '@/lib/types';
+import {
+  MEAL_LABELS,
+  MEALS,
+  mealForTime,
+  type LogEntry,
+  type Macros,
+  type MealType,
+} from '@/lib/types';
 
 export default function TodayScreen() {
   const theme = useTheme();
@@ -22,12 +31,51 @@ export default function TodayScreen() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [totals, setTotals] = useState<Macros>(ZERO_MACROS);
   const [tracking, setTracking] = useState(defaultTracking());
+  // Repeat-logging affordances — only offered on the actual today.
+  const [copyableMeals, setCopyableMeals] = useState<Set<MealType>>(new Set());
+  const [usual, setUsual] = useState<UsualCombo | null>(null);
+  const relogging = useRef(false);
 
   const load = useCallback(async () => {
-    setEntries(await entriesForDay(day));
+    const dayEntries = await entriesForDay(day);
+    setEntries(dayEntries);
     setTotals(await dayTotals(day));
     setTracking(await getTracking());
+
+    if (day === todayKey()) {
+      setCopyableMeals(await mealsLoggedOn(addDays(day, -1)));
+      // Habit chip: at most one, for the current time-of-day slot, only while
+      // that meal is still empty today.
+      const slot = mealForTime();
+      const slotEmpty = !dayEntries.some((e) => e.meal === slot);
+      setUsual(slotEmpty ? await usualComboForMeal(slot) : null);
+      // Logging is what changes "logged today", and every log path returns
+      // focus here — so this keeps the evening check-in suppressed correctly.
+      syncCheckinNotification().catch(() => {});
+    } else {
+      setCopyableMeals(new Set());
+      setUsual(null);
+    }
   }, [day]);
+
+  const relog = async (entriesToLog: LogEntry[], meal: MealType) => {
+    if (relogging.current) return;
+    relogging.current = true;
+    try {
+      await relogEntries(entriesToLog, day, meal);
+      await load();
+    } finally {
+      relogging.current = false;
+    }
+  };
+
+  const copyYesterday = async (meal: MealType) => {
+    const yesterday = await entriesForDay(addDays(day, -1));
+    await relog(
+      yesterday.filter((e) => e.meal === meal),
+      meal
+    );
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -107,6 +155,21 @@ export default function TodayScreen() {
             ))}
           </ThemedView>
 
+          {/* Habit chip: one tap re-logs the combo this meal slot usually gets */}
+          {usual && (
+            <Pressable
+              style={[styles.usualChip, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => relog(usual.entries, usual.meal)}>
+              <ThemedText type="small">
+                Log your usual {usual.meal}?{'  '}
+                <ThemedText type="small" themeColor="textSecondary">
+                  {usual.entries.map((e) => e.foodName.split(',')[0]).join(' + ')} ·{' '}
+                  {fmtKcal(usual.kcal)} kcal
+                </ThemedText>
+              </ThemedText>
+            </Pressable>
+          )}
+
           {/* Meals */}
           {MEALS.map((meal) => (
             <MealSection
@@ -114,18 +177,22 @@ export default function TodayScreen() {
               meal={meal}
               day={day}
               entries={entries.filter((e) => e.meal === meal)}
+              canCopyYesterday={copyableMeals.has(meal)}
+              onCopyYesterday={() => copyYesterday(meal)}
             />
           ))}
 
           <View style={styles.quickActions}>
+            {/* No meal picked here — the target screens guess one (AI meal_guess
+                or time of day), and the entry editor can re-file it later. */}
             <Pressable
               style={[styles.scanButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => router.push({ pathname: '/assist', params: { day, meal: 'snack' } })}>
+              onPress={() => router.push({ pathname: '/assist', params: { day } })}>
               <ThemedText type="small">✨ AI assistant</ThemedText>
             </Pressable>
             <Pressable
               style={[styles.scanButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => router.push({ pathname: '/scan', params: { day, meal: 'snack' } })}>
+              onPress={() => router.push({ pathname: '/scan', params: { day } })}>
               <ThemedText type="small">📷 Scan barcode</ThemedText>
             </Pressable>
           </View>
@@ -139,10 +206,14 @@ function MealSection({
   meal,
   day,
   entries,
+  canCopyYesterday,
+  onCopyYesterday,
 }: {
   meal: MealType;
   day: string;
   entries: LogEntry[];
+  canCopyYesterday: boolean;
+  onCopyYesterday: () => void;
 }) {
   const mealKcal = entries.reduce((s, e) => s + e.macros.kcal, 0);
 
@@ -188,6 +259,15 @@ function MealSection({
           </Pressable>
         </View>
       </View>
+
+      {/* Empty section + yesterday had this meal → one-tap repeat */}
+      {entries.length === 0 && canCopyYesterday && (
+        <Pressable style={styles.copyYesterday} hitSlop={4} onPress={onCopyYesterday}>
+          <ThemedText type="small" themeColor="textSecondary">
+            ↺ Copy yesterday’s {MEAL_LABELS[meal].toLowerCase()}
+          </ThemedText>
+        </Pressable>
+      )}
 
       {entries.length > 0 && (
         <ThemedView type="backgroundElement" style={styles.entryCard}>
@@ -260,6 +340,14 @@ const styles = StyleSheet.create({
   },
   mealSection: {
     gap: Spacing.two,
+  },
+  usualChip: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+  },
+  copyYesterday: {
+    paddingHorizontal: Spacing.one,
   },
   mealHeader: {
     flexDirection: 'row',

@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { FractionChips } from '@/components/fraction-chips';
+import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
@@ -68,21 +70,25 @@ export default function EntryScreen() {
       </ThemedText>
 
       {entry.grams != null ? (
-        <View style={styles.gramsRow}>
-          <ThemedText type="small" themeColor="textSecondary">
-            Amount ({entry.unit ?? 'g'})
-          </ThemedText>
-          <TextInput
-            style={[
-              styles.gramsInput,
-              { backgroundColor: theme.backgroundElement, color: theme.text },
-            ]}
-            value={gramsText}
-            onChangeText={setGramsText}
-            keyboardType="decimal-pad"
-            selectTextOnFocus
-          />
-        </View>
+        <>
+          <View style={styles.gramsRow}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Amount ({entry.unit ?? 'g'})
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.gramsInput,
+                { backgroundColor: theme.backgroundElement, color: theme.text },
+              ]}
+              value={gramsText}
+              onChangeText={setGramsText}
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+            />
+          </View>
+          <FractionChips value={newGrams} onValue={(v) => setGramsText(fmtGrams(v))} />
+          <PortionAnchors />
+        </>
       ) : (
         <ThemedText type="small" themeColor="textSecondary">
           This entry has no gram weight, so its amount can’t be edited.

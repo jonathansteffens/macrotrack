@@ -7,6 +7,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { releaseLocalContext } from '@/lib/ai/local-model';
+import { syncCheckinNotification } from '@/lib/checkin';
+import { loadDayEndHour } from '@/lib/day-end';
 import { initDb } from '@/lib/db';
 import { isOnboardingDone } from '@/lib/onboarding';
 
@@ -20,10 +22,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     initDb()
+      .then(() => loadDayEndHour())
       .then(() => isOnboardingDone())
       .then((done) => {
         setNeedsOnboarding(!done);
         setReady(true);
+        // Fire-and-forget: reconcile the evening check-in schedule on launch.
+        syncCheckinNotification().catch(() => {});
       })
       .catch((e) => setError(String(e)));
   }, []);
@@ -33,7 +38,8 @@ export default function RootLayout() {
     if (ready && needsOnboarding) router.replace('/onboarding');
   }, [ready, needsOnboarding]);
 
-  // Unload the on-device model (~2.5 GB) when the app leaves the foreground —
+  // Unload the on-device model (~0.6 GB working set) when the app leaves the
+  // foreground —
   // essential on iOS, where a large resident set gets the app killed. No-op on
   // web and when no model is loaded.
   useEffect(() => {

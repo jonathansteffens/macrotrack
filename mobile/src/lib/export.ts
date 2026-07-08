@@ -1,6 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+import { dayKey } from './dates';
 import { getUserDb } from './db';
 
 /**
@@ -17,26 +18,43 @@ async function shareText(filename: string, content: string): Promise<void> {
   await Sharing.shareAsync(file.uri, { dialogTitle: filename });
 }
 
-/** ai_events as JSONL — one (conversation, corrections) pair per line. */
+/**
+ * ai_events as JSONL, one saved estimator interaction per line, exactly per
+ * docs/ai-events-format.md v1. Rows recorded before the v1 columns existed
+ * lack a faithful model_claim/final_claim pair and are skipped. Capped at the
+ * most recent 5,000 events (older rows have diminishing training value).
+ */
 export async function exportTrainingData(): Promise<number> {
   const rows = await getUserDb().getAllAsync<{
     ts: string;
+    model: string | null;
     input_text: string | null;
-    had_image: number;
-    turns_json: string;
-    logged_json: string | null;
-  }>('SELECT ts, input_text, had_image, turns_json, logged_json FROM ai_events ORDER BY id');
+    model_claim_json: string;
+    final_claim_json: string | null;
+    edits_json: string | null;
+    clarification_json: string | null;
+  }>(
+    `SELECT ts, model, input_text, model_claim_json, final_claim_json, edits_json,
+            clarification_json
+       FROM ai_events WHERE model_claim_json IS NOT NULL
+      ORDER BY id DESC LIMIT 5000`
+  );
+  rows.reverse(); // oldest first in the file
   const lines = rows.map((r) =>
     JSON.stringify({
+      v: 1,
       ts: r.ts,
-      input_text: r.input_text,
-      had_image: !!r.had_image,
-      turns: JSON.parse(r.turns_json),
-      logged: r.logged_json ? JSON.parse(r.logged_json) : null,
+      model: r.model ?? 'unknown',
+      user_text: r.input_text ?? '',
+      model_claim: JSON.parse(r.model_claim_json),
+      final_claim: r.final_claim_json ? JSON.parse(r.final_claim_json) : null,
+      edits: r.edits_json ? JSON.parse(r.edits_json) : [],
+      ...(r.clarification_json ? { clarification: JSON.parse(r.clarification_json) } : {}),
     })
   );
   if (lines.length > 0) {
-    await shareText('macrotrack-ai-events.jsonl', lines.join('\n') + '\n');
+    const stamp = dayKey(new Date()).replace(/-/g, '');
+    await shareText(`ai-events-${stamp}.jsonl`, lines.join('\n') + '\n');
   }
   return lines.length;
 }

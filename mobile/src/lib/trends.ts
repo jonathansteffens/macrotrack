@@ -12,7 +12,7 @@ export type TrendSummary = {
   days: DayTotal[]; // oldest first, zero-filled
   loggedDays: number;
   averages: Record<NutrientKey, number>; // over logged days only
-  streak: number; // consecutive logged days ending today or yesterday
+  loggedLast7: number; // days logged out of the last 7 (kind framing, not a streak)
 };
 
 /** camelCase nutrient key → snake_case DB column (sodiumMg → sodium_mg). */
@@ -49,21 +49,20 @@ export async function getTrends(nDays: number): Promise<TrendSummary> {
       : 0;
   }
 
-  return { days, loggedDays: logged.length, averages, streak: await getStreak() };
+  return { days, loggedDays: logged.length, averages, loggedLast7: await countLoggedLast7() };
 }
 
-/** Consecutive logged days, counting back from today (or yesterday if today is empty). */
-async function getStreak(): Promise<number> {
-  const rows = await getUserDb().getAllAsync<{ day: string }>(
-    'SELECT DISTINCT day FROM log_entries ORDER BY day DESC LIMIT 400'
+/**
+ * Days with any entry among the last 7 (including today). Deliberately not a
+ * consecutive streak: a missed day just means N drops by one for a week — a
+ * one-day gap never zeroes anything, because there is no zero to fall to.
+ */
+async function countLoggedLast7(): Promise<number> {
+  const today = todayKey();
+  const row = await getUserDb().getFirstAsync<{ n: number }>(
+    'SELECT COUNT(DISTINCT day) AS n FROM log_entries WHERE day BETWEEN ? AND ?',
+    addDays(today, -6),
+    today
   );
-  const loggedSet = new Set(rows.map((r) => r.day));
-  let day = todayKey();
-  if (!loggedSet.has(day)) day = addDays(day, -1);
-  let streak = 0;
-  while (loggedSet.has(day)) {
-    streak++;
-    day = addDays(day, -1);
-  }
-  return streak;
+  return row?.n ?? 0;
 }

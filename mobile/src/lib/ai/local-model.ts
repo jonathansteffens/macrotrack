@@ -22,8 +22,12 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
 // The GGUF lives on the `text-v1` release. sizeBytes is byte-exact and checked
 // after download as a cheap integrity guard (sha256 5777ca4e…ede0, in
 // models/README.md).
-const MODEL_BASE_URL =
-  'https://github.com/jonathansteffens/macrotrack/releases/download/text-v1';
+
+/** Release tag of the bundled fine-tune — recorded on every saved estimator
+ *  interaction so exported ai_events say which model made each claim. */
+export const LOCAL_MODEL_RELEASE_TAG = 'text-v1';
+
+const MODEL_BASE_URL = `https://github.com/jonathansteffens/macrotrack/releases/download/${LOCAL_MODEL_RELEASE_TAG}`;
 
 type ModelFile = { name: string; sizeBytes: number };
 

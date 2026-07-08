@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GoalCalculator } from '@/components/goal-calculator';
 import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -132,6 +133,8 @@ function WelcomeStep() {
 }
 
 function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor> }) {
+  const theme = useTheme();
+  const [showCalculator, setShowCalculator] = useState(false);
   return (
     <View style={styles.step}>
       <ThemedText type="subtitle">What do you want to track?</ThemedText>
@@ -139,6 +142,21 @@ function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor
         Toggle the nutrients you care about. Set a daily goal for each — or leave it blank to
         just watch the number. You can change all of this later in Settings.
       </ThemedText>
+      <Pressable
+        style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
+        onPress={() => setShowCalculator((s) => !s)}>
+        <ThemedText type="small">
+          🧮 Not sure? Calculate goals for me {showCalculator ? '▴' : '▾'}
+        </ThemedText>
+      </Pressable>
+      {showCalculator && (
+        <GoalCalculator
+          onApply={(g) => {
+            editor.applyGoals(g);
+            setShowCalculator(false);
+          }}
+        />
+      )}
       <View style={styles.nutrientList}>
         {NUTRIENTS.map((n) => (
           <NutrientRow
@@ -250,6 +268,12 @@ const styles = StyleSheet.create({
   },
   nutrientList: {
     gap: Spacing.two,
+  },
+  calcButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+    alignItems: 'center',
   },
   footer: {
     padding: Spacing.three,

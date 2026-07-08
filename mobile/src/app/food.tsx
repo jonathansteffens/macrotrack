@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 
+import { FractionChips } from '@/components/fraction-chips';
+import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
@@ -19,7 +21,14 @@ import { getFoodByRef } from '@/lib/foods';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
 import { NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
-import { MEAL_LABELS, MEALS, type FoodItem, type Macros, type MealType } from '@/lib/types';
+import {
+  MEAL_LABELS,
+  MEALS,
+  mealForTime,
+  type FoodItem,
+  type Macros,
+  type MealType,
+} from '@/lib/types';
 
 /** The four core macros have their own cells; everything else lists here. */
 const CORE_KEYS = new Set<NutrientKey>(['kcal', 'protein', 'carbs', 'fat']);
@@ -45,7 +54,8 @@ export default function FoodScreen() {
   const [amountText, setAmountText] = useState('100');
   // 0 = grams; i+1 = food.portions[i]
   const [unitIdx, setUnitIdx] = useState(0);
-  const [meal, setMeal] = useState<MealType>((params.meal as MealType) ?? 'snack');
+  // No meal in the params (e.g. quick actions) → guess from the time of day.
+  const [meal, setMeal] = useState<MealType>(() => (params.meal as MealType) ?? mealForTime());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -147,6 +157,8 @@ export default function FoodScreen() {
               </View>
             </ScrollView>
           </View>
+          <FractionChips value={amount} onValue={(v) => setAmountText(fmtGrams(v))} />
+          <PortionAnchors />
 
           {/* Nutrition preview */}
           <ThemedView type="backgroundElement" style={styles.previewCard}>

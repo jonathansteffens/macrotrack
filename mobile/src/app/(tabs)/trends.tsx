@@ -128,9 +128,9 @@ export default function TrendsScreen() {
                 sub={`${Math.round((trends.loggedDays / range) * 100)}%`}
               />
               <StatCard
-                label="Streak"
-                value={`${trends.streak}`}
-                sub={trends.streak === 1 ? 'day' : 'days'}
+                label="Last 7 days"
+                value={`${trends.loggedLast7} of 7`}
+                sub="days logged"
               />
             </View>
           )}

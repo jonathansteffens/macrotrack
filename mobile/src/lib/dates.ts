@@ -1,5 +1,23 @@
-/** Local-timezone day keys (YYYY-MM-DD). All log bucketing uses these. */
+/**
+ * Local-timezone day keys (YYYY-MM-DD). All log bucketing uses these.
+ *
+ * Days are "logical" days: they run from the user's day-end hour to the next
+ * day's day-end hour rather than midnight to midnight, so a 12:30am snack
+ * counts toward the evening it belongs to. The hour is a setting (see
+ * day-end.ts); it's cached here so the synchronous call sites don't each
+ * have to read the database.
+ */
 
+export const DEFAULT_DAY_END_HOUR = 3;
+
+let cachedDayEndHour = DEFAULT_DAY_END_HOUR;
+
+/** Set by day-end.ts on app start and whenever the setting changes. */
+export function setDayEndHourCache(hour: number): void {
+  cachedDayEndHour = hour;
+}
+
+/** Plain calendar date of a Date, ignoring the day-end hour. */
 export function dayKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -7,8 +25,16 @@ export function dayKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * The logical day a timestamp belongs to: times before `dayEndHour` count
+ * toward the previous calendar day.
+ */
+export function logicalDayKey(date: Date, dayEndHour = cachedDayEndHour): string {
+  return dayKey(new Date(date.getTime() - dayEndHour * 60 * 60 * 1000));
+}
+
 export function todayKey(): string {
-  return dayKey(new Date());
+  return logicalDayKey(new Date());
 }
 
 export function keyToDate(key: string): Date {

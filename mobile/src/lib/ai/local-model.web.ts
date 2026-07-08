@@ -8,7 +8,9 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
  * llama.rn out of the web bundle entirely.
  */
 
-export const LOCAL_MODEL_TOTAL_BYTES = 1_929_900_928 + 1_338_428_032;
+/** Mirrors local-model.ts — keep the two in sync. */
+export const LOCAL_MODEL_RELEASE_TAG = 'text-v1';
+export const LOCAL_MODEL_TOTAL_BYTES = 529_296_640;
 
 export type LocalModelStatus = 'ready' | 'missing' | 'unsupported';
 

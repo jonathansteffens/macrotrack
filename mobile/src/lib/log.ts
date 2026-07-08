@@ -132,6 +132,59 @@ export async function logAiEstimate(opts: {
   return res.lastInsertRowId;
 }
 
+/**
+ * Re-log existing entries into a day + meal: same foods and amounts, fresh
+ * timestamps. Macros are copied from the stored snapshots, so this works even
+ * if the source foods were since deleted. Used by "copy yesterday" and the
+ * habit chip.
+ */
+export async function relogEntries(
+  entries: LogEntry[],
+  day: string,
+  meal: MealType
+): Promise<void> {
+  const db = getUserDb();
+  for (const e of entries) {
+    await db.runAsync(
+      `INSERT INTO log_entries
+         (day, ts, meal, food_name, food_ref, quantity_desc, grams,
+          kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+          sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      day,
+      new Date().toISOString(),
+      meal,
+      e.foodName,
+      e.foodRef,
+      e.quantityDesc,
+      e.grams,
+      e.macros.kcal,
+      e.macros.protein,
+      e.macros.carbs,
+      e.macros.fat,
+      e.macros.fiber,
+      e.macros.sugar,
+      e.macros.sodiumMg,
+      e.macros.satFat,
+      e.macros.cholesterolMg,
+      e.macros.calciumMg,
+      e.macros.ironMg,
+      e.macros.potassiumMg,
+      e.unit ?? 'g',
+      e.source
+    );
+  }
+}
+
+/** Meals that have at least one entry on `day` (for "copy yesterday"). */
+export async function mealsLoggedOn(day: string): Promise<Set<MealType>> {
+  const rows = await getUserDb().getAllAsync<{ meal: string }>(
+    'SELECT DISTINCT meal FROM log_entries WHERE day = ?',
+    day
+  );
+  return new Set(rows.map((r) => r.meal as MealType));
+}
+
 export async function getEntry(id: number): Promise<LogEntry | null> {
   const r = await getUserDb().getFirstAsync<EntryRow>(
     'SELECT * FROM log_entries WHERE id = ?',

@@ -128,7 +128,12 @@ CREATE TABLE IF NOT EXISTS ai_events (
   input_text TEXT,
   had_image INTEGER NOT NULL DEFAULT 0,
   turns_json TEXT NOT NULL,
-  logged_json TEXT
+  logged_json TEXT,
+  model TEXT,
+  model_claim_json TEXT,
+  final_claim_json TEXT,
+  edits_json TEXT,
+  clarification_json TEXT
 );
 `;
 
@@ -148,6 +153,11 @@ export async function initDb(): Promise<void> {
     // Extra nutrients added later — nullable, so existing rows read as "unknown".
     ...['barcode_cache', 'custom_foods', 'log_entries'].flatMap((t) =>
       nutrientCols.map((c) => `ALTER TABLE ${t} ADD COLUMN ${c} REAL`)
+    ),
+    // ai_events v1 export columns (docs/ai-events-format.md) — all nullable,
+    // so pre-contract rows simply read as "no structured claim recorded".
+    ...['model', 'model_claim_json', 'final_claim_json', 'edits_json', 'clarification_json'].map(
+      (c) => `ALTER TABLE ai_events ADD COLUMN ${c} TEXT`
     ),
   ];
   for (const stmt of migrations) {

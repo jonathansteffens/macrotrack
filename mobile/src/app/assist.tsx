@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,12 +11,19 @@ import {
   View,
 } from 'react-native';
 
+import { EstimatingIndicator } from '@/components/estimating-indicator';
+import { FractionChips } from '@/components/fraction-chips';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { localEstimate } from '@/lib/ai/local';
-import { recordAiEvent, type LoggedCorrection } from '@/lib/ai/events';
+import {
+  recordAiEvent,
+  usualGramsFor,
+  type LoggedCorrection,
+  type SavedAiItem,
+} from '@/lib/ai/events';
 import {
   displayName,
   resolveClaim,
@@ -28,11 +34,16 @@ import type { EstimateTurn, FoodClaim } from '@/lib/ai/types';
 import { todayKey } from '@/lib/dates';
 import { logFood, logAiEstimate } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
-import { MEAL_LABELS, MEALS, type FoodItem, type MealType } from '@/lib/types';
+import { MEAL_LABELS, MEALS, mealForTime, type FoodItem, type MealType } from '@/lib/types';
 
 type Phase = 'input' | 'estimating' | 'review';
 
-type ReviewItem = ResolvedItem & { gramsText: string; showAlternatives: boolean };
+type ReviewItem = ResolvedItem & {
+  gramsText: string;
+  showAlternatives: boolean;
+  /** Model's grams when the amount was pre-adjusted to the user's usual. */
+  usualFrom: number | null;
+};
 
 export default function AssistScreen() {
   const theme = useTheme();
@@ -44,7 +55,9 @@ export default function AssistScreen() {
   const [turns, setTurns] = useState<EstimateTurn[]>([]);
   const [claim, setClaim] = useState<FoodClaim | null>(null);
   const [items, setItems] = useState<ReviewItem[]>([]);
-  const [meal, setMeal] = useState<MealType>((params.meal as MealType) ?? 'snack');
+  // No meal in the params → time-of-day guess, replaced by the model's
+  // meal_guess once the first estimate lands (see runEstimate).
+  const [meal, setMeal] = useState<MealType>(() => (params.meal as MealType) ?? mealForTime());
   const [clarifyText, setClarifyText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -67,9 +80,21 @@ export default function AssistScreen() {
     const resolved = await resolveClaim(res.claim);
     setTurns([...newTurns, { role: 'assistant', claim: res.claim }]);
     setClaim(res.claim);
-    setItems(
-      resolved.map((r) => ({ ...r, gramsText: String(r.grams), showAlternatives: false }))
-    );
+    // Correction memory: foods the user has re-portioned ≥2 times before open
+    // at their usual grams instead of the model's, with a revert affordance.
+    const reviewItems: ReviewItem[] = [];
+    for (const r of resolved) {
+      const usual = await usualGramsFor(r.claim.name);
+      const grams = usual != null && usual !== r.grams ? usual : r.grams;
+      reviewItems.push({
+        ...r,
+        grams,
+        gramsText: String(grams),
+        showAlternatives: false,
+        usualFrom: grams === r.grams ? null : r.grams,
+      });
+    }
+    setItems(reviewItems);
     if (!claim) setMeal((params.meal as MealType) ?? res.claim.meal_guess);
     setClarifyText('');
     setPhase('review');
@@ -102,11 +127,20 @@ export default function AssistScreen() {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // Put the model's own portion estimate back (undo the correction-memory
+  // adjustment for this item).
+  const revertUsual = (idx: number) => {
+    const from = items[idx]?.usualFrom;
+    if (from == null) return;
+    updateItem(idx, { grams: from, gramsText: String(from), usualFrom: null });
+  };
+
   const logAll = async () => {
-    if (items.length === 0 || saving) return;
+    if (items.length === 0 || saving || !claim) return;
     setSaving(true);
     try {
       const corrections: LoggedCorrection[] = [];
+      const savedItems: SavedAiItem[] = [];
       for (const item of items) {
         const macros = resolvedMacros(item);
         if (item.match) {
@@ -126,8 +160,14 @@ export default function AssistScreen() {
           loggedGrams: item.grams,
           kcal: macros.kcal,
         });
+        savedItems.push({
+          claim: item.claim,
+          name: displayName(item),
+          grams: item.grams,
+          matchedName: item.match?.name ?? null,
+        });
       }
-      await recordAiEvent(turns, corrections);
+      await recordAiEvent(turns, corrections, { claim, items: savedItems, meal });
       router.dismissAll();
     } finally {
       setSaving(false);
@@ -167,14 +207,7 @@ export default function AssistScreen() {
             </>
           )}
 
-          {phase === 'estimating' && (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color={MacroColors.kcal} />
-              <ThemedText type="small" themeColor="textSecondary">
-                Analyzing your meal…
-              </ThemedText>
-            </View>
-          )}
+          {phase === 'estimating' && <EstimatingIndicator />}
 
           {phase === 'review' && claim && (
             <>
@@ -215,6 +248,7 @@ export default function AssistScreen() {
                   }
                   onChooseMatch={(m) => chooseMatch(idx, m)}
                   onRemove={() => removeItem(idx)}
+                  onRevertUsual={() => revertUsual(idx)}
                 />
               ))}
 
@@ -266,15 +300,19 @@ function ItemCard({
   onToggleAlternatives,
   onChooseMatch,
   onRemove,
+  onRevertUsual,
 }: {
   item: ReviewItem;
   onGramsChange: (text: string) => void;
   onToggleAlternatives: () => void;
   onChooseMatch: (match: FoodItem | null) => void;
   onRemove: () => void;
+  onRevertUsual: () => void;
 }) {
   const theme = useTheme();
   const macros = resolvedMacros(item);
+  // Below the prompt's "real uncertainty" line — invite an edit, don't block.
+  const lowConfidence = item.claim.confidence < 0.6;
 
   return (
     <ThemedView type="backgroundElement" style={styles.itemCard}>
@@ -292,7 +330,11 @@ function ItemCard({
 
       <View style={styles.itemRow}>
         <TextInput
-          style={[styles.gramsInput, { backgroundColor: theme.background, color: theme.text }]}
+          style={[
+            styles.gramsInput,
+            { backgroundColor: theme.background, color: theme.text },
+            lowConfidence && styles.gramsInputUncertain,
+          ]}
           value={item.gramsText}
           onChangeText={onGramsChange}
           keyboardType="decimal-pad"
@@ -308,6 +350,25 @@ function ItemCard({
           </ThemedText>
         </View>
       </View>
+
+      {lowConfidence && (
+        <ThemedText type="small" style={{ color: MacroColors.carbs }}>
+          The model wasn’t sure about this one — worth double-checking.
+        </ThemedText>
+      )}
+
+      {item.usualFrom != null && (
+        <Pressable hitSlop={4} onPress={onRevertUsual}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Adjusted to your usual · tap to use the model’s {fmtGrams(item.usualFrom)} g
+          </ThemedText>
+        </Pressable>
+      )}
+
+      <FractionChips
+        value={parseDecimal(item.gramsText)}
+        onValue={(v) => onGramsChange(fmtGrams(v))}
+      />
 
       <Pressable onPress={onToggleAlternatives}>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
@@ -440,11 +501,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#ffffff' },
-  loading: {
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.six,
-  },
   clarifyCard: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
@@ -474,6 +530,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minWidth: 64,
     textAlign: 'center',
+  },
+  gramsInputUncertain: {
+    borderWidth: 1,
+    borderColor: MacroColors.carbs,
   },
   itemMacros: {
     flex: 1,

@@ -69,7 +69,8 @@ export async function localEstimate(turns: EstimateTurn[]): Promise<EstimateResu
         .completion({
           messages: buildMessages(turns),
           jinja: true, // apply the model's embedded chat template (vision tokens)
-          n_predict: 1024, // a 6-item claim is ~500 tokens; 1024 is a safe ceiling
+          n_predict: 1536, // a 6-item claim is ~500 tokens; large multi-item meals can
+          //                   exceed 1024 and truncate to unparseable JSON, so give headroom
           temperature: 0,
           response_format: CLAIM_RESPONSE_FORMAT,
         })

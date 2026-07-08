@@ -16,7 +16,8 @@ export default function ScanScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ day?: string; meal?: string }>();
   const day = params.day ?? todayKey();
-  const meal = params.meal ?? 'snack';
+  // May be undefined (quick actions) — the food screen guesses one then.
+  const meal = params.meal;
 
   const [permission, requestPermission] = useCameraPermissions();
   const [status, setStatus] = useState<'scanning' | 'looking_up'>('scanning');

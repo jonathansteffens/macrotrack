@@ -1,3 +1,5 @@
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -11,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { GoalCalculator } from '@/components/goal-calculator';
 import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -24,6 +27,17 @@ import {
   LOCAL_MODEL_TOTAL_BYTES,
   type LocalModelStatus,
 } from '@/lib/ai/local-model';
+import { exportBackup, getLastBackupAt, parseBackup, restoreBackup } from '@/lib/backup';
+import {
+  CHECKIN_HOURS,
+  checkinLabel,
+  checkinPermissionMissing,
+  checkinSupported,
+  getCheckinHour,
+  requestCheckinPermission,
+  setCheckinHour,
+} from '@/lib/checkin';
+import { DAY_END_OPTIONS, dayEndLabel, getDayEndHour, setDayEndHour } from '@/lib/day-end';
 import { exportFoodLog, exportTrainingData } from '@/lib/export';
 import { getFoodDbInfo } from '@/lib/foods';
 import { NUTRIENTS } from '@/lib/nutrients';
@@ -35,11 +49,39 @@ export default function SettingsScreen() {
   const [dbInfo, setDbInfo] = useState<{ count: number; sources: string } | null>(null);
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
+  const [dayEnd, setDayEnd] = useState<number | null>(null);
+  const [checkin, setCheckin] = useState<number | null>(null);
+  const [checkinPermMissing, setCheckinPermMissing] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
 
   useEffect(() => {
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
+    getDayEndHour().then(setDayEnd);
+    getCheckinHour().then(setCheckin);
+    checkinPermissionMissing().then(setCheckinPermMissing);
+    getLastBackupAt().then(setLastBackup);
   }, []);
+
+  // Persisted immediately — no Save step needed for this one.
+  const chooseDayEnd = (hour: number) => {
+    setDayEnd(hour);
+    setDayEndHour(hour);
+  };
+
+  // Also persisted immediately. Turning it on asks for permission right away;
+  // a denial keeps the hour saved but shows the "permission needed" state.
+  const chooseCheckin = async (hour: number | null) => {
+    setCheckin(hour);
+    if (hour != null) {
+      const granted = await requestCheckinPermission();
+      setCheckinPermMissing(!granted);
+    } else {
+      setCheckinPermMissing(false);
+    }
+    await setCheckinHour(hour);
+  };
 
   const downloadModel = async () => {
     setDownloadPct(0);
@@ -77,6 +119,56 @@ export default function SettingsScreen() {
     router.back();
   };
 
+  const backupNow = async () => {
+    try {
+      await exportBackup();
+      setLastBackup(await getLastBackupAt());
+    } catch (e) {
+      Alert.alert('Backup failed', e instanceof Error ? e.message : 'Please try again.');
+    }
+  };
+
+  const restoreFromFile = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+      if (picked.canceled) return;
+      const backup = parseBackup(await new File(picked.assets[0].uri).text());
+      const madeOn = backup.exportedAt
+        ? new Date(backup.exportedAt).toLocaleDateString()
+        : 'an unknown date';
+      Alert.alert(
+        'Restore from backup?',
+        `This backup from ${madeOn} has ${backup.data.log_entries.length} log entries. ` +
+          'Restoring replaces everything currently in the app — this cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Replace & restore',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await restoreBackup(backup);
+                Alert.alert('Restore complete', 'Your data has been restored.', [
+                  { text: 'OK', onPress: () => router.back() },
+                ]);
+              } catch (e) {
+                Alert.alert(
+                  'Restore failed',
+                  e instanceof Error ? e.message : 'Nothing was changed.'
+                );
+              }
+            },
+          },
+        ]
+      );
+    } catch (e) {
+      Alert.alert('Restore failed', e instanceof Error ? e.message : 'Could not read that file.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -88,6 +180,21 @@ export default function SettingsScreen() {
             Toggle what you want to track. For anything on, set a daily goal — or
             leave it blank to track the amount without a target.
           </ThemedText>
+          <Pressable
+            style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
+            onPress={() => setShowCalculator((s) => !s)}>
+            <ThemedText type="small">
+              🧮 Calculate goals for me {showCalculator ? '▴' : '▾'}
+            </ThemedText>
+          </Pressable>
+          {showCalculator && (
+            <GoalCalculator
+              onApply={(g) => {
+                editor.applyGoals(g);
+                setShowCalculator(false);
+              }}
+            />
+          )}
           <View style={styles.nutrientList}>
             {NUTRIENTS.map((n) => (
               <NutrientRow
@@ -102,6 +209,88 @@ export default function SettingsScreen() {
               />
             ))}
           </View>
+
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Day ends at
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Anything logged before this hour counts toward the previous day — so a
+            half-past-midnight snack stays with that evening.
+          </ThemedText>
+          <View style={styles.modelChips}>
+            {DAY_END_OPTIONS.map((h) => (
+              <Pressable
+                key={h}
+                onPress={() => chooseDayEnd(h)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor:
+                      dayEnd === h ? theme.backgroundSelected : theme.backgroundElement,
+                    borderColor: dayEnd === h ? MacroColors.kcal : 'transparent',
+                  },
+                ]}>
+                <ThemedText type="small" themeColor={dayEnd === h ? 'text' : 'textSecondary'}>
+                  {dayEndLabel(h)}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Evening check-in
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            An optional once-a-day reminder to log — it stays silent on days you’ve
+            already logged something.
+          </ThemedText>
+          {checkinSupported() ? (
+            <>
+              <View style={styles.modelChips}>
+                <Pressable
+                  onPress={() => chooseCheckin(null)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor:
+                        checkin == null ? theme.backgroundSelected : theme.backgroundElement,
+                      borderColor: checkin == null ? MacroColors.kcal : 'transparent',
+                    },
+                  ]}>
+                  <ThemedText type="small" themeColor={checkin == null ? 'text' : 'textSecondary'}>
+                    Off
+                  </ThemedText>
+                </Pressable>
+                {CHECKIN_HOURS.map((h) => (
+                  <Pressable
+                    key={h}
+                    onPress={() => chooseCheckin(h)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor:
+                          checkin === h ? theme.backgroundSelected : theme.backgroundElement,
+                        borderColor: checkin === h ? MacroColors.kcal : 'transparent',
+                      },
+                    ]}>
+                    <ThemedText type="small" themeColor={checkin === h ? 'text' : 'textSecondary'}>
+                      {checkinLabel(h)}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+              {checkinPermMissing && (
+                <ThemedText type="small" style={{ color: MacroColors.carbs }}>
+                  ⚠ Notifications are blocked for MacroTrack — allow them in your device
+                  settings to get the check-in.
+                </ThemedText>
+              )}
+            </>
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              Reminders need the iOS/Android app — not available on web.
+            </ThemedText>
+          )}
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             AI assistant
@@ -130,6 +319,16 @@ export default function SettingsScreen() {
           <View style={styles.modelChips}>
             <Pressable
               style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+              onPress={backupNow}>
+              <ThemedText type="small">Export backup</ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+              onPress={restoreFromFile}>
+              <ThemedText type="small">Restore from backup</ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
               onPress={async () => {
                 const n = await exportTrainingData();
                 if (n === 0) Alert.alert('Nothing to export', 'No AI interactions recorded yet.');
@@ -142,6 +341,11 @@ export default function SettingsScreen() {
               <ThemedText type="small">Export food log</ThemedText>
             </Pressable>
           </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            {lastBackup
+              ? `Last backup: ${new Date(lastBackup).toLocaleDateString()}`
+              : 'No backup yet — the backup file holds your logs, foods, recipes, and settings.'}
+          </ThemedText>
 
           {dbInfo && (
             <View style={styles.aboutSection}>
@@ -171,7 +375,8 @@ function OnDeviceModel({
   onDelete: () => void;
 }) {
   const theme = useTheme();
-  const sizeGb = (LOCAL_MODEL_TOTAL_BYTES / 1e9).toFixed(1);
+  // Derived from the byte-exact artifact size — never hardcode this.
+  const sizeMb = Math.round(LOCAL_MODEL_TOTAL_BYTES / (1024 * 1024));
 
   if (status == null) return null;
   if (status === 'unsupported') {
@@ -211,12 +416,11 @@ function OnDeviceModel({
       <Pressable
         style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
         onPress={onDownload}>
-        <ThemedText type="small">Download on-device model ({sizeGb} GB, Wi-Fi recommended)</ThemedText>
+        <ThemedText type="small">Download on-device model ({sizeMb} MB, Wi-Fi recommended)</ThemedText>
       </Pressable>
-      <ThemedText type="small" style={{ color: MacroColors.carbs }}>
-        ⚠ One-time download, and the model runs entirely on your phone. On a recent
-        device an estimate takes a few seconds; on older or lower-memory phones it
-        may be slower.
+      <ThemedText type="small" themeColor="textSecondary">
+        One-time download; the model runs entirely on your phone. A typical estimate
+        takes a few seconds on a modern phone.
       </ThemedText>
     </View>
   );
@@ -230,6 +434,12 @@ const styles = StyleSheet.create({
   },
   nutrientList: {
     gap: Spacing.two,
+  },
+  calcButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+    alignItems: 'center',
   },
   sectionTitle: {
     marginTop: Spacing.three,

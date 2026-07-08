@@ -48,6 +48,24 @@ export function useTrackingEditor() {
     setGoalText((prev) => ({ ...prev, [key]: text }));
 
   /**
+   * Prefill calculated goals (see GoalCalculator): enables each nutrient and
+   * overwrites its goal text. Still just editor state — Save persists it.
+   */
+  const applyGoals = (goals: Partial<Record<NutrientKey, number>>) => {
+    const entries = Object.entries(goals) as [NutrientKey, number][];
+    setEnabled((prev) => {
+      const next = { ...prev };
+      for (const [k] of entries) next[k] = true;
+      return next;
+    });
+    setGoalText((prev) => {
+      const next = { ...prev };
+      for (const [k, v] of entries) next[k] = String(Math.round(v));
+      return next;
+    });
+  };
+
+  /**
    * Validate and assemble the config to save. Returns null if any enabled
    * nutrient has a non-blank, non-numeric goal (blank = no target).
    */
@@ -62,5 +80,5 @@ export function useTrackingEditor() {
     return config;
   };
 
-  return { enabled, goalText, toggle, setGoal, buildConfig };
+  return { enabled, goalText, toggle, setGoal, applyGoals, buildConfig };
 }
