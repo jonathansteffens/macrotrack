@@ -55,6 +55,20 @@ const SIZE_RE = /,?\s*\(?(x-?small|small|medium|large|kids?|regular|mini|junior|
 
 const num = (s) => { const n = parseFloat(s); return Number.isFinite(n) ? n : null; };
 
+// "Chick-fil-A" + "Chick Fil a Chicken Sandwich" → "Chick-fil-A Chicken Sandwich";
+// "Whataburger" + "Whataburger" → "Whataburger". Doubled chain words make names
+// long, which loses the app's shortest-name search to unrelated generics.
+const normLite = (s) => s.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+function joinName(prefix, item) {
+  const pt = normLite(prefix).split(' ');
+  const iw = item.split(/\s+/);
+  const it = normLite(item).split(' ');
+  let k = 0;
+  while (k < pt.length && it[k] === pt[k]) k++;
+  const rest = k === pt.length ? iw.slice(k).join(' ') : item;
+  return `${prefix} ${rest}`.replace(/\s+/g, ' ').trim();
+}
+
 // MenuStat's Dataverse .tab wraps every field in double quotes ("Applebee's",
 // "16 oz") and doubles internal quotes — strip that back to the raw value.
 const unquote = (s) => {
@@ -88,22 +102,45 @@ for (let i = 1; i < lines.length; i++) {
   const f = lines[i].split('\t').map(unquote);
   const prefix = CHAINS[f[C.rest]];
   if (!prefix) continue;                                   // chain not in allowlist
-  if ((f[C.build] || '').trim() !== '') continue;          // base items only (no builds/add-ons)
+  const build = (f[C.build] || '').trim();
+  // Base items, plus 'Main Item' builds when they carry their own calories —
+  // Dairy Queen lists its core burgers/shakes only as Main Item builds.
+  if (build !== '' && build !== 'Main Item') continue;
   const cat = f[C.cat];
-  if (!KEEP_CATS.has(cat)) continue;                       // drop Toppings & Ingredients etc.
+  // Chipotle's menu exists in MenuStat only as assembly-line components
+  // (Toppings & Ingredients) — keep those for Chipotle so decomposed
+  // bowls/burritos resolve to real chain data; drop that category elsewhere.
+  const chipotleComponent = prefix === 'Chipotle' && cat === 'Toppings & Ingredients';
+  if (!KEEP_CATS.has(cat) && !chipotleComponent) continue;
   const kcalServ = num(f[C.kcal]);
   if (kcalServ == null || kcalServ <= 0) continue;         // need per-serving energy
   let g = num(f[C.ssize]);
-  if (g != null && (f[C.sunit] || '').toLowerCase().startsWith('oz')) g *= 28.3495;
+  const sunit = (f[C.sunit] || '').toLowerCase();
+  if (g != null && sunit.includes('oz')) g *= sunit.includes('fl') ? 29.57 : 28.3495; // "oz" and "fl oz"
   let estimated = false;
-  if (g == null || g < 5 || g > 2000) { g = (kcalServ / (DENSITY[cat] || 200)) * 100; estimated = true; }
+  // Shakes/frappes are denser than plain beverages; components ≈ entree density.
+  const density = cat === 'Beverages' ? 110 : cat === 'Toppings & Ingredients' ? 170 : DENSITY[cat] || 200;
+  if (g == null || g < 5 || g > 2000) { g = (kcalServ / density) * 100; estimated = true; }
+  // Listed weights are sometimes garbage (a 703-kcal burger at 1234 g → 57
+  // kcal/100g): if the implied density is implausible for a solid food,
+  // re-estimate the weight instead of trusting it.
+  if (!estimated && cat !== 'Beverages') {
+    const implied = (kcalServ / g) * 100;
+    if (implied < 60 || implied > 500) { g = (kcalServ / density) * 100; estimated = true; }
+  }
   g = Math.min(1500, Math.max(15, g));
+  if (g > 1200) continue; // party/whole-cake items (45 poppers, 8" Blizzard cake) — clutter
   const item = (f[C.name] || '').trim();
   if (cat === 'Beverages' && !BEV_KEEP.test(item)) continue; // drop soda-size explosion
   // Collapse customization permutations ("Whopper w/ Cheese & Mayo" → "Whopper")
   // to the base item; keep meaningful variants like "Double Whopper".
   const base = item.replace(/\s+w\/\s+.*$/i, '').replace(SIZE_RE, '').replace(/,\s*$/, '').trim();
   if (!base) continue;
+  // Combo meals have inconsistent MenuStat data (burger+fries+drink half-summed)
+  // and are exactly the clutter we're avoiding.
+  if (/whatameal|value meal|\bcombo\b|meal deal/i.test(base)) continue;
+  // Garnish rows (pickle spear, celery sticks) are noise, not loggable items.
+  if (g < 25 && kcalServ < 30) continue;
   const per100 = (v) => { const x = num(v); return x == null ? null : Math.round((x / g) * 1000) / 10; };
   const row = {
     prefix, category: cat, item: base, grams: Math.round(g), estimated,
@@ -137,10 +174,19 @@ for (const [prefix, m] of byChain) {
     (a.item.length - b.item.length) ||
     a.item.localeCompare(b.item));
   const kept = items.slice(0, CAP);
+  // Signature items people actually ask for must survive the cap even from
+  // low-priority categories (Blizzard/Frosty/donuts/frappuccino live in
+  // Desserts/Baked Goods/Beverages, which the cap otherwise cuts).
+  const SIGNATURE_RE = /\b(blizzard|frosty|mcflurry|frappuccino|donut|doughnut|mcnugget|whopper|big mac|baconator|crunchwrap|quesadilla|glazed|waffle|mac & cheese|mac and cheese)\b/i;
+  const keptSet = new Set(kept.map((r) => r.item));
+  kept.push(...items
+    .filter((r) => !keptSet.has(r.item) && SIGNATURE_RE.test(r.item))
+    .sort((a, b) => a.item.length - b.item.length)
+    .slice(0, 8));
   perChain.push([prefix, m.size, kept.length]);
   for (const r of kept) {
     out.push({
-      name: `${r.prefix} ${r.item}`.replace(/\s+/g, ' ').trim(),
+      name: joinName(r.prefix, r.item),
       category: `Restaurant — ${r.prefix}`,
       data_type: 'branded',
       kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, fiber: r.fiber,

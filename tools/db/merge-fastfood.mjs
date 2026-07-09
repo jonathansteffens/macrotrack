@@ -62,3 +62,16 @@ for (const q of ['mcdonalds big mac', 'wendys baconator', 'taco bell crunchy tac
   const row = db.prepare(`SELECT name, kcal FROM foods WHERE ${where} ORDER BY LENGTH(name_norm) LIMIT 1`).get(...toks.map((t) => `% ${t}%`));
   console.log(`  "${q}" -> ${row ? row.name + ' (' + Math.round(row.kcal) + '/100g)' : 'NO MATCH'}`);
 }
+
+// FNDDS survey rows for chain items ("Whopper (Burger King)", "Quarter Pounder
+// (McDonalds)") are authoritative whole-item data with real serving portions —
+// reclassify them as 'branded' so the resolver's serving-snap applies to them
+// too (they often win the shortest-name search over our MenuStat rows).
+const CHAIN_PAREN = ['McDonalds', "Wendy's", 'Burger King', 'Taco Bell', 'Pizza Hut',
+  "Domino's", 'Subway', 'KFC', 'Popeyes', 'Chick-fil-A', 'Little Caesars',
+  "Papa John's", 'Burger King)', 'Starbucks', 'Dunkin'];
+const like = CHAIN_PAREN.map(() => `name LIKE ?`).join(' OR ');
+const upd2 = db.prepare(`UPDATE foods SET data_type='branded'
+  WHERE data_type='survey' AND (${like})`);
+const res2 = upd2.run(...CHAIN_PAREN.map((c) => `%(${c}%`));
+console.log(`reclassified ${res2.changes} survey chain rows as branded (serving-snap applies)`);

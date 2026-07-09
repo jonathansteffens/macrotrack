@@ -24,8 +24,25 @@ export async function resolveClaim(claim: FoodClaim): Promise<ResolvedItem[]> {
   return Promise.all(claim.items.map(resolveItem));
 }
 
+const COUNT_WORDS: Record<string, number> = {
+  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, dozen: 12,
+};
+
+/** Explicit count in an item name ("2 whopper", "three tacos"), if any. */
+function countInName(name: string): number | null {
+  const m = /^(\d{1,2})\s+/.exec(name.trim());
+  if (m) return Math.min(24, parseInt(m[1], 10)) || null;
+  const w = name.trim().toLowerCase().split(/\s+/)[0];
+  return COUNT_WORDS[w] ?? null;
+}
+
 async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
+  // The model sometimes bakes an explicit count into the item name
+  // ("2 whopper") — search with the count stripped too, so it still matches.
+  const stripped = item.name.replace(/^(\d{1,2}|[a-z]+)\s+/i, '');
   const terms = [...item.db_search_terms, item.name];
+  if (countInName(item.name) && stripped) terms.push(stripped);
   let candidates: FoodItem[] = [];
   for (const term of terms) {
     // 'all' — the model's search terms resolve against the full database, not
@@ -33,12 +50,52 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
     candidates = await searchFoods(term, 6, 'all');
     if (candidates.length > 0) break;
   }
+  const match = candidates[0] ?? null;
   return {
     claim: item,
-    match: candidates[0] ?? null,
+    match,
     alternatives: candidates.slice(0, 5),
-    grams: Math.round(item.grams),
+    grams: seedGrams(item, match),
   };
+}
+
+/**
+ * Seed the editable amount from the claim. Branded restaurant items are
+ * fixed-format products whose DB row carries the real serving weight, and the
+ * model reliably identifies WHICH item but guesses generic weights (a Whopper
+ * claimed at ~113 g vs the real 270 g would halve its calories) — so use whole
+ * servings: an explicit count in the item name wins, a plural name snaps the
+ * model's grams to the nearest serving count, and otherwise it's one item
+ * (small models over-guess single-item grams; trusting the grams here doubled
+ * a single donut). Non-branded items keep the model's grams — users often
+ * state exact weights for generic foods.
+ */
+function seedGrams(item: ClaimItem, match: FoodItem | null): number {
+  const serving = match?.dataType === 'branded' ? pickServing(item, match) : undefined;
+  if (!serving || serving <= 0) return Math.round(item.grams);
+  const explicit = countInName(item.name);
+  const plural = /s$/i.test(item.name.trim());
+  const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(item.grams / serving))) : 1);
+  return Math.round(count * serving);
+}
+
+/**
+ * Some DB rows carry several named servings (FNDDS packs "Mac Jr" 135 g /
+ * "Big Mac" 205 g / "Grand Mac" 315 g into one row's portions). Prefer the
+ * portion whose label mentions the claimed item; tie-break by closeness to the
+ * model's grams.
+ */
+function pickServing(item: ClaimItem, match: FoodItem): number | undefined {
+  const portions = match.portions.filter((p) => p.grams > 0);
+  if (portions.length <= 1) return portions[0]?.grams;
+  const nameTokens = item.name.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const score = (label: string) => {
+    const l = label.toLowerCase();
+    return nameTokens.filter((t) => l.includes(t)).length;
+  };
+  return portions.sort(
+    (a, b) => score(b.label) - score(a.label) || Math.abs(a.grams - item.grams) - Math.abs(b.grams - item.grams)
+  )[0].grams;
 }
 
 /** Macros for the item as currently resolved (DB match or model fallback). */

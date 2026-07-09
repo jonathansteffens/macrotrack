@@ -56,6 +56,12 @@ export type FoodItem = {
   /** Base unit for amounts. Defaults to grams; 'ml' for liquids (mL ≈ g). */
   unit?: 'g' | 'ml';
   portions: Portion[];
+  /**
+   * foods.db provenance ('sr_legacy' | 'survey' | 'foundation' | 'branded').
+   * 'branded' = restaurant menu item whose portions[0] is the real serving —
+   * the AI resolver snaps gram guesses to whole servings for these.
+   */
+  dataType?: string | null;
 };
 
 export type LogEntry = {

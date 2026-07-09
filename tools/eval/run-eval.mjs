@@ -86,12 +86,38 @@ function search(query) {
   const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
   const params = tokens.map((t) => `% ${t.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
   const prefix = `${tokens[0]}%`;
+  const wholeWord = `% ${tokens[0].replace(/[\\%_]/g, (c) => '\\' + c)} %`;
+  // Mirrors mobile/src/lib/foods.ts 'all' scope: whole-word first-token match
+  // outranks substring matches, then prefix, then shortest name.
   return db
     .prepare(
-      `SELECT name, kcal, protein, carbs, fat FROM foods WHERE ${where}
-       ORDER BY CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
+      `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where}
+       ORDER BY CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+                CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
     )
-    .get(...params, prefix);
+    .get(...params, wholeWord, prefix);
+}
+
+// Mirrors resolver.ts seedGrams: branded → whole servings (explicit count in
+// the item name wins, plural snaps model grams to a count, else 1 item).
+const COUNT_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, dozen: 12 };
+function countInName(name) {
+  const m = /^(\d{1,2})\s+/.exec((name || '').trim());
+  if (m) return Math.min(24, parseInt(m[1], 10)) || null;
+  return COUNT_WORDS[(name || '').trim().toLowerCase().split(/\s+/)[0]] ?? null;
+}
+function seedGrams(item, food) {
+  if (food?.data_type !== 'branded') return item.grams;
+  // Multi-portion rows: label match to the claim name, then closest grams.
+  const portions = JSON.parse(food.portions_json || '[]').filter((p) => p.grams > 0);
+  const toks = (item.name || '').toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const sc = (l) => toks.filter((t) => (l || '').toLowerCase().includes(t)).length;
+  const serving = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - item.grams) - Math.abs(b.grams - item.grams))[0]?.grams;
+  if (!serving || serving <= 0) return item.grams;
+  const explicit = countInName(item.name);
+  const plural = /s$/i.test((item.name || '').trim());
+  const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(item.grams / serving))) : 1);
+  return count * serving;
 }
 
 function resolveClaim(claim) {
@@ -102,10 +128,11 @@ function resolveClaim(claim) {
       if (food) break;
     }
     const per100 = food ?? item.est_per100;
-    const f = item.grams / 100;
+    const grams = seedGrams(item, food);
+    const f = grams / 100;
     return {
       name: item.name,
-      grams: item.grams,
+      grams,
       matched: food?.name ?? null,
       kcal: per100.kcal * f,
       protein: (per100.protein ?? 0) * f,

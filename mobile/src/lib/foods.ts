@@ -24,6 +24,7 @@ type FoodRow = {
   potassium_mg: number | null;
   portions_json: string;
   unit?: string | null;
+  data_type?: string | null;
 };
 
 function rowMacros(r: FoodRow): Macros {
@@ -61,6 +62,7 @@ function usdaRowToFood(r: FoodRow): FoodItem {
     category: r.category ?? null,
     per100: rowMacros(r),
     portions: parsePortions(r.portions_json),
+    dataType: r.data_type ?? null,
   };
 }
 
@@ -140,11 +142,16 @@ export async function searchFoods(
           prefix,
           limit
         )
-      : // Resolver ('all'): plain relevance ranking, kept identical to the
-        // eval/generator search mirrors so model terms resolve consistently.
+      : // Resolver ('all'): whole-word match on the first token outranks
+        // substring matches (so "chick fil a chicken sandwich" beats "chicken
+        // fillet sandwich" — 'chick' as a word, not inside 'chicken'), matching
+        // the manual-search semantics. Mirrored in tools/eval/run-eval.mjs and
+        // tools/chat/playground.mjs so model terms resolve consistently.
         getFoodsDb().getAllAsync<FoodRow>(
-          `SELECT * FROM foods WHERE ${where} ORDER BY ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+          `SELECT * FROM foods WHERE ${where}
+           ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
           ...params,
+          wholeWordParam,
           prefix,
           limit
         );

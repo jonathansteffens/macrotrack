@@ -42,21 +42,49 @@ function search(query) {
   if (!tokens.length) return null;
   const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
   const params = tokens.map((t) => `% ${t.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
+  // Mirrors mobile/src/lib/foods.ts 'all' scope: whole-word first, then prefix, then shortest.
   return db.prepare(
-    `SELECT name, kcal, protein, carbs, fat FROM foods WHERE ${where}
-     ORDER BY CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
-  ).get(...params, `${tokens[0]}%`);
+    `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where}
+     ORDER BY CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+              CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
+  ).get(...params, `% ${tokens[0].replace(/[\\%_]/g, (c) => '\\' + c)} %`, `${tokens[0]}%`);
+}
+const COUNT_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, dozen: 12 };
+function countInName(name) {
+  const m = /^(\d{1,2})\s+/.exec((name || '').trim());
+  if (m) return Math.min(24, parseInt(m[1], 10)) || null;
+  return COUNT_WORDS[(name || '').trim().toLowerCase().split(/\s+/)[0]] ?? null;
 }
 function resolveItem(item) {
+  const stripped = (item.name || '').replace(/^(\d{1,2}|[a-z]+)\s+/i, '');
+  const terms = [...(item.db_search_terms || []), item.name];
+  if (countInName(item.name) && stripped) terms.push(stripped);
   let food = null, via = null;
-  for (const term of [...(item.db_search_terms || []), item.name]) {
+  for (const term of terms) {
     food = search(term);
     if (food) { via = term; break; }
   }
   const per100 = food ?? item.est_per100 ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  const f = (item.grams || 0) / 100;
+  // Mirrors resolver.ts seedGrams: branded → whole servings (explicit count in
+  // the name wins, plural snaps model grams, else 1 item).
+  let grams = item.grams || 0;
+  if (food?.data_type === 'branded') {
+    // Multi-portion rows (FNDDS "Mac Jr"/"Big Mac"/"Grand Mac"): label match
+    // to the claim name first, then closest grams — mirrors resolver.ts.
+    const portions = JSON.parse(food.portions_json || '[]').filter((p) => p.grams > 0);
+    const toks = (item.name || '').toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+    const sc = (l) => toks.filter((t) => (l || '').toLowerCase().includes(t)).length;
+    const serving = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - grams) - Math.abs(b.grams - grams))[0]?.grams;
+    if (serving > 0) {
+      const explicit = countInName(item.name);
+      const plural = /s$/i.test((item.name || '').trim());
+      const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(grams / serving))) : 1);
+      grams = count * serving;
+    }
+  }
+  const f = grams / 100;
   return {
-    name: item.name, grams: item.grams, prep: item.prep, confidence: item.confidence,
+    name: item.name, grams, prep: item.prep, confidence: item.confidence,
     searchTerms: item.db_search_terms || [], matched: food ? food.name : null, matchedVia: via,
     kcal: per100.kcal * f, protein: (per100.protein ?? 0) * f, carbs: (per100.carbs ?? 0) * f, fat: (per100.fat ?? 0) * f,
   };
