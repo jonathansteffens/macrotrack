@@ -64,6 +64,9 @@ USDA FoodData Central data is public domain (CC0).
   cases with DB-derived ground truth), `run-eval.mjs` (scores Anthropic or
   any OpenAI-compatible endpoint), `run-eval-n5k.mjs` (Nutrition5k photo
   eval), `check-overlap.mjs` (verifies eval hold-out from training data).
+  `tools/eval/adversarial/` — permanent adversarial eval tier (151 quantity/
+  regression/spot cases, born from the v6 QA gate): `run.mjs --list` for a
+  no-server case-count dry run, or `--base-url` against a live endpoint.
 - `tools/finetune/` — training-data generation (`generate-synthetic.mjs`,
   `fetch-nutrition5k.sh` + `convert-nutrition5k.mjs`), QLoRA training
   (`train_qlora.py`, configs under `runs/`), and GGUF export

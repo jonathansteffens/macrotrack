@@ -39,7 +39,9 @@ const SYSTEM = `You rewrite USDA food database names into short, natural names a
 Reply with ONLY the rewritten name, nothing else.`;
 
 const db = new DatabaseSync(DB_PATH);
-const rows = db.prepare(`SELECT id, name FROM foods WHERE common = 1 ORDER BY id${LIMIT ? ` LIMIT ${LIMIT}` : ''}`).all();
+// --all: every row (full plain-language pass); default: the curated common tier.
+const ALL = process.argv.includes('--all');
+const rows = db.prepare(`SELECT id, name FROM foods ${ALL ? '' : 'WHERE common = 1 '}ORDER BY id${LIMIT ? ` LIMIT ${LIMIT}` : ''}`).all();
 console.log(`${rows.length} common-tier foods to name (of ${db.prepare('SELECT COUNT(*) c FROM foods').get().c} total)`);
 
 // resume: keep already-generated names across runs
