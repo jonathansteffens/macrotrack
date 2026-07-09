@@ -69,9 +69,32 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
  * (small models over-guess single-item grams; trusting the grams here doubled
  * a single donut). Non-branded items keep the model's grams — users often
  * state exact weights for generic foods.
+ *
+ * v2: when the model reports a whole-unit `count`, the app does the multiply
+ * (it copies the count; code multiplies) — count × per-unit serving. The
+ * per-unit serving is the branded DB serving when there's a branded match,
+ * else the model's `unit_grams`, else the model's total split by its own count.
  */
 function seedGrams(item: ClaimItem, match: FoodItem | null): number {
-  const serving = match?.dataType === 'branded' ? pickServing(item, match) : undefined;
+  const brandedServing = match?.dataType === 'branded' ? pickServing(item, match) : undefined;
+  if (typeof item.count === 'number' && Number.isFinite(item.count) && item.count > 0) {
+    // Stopgap for the "fake branded SKU" emission {name:"2 big mac", count:1}:
+    // the model bakes the real count into the NAME but leaves count stuck at 1.
+    // When count is exactly 1, trust the larger of count and any count in the
+    // name; a genuine count > 1 is left untouched. (mirrors run-eval.mjs,
+    // playground.mjs seedGrams — keep the three in sync.)
+    const effCount = item.count === 1 ? Math.max(item.count, countInName(item.name) ?? 1) : item.count;
+    const count = Math.min(24, Math.max(0.25, effCount));
+    const serving =
+      brandedServing && brandedServing > 0
+        ? brandedServing
+        : item.unit_grams && item.unit_grams > 0
+          ? item.unit_grams
+          : item.grams / item.count;
+    return Math.round(count * serving);
+  }
+  // No count → existing branded-snap behavior exactly.
+  const serving = brandedServing;
   if (!serving || serving <= 0) return Math.round(item.grams);
   const explicit = countInName(item.name);
   const plural = /s$/i.test(item.name.trim());
@@ -121,5 +144,6 @@ export function resolvedMacros(item: ResolvedItem): Macros {
 }
 
 export function displayName(item: ResolvedItem): string {
-  return item.match ? item.match.name : item.claim.name;
+  if (item.match) return item.match.displayName ?? item.match.name;
+  return item.claim.name;
 }

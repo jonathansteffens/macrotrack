@@ -46,13 +46,22 @@ export type SavedAiItem = {
  */
 function finalClaimFor(items: SavedAiItem[], meal: MealType) {
   return {
-    items: items.map((s) => ({
-      name: s.name,
-      grams: s.grams,
-      ...(s.matchedName != null
-        ? { db_search_terms: [s.matchedName] }
-        : { est_per100: s.claim.est_per100 }),
-    })),
+    items: items.map((s) => {
+      // v2: carry the model's count/unit_grams through UNLESS the user edited
+      // the grams (the review screen seeds rounded claim grams, so a changed
+      // value is a real edit) — an explicit grams override supersedes the
+      // count-based total, so drop count/unit_grams in that case.
+      const gramsEdited = s.grams !== Math.round(s.claim.grams);
+      return {
+        name: s.name,
+        count: gramsEdited ? null : s.claim.count,
+        unit_grams: gramsEdited ? null : s.claim.unit_grams,
+        grams: s.grams,
+        ...(s.matchedName != null
+          ? { db_search_terms: [s.matchedName] }
+          : { est_per100: s.claim.est_per100 }),
+      };
+    }),
     meal_guess: meal,
   };
 }

@@ -1,3 +1,7 @@
+# NOTE: docs-only snapshot — predates schema v2 (each item now also carries
+# count + unit_grams). The authoritative grammar is compiled at runtime by
+# llama.cpp from mobile/src/lib/ai/schema.ts; this file is not referenced by
+# any code. Do not hand-edit it as a source of truth.
 boolean ::= ("true" | "false")
 char ::= [^"\\\x7F\x00-\x1F] | [\\] (["\\bfnrt] | "u" [0-9a-fA-F]{4})
 decimal-part ::= [0-9]{1,16}

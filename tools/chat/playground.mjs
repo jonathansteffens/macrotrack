@@ -65,22 +65,36 @@ function resolveItem(item) {
     if (food) { via = term; break; }
   }
   const per100 = food ?? item.est_per100 ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  // Mirrors resolver.ts seedGrams: branded → whole servings (explicit count in
-  // the name wins, plural snaps model grams, else 1 item).
+  // Mirrors resolver.ts seedGrams: v2 count preference (count × per-unit
+  // serving) first, else branded → whole servings (explicit count in the name
+  // wins, plural snaps model grams, else 1 item).
   let grams = item.grams || 0;
-  if (food?.data_type === 'branded') {
+  const branded = food?.data_type === 'branded';
+  let brandedServing;
+  if (branded) {
     // Multi-portion rows (FNDDS "Mac Jr"/"Big Mac"/"Grand Mac"): label match
     // to the claim name first, then closest grams — mirrors resolver.ts.
     const portions = JSON.parse(food.portions_json || '[]').filter((p) => p.grams > 0);
     const toks = (item.name || '').toLowerCase().split(/\s+/).filter((t) => t.length > 2);
     const sc = (l) => toks.filter((t) => (l || '').toLowerCase().includes(t)).length;
-    const serving = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - grams) - Math.abs(b.grams - grams))[0]?.grams;
-    if (serving > 0) {
-      const explicit = countInName(item.name);
-      const plural = /s$/i.test((item.name || '').trim());
-      const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(grams / serving))) : 1);
-      grams = count * serving;
-    }
+    brandedServing = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - grams) - Math.abs(b.grams - grams))[0]?.grams;
+  }
+  if (typeof item.count === 'number' && Number.isFinite(item.count) && item.count > 0) {
+    // Stopgap for the "fake branded SKU" emission {name:"2 big mac", count:1}:
+    // count stuck at 1 but the real count baked into the name — trust the
+    // larger; a genuine count > 1 is untouched. (mirrors resolver.ts,
+    // run-eval.mjs seedGrams — keep the three in sync.)
+    const effCount = item.count === 1 ? Math.max(item.count, countInName(item.name) ?? 1) : item.count;
+    const count = Math.min(24, Math.max(0.25, effCount));
+    const serving = brandedServing && brandedServing > 0
+      ? brandedServing
+      : item.unit_grams && item.unit_grams > 0 ? item.unit_grams : grams / item.count;
+    grams = Math.round(count * serving);
+  } else if (branded && brandedServing > 0) {
+    const explicit = countInName(item.name);
+    const plural = /s$/i.test((item.name || '').trim());
+    const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(grams / brandedServing))) : 1);
+    grams = count * brandedServing;
   }
   const f = grams / 100;
   return {

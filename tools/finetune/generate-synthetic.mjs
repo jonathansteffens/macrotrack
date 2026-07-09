@@ -50,10 +50,10 @@ const PARAPHRASE_CONCURRENCY = parseInt(arg('paraphrase-concurrency', '8'), 10);
 const PARAPHRASE_FRAC = parseFloat(arg('paraphrase-frac', '1'));
 // Fraction of samples that are a "base + add-on" pair ("toast with butter"),
 // teaching the model to emit the add-on as its own item (it was dropping them).
-const ADDON_FRAC = parseFloat(arg('addon-frac', '0.22'));
+const ADDON_FRAC = parseFloat(arg('addon-frac', '0.26'));
 // Fraction that is a single branded fast-food menu item ("a Baconator"),
 // teaching one resolving item instead of decomposing into generics.
-const BRANDED_FRAC = parseFloat(arg('branded-frac', '0.06'));
+const BRANDED_FRAC = parseFloat(arg('branded-frac', '0.05'));
 // Fraction that lists 2-4 arbitrary foods explicitly ("a bowl with X, Y, Z"),
 // teaching the model to emit exactly the listed ingredients instead of
 // pattern-matching one of the fixed DISHES templates.
@@ -70,6 +70,37 @@ const CLARIFY_FRAC = parseFloat(arg('single-clarify-frac', '0.02'));
 // contrastive counterpart to CLARIFY_FRAC/SINGLE_CLARIFY, teaching that an
 // explicit quantity/qualifier resolves the ambiguity.
 const SINGLE_CONFIDENT_FRAC = parseFloat(arg('single-confident-frac', '0.05'));
+// Fraction that renders ONE count/whole item as a BARE message (no meal
+// prefix): "a whole pizza", "20 nuggets", "a dozen mini muffins". The gate's
+// inputs are terse but training rows were mostly full sentences, so bare
+// count/whole phrasings were underrepresented (gate: 0% exact on whole/family).
+const BARE_COUNT_FRAC = parseFloat(arg('bare-count-frac', '0.04'));
+// Fraction that renders a dish with a removed component ("a chicken burrito
+// with no rice") — gold claim omits that component. Teaches negation; without
+// it the model emitted the removed food anyway.
+const NEGATION_FRAC = parseFloat(arg('negation-frac', '0.015'));
+// v8 residual fixes (driven by the v7 QA gate):
+// Fraction rendered as "a quarter of the lasagna" / "a third of a pie" — the
+// fraction is of the WHOLE dish, so gold unit_grams is the whole-dish weight
+// (a lasagna pan ~1400 g), not a single serving. v7 multiplied the fraction
+// against a per-serving weight (0.25 × ~150 g ≈ 39 g).
+const FRACTION_DISH_FRAC = parseFloat(arg('fraction-dish-frac', '0.025'));
+// Whole-container phrasings ("the whole box of donuts", "a whole loaf of
+// bread", "the whole sleeve of crackers", "a whole bag of pretzels") — gold =
+// container-count × per-unit weight (or count 1 × whole-container weight).
+const CONTAINER_FRAC = parseFloat(arg('container-frac', '0.02'));
+// Non-food / gibberish inputs ("asdfghjkl", "my dog", "???", "nothing") → gold
+// claim items:[] with a single clarifying question (ask-instead-of-hallucinate);
+// "I didn't eat anything" → items:[] with no question; "just water" → a real
+// 0-kcal water item. ~0.7% of samples.
+const NONFOOD_FRAC = parseFloat(arg('nonfood-frac', '0.007'));
+// "a plain X" / "X, nothing on it" / "dry toast" → the base item ONLY (strip
+// the implied condiment), plus contrastive "with just <condiment>" cases that
+// keep EXACTLY the named condiment (condiment-fidelity, no substitution).
+const PLAIN_FRAC = parseFloat(arg('plain-frac', '0.025'));
+// Bare fluid-ounce drink render ("8 ounces of milk" → ~240 g). v7 doubled it
+// (~488 g) by treating fl-oz as weight-oz. 1 fl oz ≈ 30 g for these drinks.
+const FLOZ_DRINK_FRAC = parseFloat(arg('floz-drink-frac', '0.012'));
 
 // Deterministic RNG (mulberry32) so datasets are reproducible
 let s = SEED >>> 0;
@@ -102,7 +133,9 @@ const POOLS = {
     { q: 'beef top sirloin steak cooked broiled', name: 'grilled sirloin steak', units: [{ kind: 'g', min: 120, max: 250 }, { kind: 'count', unit: 'small sirloin steak', g: 170, min: 1, max: 1 }] },
     { q: 'salmon atlantic farmed cooked dry heat', name: 'cooked salmon', units: [{ kind: 'g', min: 100, max: 200 }, { kind: 'count', unit: 'fillet', g: 150, min: 1, max: 1 }] },
     { q: 'fish tilapia cooked dry heat', name: 'baked tilapia', units: [{ kind: 'count', unit: 'fillet', g: 115, min: 1, max: 2 }, { kind: 'g', min: 100, max: 200 }] },
-    { q: 'crustaceans shrimp cooked moist heat', name: 'cooked shrimp', units: [{ kind: 'g', min: 80, max: 180 }] },
+    // 'piece' unit (~12 g) so "12 shrimp"/"a dozen shrimp" scales by a true
+    // small per-unit weight instead of the ~110 g default anchor (v7 gate).
+    { q: 'crustaceans shrimp cooked moist heat', name: 'cooked shrimp', units: [{ kind: 'g', min: 80, max: 180 }, { kind: 'count', unit: 'piece', g: 12, min: 5, max: 12 }] },
     { q: 'egg whole cooked scrambled', name: 'scrambled eggs', units: [{ kind: 'count', unit: 'scrambled egg', g: 61, min: 1, max: 4 }] },
     { q: 'egg whole cooked hard boiled', name: 'hard-boiled eggs', units: [{ kind: 'count', unit: 'hard-boiled egg', g: 50, min: 1, max: 3 }] },
     { q: 'egg whole cooked fried', name: 'fried eggs', units: [{ kind: 'count', unit: 'fried egg', g: 46, min: 1, max: 3 }] },
@@ -122,6 +155,14 @@ const POOLS = {
       wholeOptions: [
         { phrase: 'a whole {name}', gMin: 850, gMax: 950 },
         { phrase: 'half a {name}', gMin: 425, gMax: 475 },
+      ] },
+    // A whole roast chicken cooked/bought at home — distinct DB row from the
+    // rotisserie one, more whole/family coverage (gate's worst subcategory).
+    { q: 'chicken roasting meat and skin cooked roasted', name: 'roast chicken',
+      units: [{ kind: 'g', min: 85, max: 220 }],
+      wholeOptions: [
+        { phrase: 'a whole {name}', gMin: 1000, gMax: 1400 },
+        { phrase: 'half a {name}', gMin: 500, gMax: 700 },
       ] },
     // Bulk-count coverage for common small fast-food items ("20 nuggets",
     // "a dozen wings") — previously these only existed as fixed-gram ADDON
@@ -187,7 +228,12 @@ const POOLS = {
     { q: 'blueberries raw', name: 'blueberries', units: [{ kind: 'measure', unit: 'cup', g: 148, fractions: true }] },
     { q: 'oranges raw all commercial varieties', name: 'orange', units: [{ kind: 'count', unit: 'medium orange', g: 131, min: 1, max: 1 }] },
     { q: 'grapes european type raw', name: 'red grapes', units: [{ kind: 'measure', unit: 'cup', g: 151, fractions: true }] },
-    { q: 'watermelon raw', name: 'diced watermelon', units: [{ kind: 'measure', unit: 'cup', g: 152, fractions: true }] },
+    { q: 'watermelon raw', name: 'diced watermelon', units: [{ kind: 'measure', unit: 'cup', g: 152, fractions: true }],
+      wholeLabel: 'watermelon',
+      wholeOptions: [
+        { phrase: 'half a {name}', gMin: 1500, gMax: 2500 },
+        { phrase: 'a whole {name}', gMin: 3000, gMax: 4500 },
+      ] },
     { q: 'pineapple raw all varieties', name: 'pineapple chunks', units: [{ kind: 'measure', unit: 'cup', g: 165, fractions: true }] },
     { q: 'mangos raw', name: 'diced mango', units: [{ kind: 'measure', unit: 'cup', g: 165, fractions: true }] },
     { q: 'peaches raw', name: 'peach', units: [{ kind: 'count', unit: 'medium peach', g: 150, min: 1, max: 1 }] },
@@ -195,7 +241,7 @@ const POOLS = {
   dairy: [
     { q: 'yogurt greek plain nonfat', name: 'plain nonfat greek yogurt', units: [{ kind: 'measure', unit: 'cup', g: 245, fractions: true }] },
     { q: 'yogurt plain whole milk', name: 'plain whole-milk yogurt', units: [{ kind: 'measure', unit: 'cup', g: 245, fractions: true }] },
-    { q: 'milk reduced fat fluid 2', name: '2% milk', units: [{ kind: 'measure', unit: 'cup', g: 244, fractions: false }] },
+    { q: 'milk reduced fat fluid 2', name: '2% milk', flOz: 30.5, units: [{ kind: 'measure', unit: 'cup', g: 244, fractions: false }] },
     { q: 'cheese cheddar', name: 'cheddar cheese', units: [{ kind: 'g', min: 20, max: 60 }, { kind: 'count', unit: 'slice', g: 21, min: 1, max: 2 }] },
     { q: 'cheese mozzarella part skim', name: 'mozzarella', units: [{ kind: 'g', min: 20, max: 60 }] },
     { q: 'cheese swiss', name: 'swiss cheese', units: [{ kind: 'count', unit: 'slice', g: 28, min: 1, max: 2 }] },
@@ -208,18 +254,34 @@ const POOLS = {
     { q: 'popcorn air popped', name: 'air-popped popcorn', units: [{ kind: 'measure', unit: 'cup', g: 8, fractions: false }] },
     { q: 'chocolate dark 70 85', name: 'dark chocolate', units: [{ kind: 'g', min: 15, max: 40 }] },
     { q: 'cookies chocolate chip commercially prepared', name: 'chocolate chip cookies', units: [{ kind: 'count', unit: 'chocolate chip cookie', g: 15, min: 1, max: 3 }] },
-    { q: 'snacks pretzels hard plain salted', name: 'pretzels', units: [{ kind: 'g', min: 20, max: 50 }] },
+    { q: 'snacks pretzels hard plain salted', name: 'pretzels', units: [{ kind: 'g', min: 20, max: 50 }],
+      wholeOptions: [{ phrase: 'a family size bag of {name}', gMin: 200, gMax: 400 }] },
     { q: 'snacks granola bars hard plain', name: 'granola bar', units: [{ kind: 'count', unit: 'granola bar', g: 25, min: 1, max: 2 }] },
     { q: 'snacks trail mix regular', name: 'trail mix', units: [{ kind: 'g', min: 30, max: 60 }] },
     { q: 'hummus commercial', name: 'hummus', units: [{ kind: 'measure', unit: 'tablespoon', g: 15, fractions: false }] },
     { q: 'protein bar', name: 'protein bar', units: [{ kind: 'count', unit: 'protein bar', g: 60, min: 1, max: 1 }] },
     { q: 'snacks rice cakes brown rice', name: 'rice cake', units: [{ kind: 'count', unit: 'rice cake', g: 9, min: 2, max: 4 }] },
+    // Small discrete foods with ACCURATE per-unit grams — fix the unit_grams
+    // over-anchoring (~100-150 g) the gate saw on small units (a dozen mini
+    // muffins came back at 112 g/unit). All DB-verified (see search() below).
+    { q: 'mozzarella sticks', name: 'mozzarella sticks', units: [{ kind: 'count', unit: 'mozzarella stick', g: 20, min: 3, max: 8 }] },
+    { q: 'meatballs italian', name: 'meatballs', units: [{ kind: 'count', unit: 'meatball', g: 30, min: 3, max: 6 }] },
+    { q: 'chicken tenders', name: 'chicken tenders', units: [{ kind: 'count', unit: 'chicken tender', g: 45, min: 2, max: 5 }] },
+    // NOTE: 'muffins mini' resolves to the SAME DB row as the blueberry-muffin
+    // starch item (per-100g identical); the point here is the small 30 g unit.
+    { q: 'muffins mini', name: 'mini muffins', units: [{ kind: 'count', unit: 'mini muffin', g: 30, min: 3, max: 6 }] },
+    // Small-piece calibration: potstickers/dumplings ~35 g each (DB row is the
+    // steamed wonton/dumpling/pot-sticker). Bulkable — "8 potstickers" scales.
+    { q: 'dumpling steamed', name: 'potstickers', units: [{ kind: 'count', unit: 'potsticker', g: 35, min: 3, max: 8 }] },
   ],
+  // `flOz` (grams per FLUID ounce) marks a liquid whose "N oz" means fluid
+  // ounces, not weight ounces — 1 fl oz ≈ 30 g (a cup = 8 fl oz ≈ 244 g). Fixes
+  // the v7 gate's "8 ounces of milk" → ~488 g (it doubled via weight-oz).
   drink: [
-    { q: 'orange juice raw', name: 'orange juice', units: [{ kind: 'measure', unit: 'cup', g: 248, fractions: false }] },
-    { q: 'beverages carbonated cola regular', name: 'regular cola', units: [{ kind: 'count', unit: 'can', g: 368, min: 1, max: 1 }] },
+    { q: 'orange juice raw', name: 'orange juice', flOz: 31, units: [{ kind: 'measure', unit: 'cup', g: 248, fractions: false }] },
+    { q: 'beverages carbonated cola regular', name: 'regular cola', flOz: 30.7, units: [{ kind: 'count', unit: 'can', g: 368, min: 1, max: 1 }] },
     { q: 'beer regular all', name: 'regular beer', units: [{ kind: 'count', unit: 'can', g: 356, min: 1, max: 2 }] },
-    { q: 'milk whole 3.25', name: 'whole milk', units: [{ kind: 'measure', unit: 'cup', g: 244, fractions: false }] },
+    { q: 'milk whole 3.25', name: 'whole milk', flOz: 30.5, units: [{ kind: 'measure', unit: 'cup', g: 244, fractions: false }] },
     // unit names avoid ending in "tea"/"smoothie" (matching the item name's
     // last word) — that would trip renderComponent's same-word shortcut and
     // drop the "bubble"/"fruit" qualifier, rendering as a bare "one medium".
@@ -233,6 +295,15 @@ const POOLS = {
     // pizza"/"half a pizza" — how people actually say it), even though the
     // per-slice claim name stays the more specific "cheese pizza".
     { q: 'pizza cheese regular crust frozen cooked', name: 'cheese pizza', units: [{ kind: 'count', unit: 'slice', g: 107, min: 1, max: 3 }],
+      wholeLabel: 'pizza',
+      wholeOptions: [
+        { phrase: 'a whole {name}', gMin: 850, gMax: 1000 },
+        { phrase: 'half a {name}', gMin: 425, gMax: 500 },
+      ] },
+    // Pepperoni pizza: a DISTINCT DB row from cheese pizza (which is a held-out
+    // eval single), so "a whole pizza" survives the eval hold-out and can be
+    // emitted BARE (see BARE_COUNT_ITEMS) — the gate's terse whole-pizza input.
+    { q: 'pizza pepperoni regular crust frozen cooked', name: 'pepperoni pizza', units: [{ kind: 'count', unit: 'slice', g: 111, min: 1, max: 3 }],
       wholeLabel: 'pizza',
       wholeOptions: [
         { phrase: 'a whole {name}', gMin: 850, gMax: 1000 },
@@ -535,15 +606,18 @@ for (const pair of ADDON_PAIRS) {
 // would silently regenerate every single draw of them, and the scenario
 // would never actually appear in the output. A different (still sensible)
 // guess sidesteps that without weakening the "ask before assuming" lesson.
+// `count` (v2): a stated whole-unit count when the text names one ("a burger",
+// "a sandwich" → 1); null for liquids/bowls ("a soda", "a beer", "a bowl of
+// soup") and vague amounts ("some chicken"). unit_grams is derived (g / count).
 const SINGLE_CLARIFY = [
-  { text: 'a soda', q: 'beverages cola or pepper types', name: 'soda', g: 355, question: 'Regular or diet?' },
-  { text: 'a coffee', q: 'coffee brewed prepared with tap water', name: 'coffee', g: 240, question: 'Black, or with milk and sugar?' },
-  { text: 'a burger', q: 'fast foods cheeseburger single patty plain', name: 'cheeseburger', g: 170, question: 'Just the patty, or a full cheeseburger with bun and toppings?' },
-  { text: 'some chicken', q: 'chicken breast meat only roasted', name: 'chicken', g: 150, question: 'Roughly how much, and was it fried, grilled, or baked?' },
-  { text: 'a sandwich', q: 'club sandwich', name: 'sandwich', g: 220, question: "What kind of sandwich, and what's on it?" },
-  { text: 'a bowl of soup', q: 'soup chicken noodle', name: 'soup', g: 245, question: 'What kind of soup, and about how big a bowl?' },
-  { text: 'a beer', q: 'beer light', name: 'beer', g: 356, question: 'What kind, and what size?' },
-  { text: 'a salad', q: 'lettuce and tomato salad', name: 'salad', g: 150, question: "What's in it, and is there dressing on it?" },
+  { text: 'a soda', q: 'beverages cola or pepper types', name: 'soda', g: 355, count: null, question: 'Regular or diet?' },
+  { text: 'a coffee', q: 'coffee brewed prepared with tap water', name: 'coffee', g: 240, count: null, question: 'Black, or with milk and sugar?' },
+  { text: 'a burger', q: 'fast foods cheeseburger single patty plain', name: 'cheeseburger', g: 170, count: 1, question: 'Just the patty, or a full cheeseburger with bun and toppings?' },
+  { text: 'some chicken', q: 'chicken breast meat only roasted', name: 'chicken', g: 150, count: null, question: 'Roughly how much, and was it fried, grilled, or baked?' },
+  { text: 'a sandwich', q: 'club sandwich', name: 'sandwich', g: 220, count: 1, question: "What kind of sandwich, and what's on it?" },
+  { text: 'a bowl of soup', q: 'soup chicken noodle', name: 'soup', g: 245, count: null, question: 'What kind of soup, and about how big a bowl?' },
+  { text: 'a beer', q: 'beer light', name: 'beer', g: 356, count: null, question: 'What kind, and what size?' },
+  { text: 'a salad', q: 'lettuce and tomato salad', name: 'salad', g: 150, count: null, question: "What's in it, and is there dressing on it?" },
 ];
 for (const c of SINGLE_CLARIFY) {
   c.food = search(c.q);
@@ -567,15 +641,18 @@ for (const c of SINGLE_CLARIFY) {
 // note above). "a can of soda" is deliberately NOT included here — the
 // system prompt calls out regular-vs-diet as a canonical *good* question
 // (>75 kcal swing), so a can size alone doesn't resolve that ambiguity.
+// `count` (v2): a stated whole-unit count — "a stick"/"a slice"/"a can" → 1,
+// "two slices of bacon" → 2; null for measures/mass/liquids ("a cup of rice",
+// "a handful of almonds", "black coffee", "a large fries"). unit_grams = g/count.
 const SINGLE_CONFIDENT = [
-  { text: 'a stick of butter', q: 'butter salted', name: 'butter', g: 113, meal: 'snack' },
-  { text: 'a slice of pizza', q: 'pizza meat and vegetable topping regular crust frozen cooked', name: 'pizza', g: 130, meal: 'dinner' },
-  { text: 'a cup of rice', q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, meal: 'lunch' },
-  { text: 'a handful of almonds', q: 'nuts almonds', name: 'almonds', g: 28, meal: 'snack' },
-  { text: 'black coffee', q: 'coffee brewed prepared with tap water', name: 'black coffee', g: 240, meal: 'breakfast' },
-  { text: 'a large fries', q: 'potato french fries from fresh fried', name: 'french fries', g: 154, meal: 'lunch' },
-  { text: 'a can of tuna', q: 'tuna light canned water drained', name: 'canned tuna', g: 140, meal: 'lunch' },
-  { text: 'two slices of bacon', q: 'pork cured bacon cooked', name: 'bacon', g: 18, meal: 'breakfast' },
+  { text: 'a stick of butter', q: 'butter salted', name: 'butter', g: 113, count: 1, meal: 'snack' },
+  { text: 'a slice of pizza', q: 'pizza meat and vegetable topping regular crust frozen cooked', name: 'pizza', g: 130, count: 1, meal: 'dinner' },
+  { text: 'a cup of rice', q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, count: null, meal: 'lunch' },
+  { text: 'a handful of almonds', q: 'nuts almonds', name: 'almonds', g: 28, count: null, meal: 'snack' },
+  { text: 'black coffee', q: 'coffee brewed prepared with tap water', name: 'black coffee', g: 240, count: null, meal: 'breakfast' },
+  { text: 'a large fries', q: 'potato french fries from fresh fried', name: 'french fries', g: 154, count: null, meal: 'lunch' },
+  { text: 'a can of tuna', q: 'tuna light canned water drained', name: 'canned tuna', g: 140, count: 1, meal: 'lunch' },
+  { text: 'two slices of bacon', q: 'pork cured bacon cooked', name: 'bacon', g: 18, count: 2, meal: 'breakfast' },
 ];
 for (const c of SINGLE_CONFIDENT) {
   c.food = search(c.q);
@@ -639,6 +716,31 @@ if (BRANDED.length < 50) {
   console.warn(`WARNING: only ${BRANDED.length} branded foods resolved cleanly — chain list or DB may have changed.`);
 }
 
+// Globally-unique branded product names — recognizable WITHOUT the chain, so
+// the user text may drop the chain for these ("a big mac", "2 whoppers"). Every
+// OTHER branded item MUST name its chain in the text, so the model never learns
+// to invent a chain for a generic food it doesn't recognize (the fabrication
+// failure: "a poke bowl" → "Little Caesars Poke Bowl").
+const UNIQUE_BRANDED = ['big mac', 'whopper', 'baconator', 'mcflurry', 'frosty', 'blizzard', 'crunchwrap', 'mcnugget', 'quarter pounder'];
+const isUniqueBranded = (itemLc) => UNIQUE_BRANDED.some((u) => itemLc.includes(u));
+// Strip a leading count/size token from a branded item name so the CLAIM name
+// never carries a digit ("6 Nuggets" → "nuggets", "1/4 lb GrillBurger" →
+// "grillburger", "55+ Club Sandwich" → "club sandwich"): the count belongs in
+// the `count` field, never baked into the name (the fake-SKU failure). The user
+// TEXT keeps the original phrasing.
+const LEADING_COUNT_RE = /^\s*(?:#?\d+(?:[/.]\d+)?\+?["']?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen)\s*(?:lb\.?|lbs\.?|oz\.?|pc\.?|pcs\.?|pieces?)?\s*/i;
+const stripLeadingCount = (name) => name.replace(LEADING_COUNT_RE, '').trim() || name;
+// Items whose own name carries no count/digit — the only ones eligible for the
+// multi-count render ("2 big macs"), so pluralization/semantics stay clean.
+const BRANDED_COUNTABLE = BRANDED.filter((b) => stripLeadingCount(b.item) === b.item && !/\d/.test(b.item));
+// Last words that pluralize cleanly as a countable menu item ("3 crunchy
+// tacos"); anything else uses the safe "N orders of X" phrasing so mass-ish
+// dishes ("orange chicken", "french fries") never render as "3 orange chickens".
+const COUNTABLE_LAST = new Set(['burger', 'cheeseburger', 'hamburger', 'sandwich', 'taco', 'burrito', 'wrap', 'dog', 'hotdog', 'nugget', 'biscuit', 'cookie', 'doughnut', 'donut', 'muffin', 'roll', 'sub', 'slider', 'quesadilla', 'melt', 'wing', 'tender', 'strip', 'whopper', 'baconator', 'mcflurry', 'mcmuffin', 'mcgriddle', 'mcchicken', 'mcdouble', 'frosty', 'blizzard', 'crunchwrap', 'cone', 'sundae', 'pie', 'bowl']);
+if (BRANDED_COUNTABLE.length < 20) {
+  console.warn(`WARNING: only ${BRANDED_COUNTABLE.length} multi-count-eligible branded foods — check LEADING_COUNT_RE.`);
+}
+
 // ---- Eval hold-out: never generate a meal whose food set matches an eval case ----
 const comboKey = (names) => [...new Set(names)].sort().join(' | ');
 const EVAL_COMBOS = (() => {
@@ -692,46 +794,91 @@ const isPluralName = (name) => {
   return last.endsWith('s') && !MASS_NOUN_S_EXCEPTIONS.has(last);
 };
 
+// ---- schema v2: count / unit_grams ----------------------------------------
+// The claim now carries `count` (how many whole units) + `unit_grams` (grams
+// of ONE unit) so the APP multiplies rather than the model. Invariant the
+// generator must uphold on every item: count == null ⇒ unit_grams == null;
+// count != null ⇒ unit_grams != null AND count × unit_grams == grams.
+//
+// `discreteUnit` decides, for a DISHES component / ADDON item that carries no
+// explicitly-rendered quantity, whether its NAME denotes a single countable
+// whole object ("a bagel", "a beef patty", one egg) → count 1 / unit_grams =
+// its (already-jittered) grams, or an amount of a substance / a plural portion
+// (rice, sauce, shredded cheese, "scrambled eggs") → null / null. Judgment
+// call per the schema-v2 mapping; unit_grams = grams keeps count=1 exact under
+// jitter. Bias toward null when ambiguous.
+const DISCRETE_UNIT_WORDS = new Set([
+  'bagel', 'tortilla', 'bun', 'patty', 'dog', 'egg', 'biscuit', 'croissant',
+  'muffin', 'pancake', 'waffle', 'doughnut', 'cookie', 'taco', 'nugget', 'wing',
+  'banana', 'apple', 'orange', 'peach', 'tomato', 'potato', 'pretzel',
+  'bratwurst', 'burger', 'cheeseburger', 'sandwich', 'wrap', 'roll',
+]);
+function discreteUnit(name, grams) {
+  // A plural last word ("scrambled eggs", "cherry tomatoes", "chicken wings")
+  // is a portion of several units, not one stated whole — treat as an amount.
+  if (isPluralName(name)) return { count: null, unit_grams: null };
+  const last = name.toLowerCase().split(/\s+/).pop();
+  if (DISCRETE_UNIT_WORDS.has(singular(last))) return { count: 1, unit_grams: grams };
+  return { count: null, unit_grams: null };
+}
+
 function renderComponent(item, vague) {
   // Whole/half/family-size rendering ("a whole pizza", "half a rotisserie
   // chicken", "a family size bag of chips") — a discrete alternative to the
   // food's normal units, scaled to a realistic whole-item weight rather than
   // a per-100g/per-slice estimate.
-  if (!vague && item.wholeOptions && rand() < 0.3) {
+  if (!vague && item.wholeOptions && rand() < 0.55) {
     const w = pick(item.wholeOptions);
     const g = randInt(w.gMin, w.gMax);
     const phrase = w.phrase.replace('{name}', item.wholeLabel ?? item.name);
-    return { phrase, grams: g };
+    // "half a X" → count 0.5; "a whole X" / "a family size bag of X" → count 1.
+    // unit_grams is the grams of the whole unit (= g/count), so 0.5 × whole ≈ g.
+    const count = /\bhalf\b/i.test(w.phrase) ? 0.5 : 1;
+    return { phrase, grams: g, count, unit_grams: Math.round(g / count) };
+  }
+  // Fluid-ounce drink render ("8 oz of milk", "12 fl oz of orange juice") — for
+  // liquids marked with flOz (grams per FLUID ounce, ~30 g), the "N oz" is a
+  // volume, so grams = N × flOz. count/unit_grams stay null (not a unit count).
+  if (!vague && item.flOz && rand() < 0.4) {
+    const oz = pick([6, 8, 8, 12, 12, 16, 16, 20]);
+    const ozWord = pick(['oz', 'oz', 'ounces', 'fl oz']);
+    return { phrase: `${oz} ${ozWord} of ${item.name}`, grams: Math.round(oz * item.flOz), count: null, unit_grams: null };
   }
   const unit = pick(item.units);
   if (vague) {
     const phrase = pick([`some ${item.name}`, `a serving of ${item.name}`, `a bit of ${item.name}`]);
     const mid = unit.kind === 'g' ? Math.round((unit.min + unit.max) / 2) : Math.round(unit.g * ((unit.min ?? 1) + (unit.max ?? 1)) / 2);
-    return { phrase, grams: mid, vague: true };
+    return { phrase, grams: mid, vague: true, count: null, unit_grams: null };
   }
   if (unit.kind === 'g') {
     // ~25% of the time state the weight in ounces (teaches oz→g: "8 oz of steak")
     if (rand() < 0.25 && unit.max >= 40) {
       const oz = randInt(Math.max(1, Math.round(unit.min / OZ_G)), Math.max(2, Math.round(unit.max / OZ_G)));
-      return { phrase: `${oz} oz of ${item.name}`, grams: Math.round(oz * OZ_G) };
+      return { phrase: `${oz} oz of ${item.name}`, grams: Math.round(oz * OZ_G), count: null, unit_grams: null };
     }
     const g = randInt(unit.min, unit.max);
-    return { phrase: `${g} ${pick(['g', 'grams'])} of ${item.name}`, grams: g };
+    return { phrase: `${g} ${pick(['g', 'grams'])} of ${item.name}`, grams: g, count: null, unit_grams: null };
   }
   if (unit.kind === 'count') {
     // Bulk quantities ("ten tacos", "a dozen wings", "20 nuggets") so the
     // model learns explicit large counts scale — capped to a realistic total
     // weight (not a fixed count ceiling), so small items (nuggets, cookies,
     // doughnuts) can go up to ~20-24 while heavier bulkable items stay sane.
-    const bulkable = unit.g <= 120 && !/stick|handful|can|bag|fillet|bowl|serving|small|medium|large|half|family/i.test(unit.unit);
+    // \bbag\b (not bare "bag") so the exclusion still catches the "small bag"
+    // chips unit without also matching "bagel" — that substring bug kept bagels
+    // out of the dozen/half-dozen renders entirely (v7 "half a dozen bagels").
+    const bulkable = unit.g <= 120 && !/stick|handful|can|\bbag\b|fillet|bowl|serving|small|medium|large|half|family/i.test(unit.unit);
     let n;
     let dozenWord = null;
     if (bulkable && rand() < 0.12) {
-      // "a dozen"/"a half dozen" — well represented across many bulkable
-      // foods (eggs, wings, nuggets, doughnuts, cookies, tacos), not just
-      // whenever a random count happens to land on 12.
-      if (rand() < 0.7) { n = 12; dozenWord = 'a dozen'; }
-      else { n = 6; dozenWord = 'a half dozen'; }
+      // "a dozen"/"half a dozen" — well represented across many bulkable foods
+      // (eggs, wings, nuggets, doughnuts, cookies, tacos, bagels), not just
+      // whenever a random count happens to land on 12. BOTH half-dozen
+      // phrasings ("a half dozen X" and "half a dozen X") appear, so the model
+      // maps either to count 6 with a clean plural name (v7 regressed "half a
+      // dozen bagels" to a singular name with count 1).
+      if (rand() < 0.6) { n = 12; dozenWord = 'a dozen'; }
+      else { n = 6; dozenWord = pick(['a half dozen', 'half a dozen']); }
     } else if (bulkable && rand() < 0.35) {
       const hi = Math.min(24, Math.max(8, Math.floor(1800 / unit.g)));
       n = randInt(6, hi);
@@ -747,11 +894,12 @@ function renderComponent(item, vague) {
       singular(unitLast) === singular(nameLast)
         ? `${numStr} ${inflectLast(unit.unit, n)}`
         : `${numStr} ${inflectLast(unit.unit, n)} of ${item.name}`;
-    return { phrase, grams: n * unit.g };
+    // count-kind: the user stated n whole units of unit.g grams each.
+    return { phrase, grams: n * unit.g, count: n, unit_grams: unit.g };
   }
-  // measure (cup / tablespoon)
+  // measure (cup / tablespoon) — an amount of a substance, not a unit count.
   const fr = unit.fractions ? pick(FRACTION_PHRASES) : pick(FRACTION_PHRASES.filter((x) => x.f >= 1 && x.f !== 1.5));
-  return { phrase: `${fr.phrase} ${inflectLast(unit.unit, fr.f > 1 ? 2 : 1)} of ${item.name}`, grams: Math.round(fr.f * unit.g) };
+  return { phrase: `${fr.phrase} ${inflectLast(unit.unit, fr.f > 1 ? 2 : 1)} of ${item.name}`, grams: Math.round(fr.f * unit.g), count: null, unit_grams: null };
 }
 
 const jitter = (g) => Math.max(5, Math.round(g * (0.85 + rand() * 0.3)));
@@ -763,8 +911,9 @@ function makeAddonSample() {
   // items on plain inputs ("fries" → fries + ketchup it was never told about);
   // the contrast teaches that the add-on exists only when the text says so.
   if (rand() < 0.25) {
+    const g = jitter(p.base.g);
     const claimItems = [{
-      name: p.base.name, grams: jitter(p.base.g), prep: null, confidence: 0.7,
+      name: p.base.name, ...discreteUnit(p.base.name, g), grams: g, prep: null, confidence: 0.7,
       db_search_terms: [p.base.q], est_per100: roundedPer100(p.base.food), _dbName: p.base.food.name,
     }];
     return {
@@ -779,15 +928,19 @@ function makeAddonSample() {
     .replace('{b}', p.base.phrase ?? p.base.name)
     .replace('{a}', p.addon.name)
     .replace('{e}', p.extra ? p.extra.name : '');
-  const claimItems = comps.map((c) => ({
-    name: c.name,
-    grams: jitter(c.g),
-    prep: null,
-    confidence: 0.7,
-    db_search_terms: [c.q],
-    est_per100: roundedPer100(c.food),
-    _dbName: c.food.name,
-  }));
+  const claimItems = comps.map((c) => {
+    const g = jitter(c.g);
+    return {
+      name: c.name,
+      ...discreteUnit(c.name, g),
+      grams: g,
+      prep: null,
+      confidence: 0.7,
+      db_search_terms: [c.q],
+      est_per100: roundedPer100(c.food),
+      _dbName: c.food.name,
+    };
+  });
   const claim = {
     items: claimItems.map(({ _dbName, ...item }) => item),
     needs_clarification: false,
@@ -807,20 +960,59 @@ function brandedMealGuess(item) {
 }
 
 function makeBrandedSample() {
-  const b = pick(BRANDED);
+  // ~30% state a 2-4 count ("2 big macs", "three crunchy tacos from taco bell",
+  // "3 orders of orange chicken from panda express"): the count lives in the
+  // TEXT and the gold `count` field, NEVER in the item name (which stays clean,
+  // no digit) — the fix for the fake-SKU emission {name:"2 big mac", count:1}.
+  const multi = rand() < 0.3 && BRANDED_COUNTABLE.length > 0;
+  const b = multi ? pick(BRANDED_COUNTABLE) : pick(BRANDED);
   const itemLc = b.item.toLowerCase();
   const chainCasual = BRANDED_CASUAL[b.chain] ?? b.chain.toLowerCase();
-  const withArticle = articleize(itemLc);
-  const text = pick([
-    withArticle,
-    `${withArticle} from ${chainCasual}`,
-    `a ${chainCasual} ${itemLc}`,
-    `got ${withArticle} from ${chainCasual}`,
-    `had ${withArticle} at ${chainCasual}`,
-  ]);
+  const unique = isUniqueBranded(itemLc);
+
+  let text, count, name, unit_grams, grams;
+  if (multi) {
+    const n = randInt(2, 4);
+    const numStr = numForm(n);
+    const countable = unique || COUNTABLE_LAST.has(singular(itemLc.split(' ').pop()));
+    const pluralPhrase = `${numStr} ${inflectLast(itemLc, n)}`;   // "2 big macs"
+    const ordersPhrase = `${numStr} orders of ${itemLc}`;          // "3 orders of orange chicken"
+    // Every chain-form names the chain; the bare form (chain omitted) is only
+    // offered for globally-unique names.
+    const chainForms = countable
+      ? [`${pluralPhrase} from ${chainCasual}`, `${numStr} ${chainCasual} ${inflectLast(itemLc, n)}`, `${ordersPhrase} from ${chainCasual}`]
+      : [`${ordersPhrase} from ${chainCasual}`, `${numStr} ${chainCasual} ${itemLc}`];
+    const bare = countable ? pluralPhrase : ordersPhrase;
+    text = unique ? pick([bare, bare, ...chainForms]) : pick(chainForms);
+    count = n;
+    name = itemLc;              // BRANDED_COUNTABLE guarantees no digit here
+    unit_grams = b.grams;
+    grams = n * b.grams;
+  } else {
+    const cleanName = stripLeadingCount(itemLc);
+    const digitInName = /^[\s#]*\d/.test(cleanName); // belt-and-suspenders
+    const withArticle = articleize(itemLc);
+    const chainForms = [
+      `${withArticle} from ${chainCasual}`,
+      `a ${chainCasual} ${itemLc}`,
+      `got ${withArticle} from ${chainCasual}`,
+      `had ${withArticle} at ${chainCasual}`,
+    ];
+    // Bare (chain omitted) only for globally-unique names; everything else must
+    // mention the chain, so the model never learns to fabricate one.
+    text = unique ? pick([withArticle, withArticle, ...chainForms]) : pick(chainForms);
+    // Branded: one menu item = one whole unit; unit_grams is the row's portion.
+    count = digitInName ? null : 1;
+    name = cleanName;
+    unit_grams = digitInName ? null : b.grams;
+    grams = b.grams;
+  }
+
   const claimItems = [{
-    name: itemLc,
-    grams: b.grams,
+    name,
+    count,
+    unit_grams,
+    grams,
     prep: null,
     confidence: 0.9,
     db_search_terms: [b.dbName],
@@ -873,12 +1065,23 @@ function makeIngredientSample() {
     items.push(it);
     usedDbNames.add(it.food.name);
   }
-  const rendered = items.map((it) => ({ item: it, grams: renderComponent(it, false).grams }));
-  const names = rendered.map((r) => r.item.name);
-  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}` : names[0];
+  const rendered = items.map((it) => {
+    const rc = renderComponent(it, false);
+    return { item: it, phrase: rc.phrase, grams: rc.grams, count: rc.count, unit_grams: rc.unit_grams };
+  });
+  // A count-kind item is listed WITH its stated quantity ("12 chicken nuggets",
+  // "half a dozen bagels") so the text matches the gold count — otherwise a
+  // bulk count would be asserted from a bare name the text never quantified.
+  // Measure/gram/vague items keep the bare name (the plain-list signal).
+  const label = (r) => (r.count != null ? r.phrase : r.item.name);
+  const list = rendered.length > 1
+    ? `${rendered.slice(0, -1).map(label).join(', ')}, and ${label(rendered[rendered.length - 1])}`
+    : label(rendered[0]);
   const text = tmpl.render(list);
   const claimItems = rendered.map((r) => ({
     name: r.item.name,
+    count: r.count,
+    unit_grams: r.unit_grams,
     grams: r.grams,
     prep: null,
     confidence: 0.7,
@@ -888,9 +1091,11 @@ function makeIngredientSample() {
   }));
   if (tmpl.base) {
     const b = INGREDIENT_BASES[tmpl.base];
+    const g = jitter(b.g);
     claimItems.push({
       name: b.name,
-      grams: jitter(b.g),
+      ...discreteUnit(b.name, g),
+      grams: g,
       prep: null,
       confidence: 0.7,
       db_search_terms: [b.q],
@@ -914,6 +1119,8 @@ function makeSingleClarifySample() {
   const c = pick(SINGLE_CLARIFY);
   const claimItems = [{
     name: c.name,
+    count: c.count ?? null,
+    unit_grams: c.count ? Math.round(c.g / c.count) : null,
     grams: c.g,
     prep: null,
     confidence: 0.45,
@@ -936,6 +1143,8 @@ function makeSingleConfidentSample() {
   const c = pick(SINGLE_CONFIDENT);
   const claimItems = [{
     name: c.name,
+    count: c.count ?? null,
+    unit_grams: c.count ? Math.round(c.g / c.count) : null,
     grams: c.g,
     prep: null,
     confidence: 0.95,
@@ -952,13 +1161,371 @@ function makeSingleConfidentSample() {
   return { text: c.text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
 }
 
+// ---- Bare count/whole single-item samples ----
+// The gate feeds terse inputs ("a whole pizza", "20 nuggets"), but training
+// rows were mostly full sentences, so bare count/whole phrasings under-stuck
+// (gate: 0% exact on whole/family-size). This emits ONE count/whole render as
+// the ENTIRE user message. Only non-held-out foods with a count unit or
+// wholeOptions (a held-out single combo would be silently regenerated every
+// draw and never appear).
+const ALL_POOL_ITEMS = Object.values(POOLS).flat();
+const poolByName = (name) => ALL_POOL_ITEMS.find((x) => x.name === name);
+const BARE_COUNT_ITEMS = [
+  'pepperoni pizza', 'chicken nuggets', 'fried chicken wings', 'rotisserie chicken',
+  'roast chicken', 'scrambled eggs', 'hard-boiled eggs', 'mozzarella sticks',
+  'meatballs', 'chicken tenders', 'mini muffins', 'pancakes', 'doughnut', 'pretzels',
+  // v8: bagels reach the dozen/half-dozen renders ("half a dozen bagels"), and
+  // the small-piece foods (shrimp ~12 g, potstickers ~35 g) render bare counts.
+  'plain bagel', 'potstickers', 'cooked shrimp',
+].map(poolByName).filter(Boolean);
+if (BARE_COUNT_ITEMS.length < 10) {
+  console.warn(`WARNING: only ${BARE_COUNT_ITEMS.length} bare-count items resolved — a pool name may have changed.`);
+}
+
+function bareMealGuess(name) {
+  if (/pancake|muffin|doughnut|egg/i.test(name)) return 'breakfast';
+  if (/cookie|chip|pretzel|stick|nugget|wing|meatball|tender/i.test(name)) return pick(['snack', 'lunch']);
+  return pick(['lunch', 'dinner']);
+}
+
+function makeBareCountSample() {
+  const item = pick(BARE_COUNT_ITEMS);
+  // Force a count/whole render (retry past any gram/measure unit the item also
+  // carries); renderComponent already owns all the count/dozen/whole logic.
+  let r = renderComponent(item, false);
+  for (let i = 0; i < 40 && r.count == null; i++) r = renderComponent(item, false);
+  const claimItems = [{
+    name: item.name,
+    count: r.count,
+    unit_grams: r.unit_grams,
+    grams: r.grams,
+    prep: null,
+    confidence: 0.95,
+    db_search_terms: [item.q],
+    est_per100: roundedPer100(item.food),
+    _dbName: item.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: bareMealGuess(item.name),
+  };
+  return { text: r.phrase, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// ---- Negation: a dish with a removed component ----
+// "a chicken burrito with no rice" — gold claim is the dish WITHOUT that
+// component. The model was emitting the negated food anyway ("no rice" still
+// produced rice). Each `keep` list is the dish minus the removed item; every
+// q is one already used elsewhere (so it resolves), and the removed word never
+// appears in any kept component name.
+const NEGATION_TEMPLATES = ['{d} with no {a}', '{d} without {a}', '{d}, no {a}', '{d} but no {a}', '{d} with no {a} on it'];
+const NEGATION_PAIRS = [
+  { text: 'a chicken burrito', remove: 'rice', meal: 'lunch', keep: [
+    { q: 'tortillas ready to bake or fry flour shelf stable', name: 'flour tortilla', g: 70 },
+    { q: 'beans black mature seeds cooked boiled', name: 'black beans', g: 60 },
+    { q: 'chicken breast meat only roasted', name: 'grilled chicken', g: 85, prep: 'grilled' },
+    { q: 'cheese cheddar', name: 'shredded cheese', g: 28 },
+  ] },
+  { text: 'a beef burrito', remove: 'cheese', meal: 'lunch', keep: [
+    { q: 'tortillas ready to bake or fry flour shelf stable', name: 'flour tortilla', g: 70 },
+    { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 80 },
+    { q: 'beans black mature seeds cooked boiled', name: 'black beans', g: 60 },
+    { q: 'beef ground 85 lean meat 15 fat patty cooked broiled', name: 'ground beef', g: 85 },
+  ] },
+  { text: 'a chicken caesar salad', remove: 'croutons', meal: 'lunch', keep: [
+    { q: 'lettuce cos or romaine raw', name: 'romaine lettuce', g: 130 },
+    { q: 'chicken breast meat only roasted', name: 'grilled chicken', g: 120, prep: 'grilled' },
+    { q: 'salad dressing caesar', name: 'caesar dressing', g: 30 },
+    { q: 'cheese parmesan grated', name: 'parmesan', g: 10 },
+  ] },
+  { text: 'a turkey and swiss sandwich', remove: 'mayo', meal: 'lunch', keep: [
+    { q: 'bread whole wheat commercially prepared', name: 'whole wheat bread', g: 64 },
+    { q: 'turkey breast deli', name: 'deli turkey breast', g: 71 },
+    { q: 'cheese swiss', name: 'swiss cheese', g: 28 },
+  ] },
+  { text: 'a greek yogurt parfait', remove: 'granola', meal: 'breakfast', keep: [
+    { q: 'yogurt greek plain nonfat', name: 'greek yogurt', g: 245 },
+    { q: 'blueberries raw', name: 'blueberries', g: 74 },
+  ] },
+  { text: 'a grilled chicken salad', remove: 'ranch', meal: 'lunch', keep: [
+    { q: 'lettuce cos or romaine raw', name: 'romaine lettuce', g: 94 },
+    { q: 'chicken breast meat only roasted', name: 'grilled chicken breast', g: 100, prep: 'grilled' },
+    { q: 'tomatoes red ripe raw', name: 'cherry tomatoes', g: 62 },
+  ] },
+];
+for (const p of NEGATION_PAIRS) {
+  for (const c of p.keep) {
+    c.food = search(c.q);
+    if (!c.food) throw new Error(`Negation keep food not found in DB: "${c.q}"`);
+    if (c.name.toLowerCase().includes(p.remove)) {
+      throw new Error(`Negation invariant broken: kept "${c.name}" contains removed "${p.remove}"`);
+    }
+  }
+}
+
+function makeNegationSample() {
+  const p = pick(NEGATION_PAIRS);
+  const text = pick(NEGATION_TEMPLATES).replace('{d}', p.text).replace('{a}', p.remove);
+  const claimItems = p.keep.map((c) => {
+    const g = jitter(c.g);
+    return {
+      name: c.name,
+      ...discreteUnit(c.name, g),
+      grams: g,
+      prep: c.prep ?? null,
+      confidence: 0.7,
+      db_search_terms: [c.q],
+      est_per100: roundedPer100(c.food),
+      _dbName: c.food.name,
+    };
+  });
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: p.meal,
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// ---- v8: fraction-of-whole-dish ("a quarter of the lasagna") ----
+// The fraction applies to the WHOLE dish, so unit_grams is the whole-dish
+// weight and count is the fraction (0.25/0.33/0.5); grams = count × whole. v7
+// multiplied the fraction against a single-serving weight and returned ~39 g.
+// Only non-held-out single dishes (pepperoni, NOT cheese, pizza — cheese pizza
+// is a held-out eval single that would be regenerated away as a bare single).
+const FRACTION_DISHES = [
+  { q: 'lasagna', name: 'lasagna', wholeMin: 1300, wholeMax: 1500, meal: 'dinner' },          // pan
+  { q: 'cake chocolate prepared', name: 'chocolate cake', wholeMin: 850, wholeMax: 1050, meal: 'snack' },
+  { q: 'cake white prepared', name: 'cake', wholeMin: 850, wholeMax: 1050, meal: 'snack' },
+  { q: 'pie apple', name: 'apple pie', wholeMin: 900, wholeMax: 1150, meal: 'snack' },
+  { q: 'pie pumpkin', name: 'pumpkin pie', wholeMin: 900, wholeMax: 1150, meal: 'snack' },
+  { q: 'tuna noodle casserole', name: 'tuna casserole', wholeMin: 1300, wholeMax: 1600, meal: 'dinner' },
+  { q: 'pizza pepperoni regular crust frozen cooked', name: 'pizza', wholeMin: 850, wholeMax: 1000, meal: 'dinner' },
+  { q: 'chicken broilers rotisserie original seasoning breast meat and skin cooked', name: 'rotisserie chicken', wholeMin: 850, wholeMax: 950, meal: 'dinner' },
+];
+for (const d of FRACTION_DISHES) {
+  d.food = search(d.q);
+  if (!d.food) throw new Error(`Fraction-dish food not found in DB: "${d.q}"`);
+}
+// count is the stated fraction; "0.33" (not 1/3) keeps count × unit_grams == grams
+// within ±1 rounding.
+const DISH_FRACTIONS = [
+  { phrases: ['a quarter of the {name}', 'a quarter of a {name}', 'a quarter of {name}', '1/4 of the {name}'], f: 0.25 },
+  { phrases: ['a third of the {name}', 'a third of a {name}', 'a third of {name}', '1/3 of the {name}'], f: 0.33 },
+  { phrases: ['half the {name}', 'half of the {name}', 'half a {name}', '1/2 of the {name}'], f: 0.5 },
+];
+function makeFractionDishSample() {
+  const d = pick(FRACTION_DISHES);
+  const fr = pick(DISH_FRACTIONS);
+  const wholeG = randInt(d.wholeMin, d.wholeMax);
+  const grams = Math.round(fr.f * wholeG);
+  const text = pick(fr.phrases).replace('{name}', d.name);
+  const claimItems = [{
+    name: d.name,
+    count: fr.f,
+    unit_grams: wholeG,
+    grams,
+    prep: null,
+    confidence: 0.8,
+    db_search_terms: [d.q],
+    est_per100: roundedPer100(d.food),
+    _dbName: d.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: d.meal,
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// ---- v8: whole-container phrasings ("the whole box of donuts") ----
+// Gold = container-count × per-unit weight (box of 12 donuts) or count 1 ×
+// whole-container weight (loaf/sleeve/bag). count × unit_grams == grams exactly.
+// tortilla chips / pretzels stand in for the generic "bag" (plain potato chips
+// is a held-out eval single).
+const CONTAINER_ITEMS = [
+  { texts: ['the whole box of donuts', 'a whole box of donuts', 'a box of a dozen donuts', 'the entire box of donuts'],
+    q: 'doughnuts cake type plain', name: 'doughnuts', count: 12, unitMin: 55, unitMax: 65, meal: 'snack' },
+  { texts: ['a whole loaf of bread', 'the whole loaf of bread', 'a loaf of bread'],
+    q: 'bread white commercially prepared', name: 'loaf of bread', count: 1, unitMin: 450, unitMax: 560, meal: 'snack' },
+  { texts: ['the whole sleeve of crackers', 'a whole sleeve of crackers', 'a sleeve of crackers'],
+    q: 'crackers standard snack-type regular', name: 'crackers', count: 1, unitMin: 100, unitMax: 120, meal: 'snack' },
+  { texts: ['a whole bag of tortilla chips', 'the whole bag of chips', 'a whole bag of chips'],
+    q: 'snacks tortilla chips plain', name: 'tortilla chips', count: 1, unitMin: 150, unitMax: 300, meal: 'snack' },
+  { texts: ['a whole bag of pretzels', 'the whole bag of pretzels'],
+    q: 'snacks pretzels hard plain salted', name: 'pretzels', count: 1, unitMin: 200, unitMax: 350, meal: 'snack' },
+];
+for (const c of CONTAINER_ITEMS) {
+  c.food = search(c.q);
+  if (!c.food) throw new Error(`Container food not found in DB: "${c.q}"`);
+}
+function makeContainerSample() {
+  const c = pick(CONTAINER_ITEMS);
+  const unit_grams = randInt(c.unitMin, c.unitMax);
+  const grams = c.count * unit_grams;
+  const text = pick(c.texts);
+  const claimItems = [{
+    name: c.name,
+    count: c.count,
+    unit_grams,
+    grams,
+    prep: null,
+    confidence: 0.85,
+    db_search_terms: [c.q],
+    est_per100: roundedPer100(c.food),
+    _dbName: c.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: c.meal,
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// ---- v8: non-food / gibberish → ask instead of hallucinating a food ----
+// items:[] is schema-legal. Gibberish/non-food → ONE clarifying question;
+// "I didn't eat anything" → no question (nothing to clarify); "just water" →
+// a real 0-kcal water item (better than an empty ask).
+const WATER_FOOD = search('water bottled generic');
+if (!WATER_FOOD) throw new Error('Water food not found in DB: "water bottled generic"');
+const WATER_TEXTS = ['just water', 'a glass of water', 'some water', 'a bottle of water', 'water', 'a big glass of water'];
+const NOTHING_NOASK = ["I didn't eat anything", "I didn't eat anything today", "I haven't eaten yet", 'didn\'t eat anything', 'I skipped this meal'];
+const NONFOOD_ASK = ['asdfghjkl', 'my dog', 'nothing', '???', 'qwerty', 'lorem ipsum', 'test', 'aaaaa', 'blah blah', 'idk', 'sdkfjh'];
+const NONFOOD_QUESTION = "What did you eat? I couldn't find any food in that.";
+function makeNonFoodSample() {
+  const r = rand();
+  if (r < 0.3) {
+    const grams = randInt(240, 500);
+    const claimItems = [{
+      name: 'water',
+      count: null,
+      unit_grams: null,
+      grams,
+      prep: null,
+      confidence: 0.85,
+      db_search_terms: ['water bottled generic'],
+      est_per100: roundedPer100(WATER_FOOD),
+      _dbName: WATER_FOOD.name,
+    }];
+    return {
+      text: pick(WATER_TEXTS),
+      claim: { items: claimItems.map(({ _dbName, ...i }) => i), needs_clarification: false, questions: [], meal_guess: 'snack' },
+      combo: comboKey(claimItems.map((i) => i._dbName)),
+    };
+  }
+  if (r < 0.55) {
+    return { text: pick(NOTHING_NOASK), claim: { items: [], needs_clarification: false, questions: [], meal_guess: 'snack' }, combo: comboKey([]) };
+  }
+  return { text: pick(NONFOOD_ASK), claim: { items: [], needs_clarification: true, questions: [NONFOOD_QUESTION], meal_guess: 'snack' }, combo: comboKey([]) };
+}
+
+// ---- v8: plain / nothing-on-it (strip condiment) + condiment fidelity ----
+// "a plain bagel" / "dry toast" / "X, nothing on it" → base item ONLY (the
+// model was adding an unstated condiment). The "with just <condiment>" cases
+// are the contrast: keep EXACTLY the named condiment (no ketchup-for-mustard
+// substitution, no invented second sauce).
+const PLAIN_CASES = [
+  { texts: ['a plain bagel', 'a bagel with nothing on it', 'just a plain bagel, no cream cheese'], meal: 'breakfast',
+    keep: [{ q: 'bagels plain enriched', name: 'bagel', g: 99, count: 1 }] },
+  { texts: ['dry toast', 'plain toast, no butter', 'toast with nothing on it'], meal: 'breakfast',
+    keep: [{ q: 'bread whole wheat commercially prepared toasted', name: 'toast', g: 26, count: 1 }] },
+  { texts: ['plain white rice', 'just plain rice, nothing on it'], meal: 'lunch',
+    keep: [{ q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 158 }] },
+  { texts: ['a plain baked potato', 'a baked potato with nothing on it', 'a plain baked potato, no butter or sour cream'], meal: 'dinner',
+    keep: [{ q: 'potatoes baked flesh and skin', name: 'baked potato', g: 173, count: 1 }] },
+  { texts: ['plain scrambled eggs', 'scrambled eggs with nothing on them', 'just plain scrambled eggs'], meal: 'breakfast',
+    keep: [{ q: 'egg whole cooked scrambled', name: 'scrambled eggs', g: 122 }] },
+  { texts: ['a plain hamburger', 'a plain burger with nothing on it', 'a plain hamburger, no condiments'], meal: 'lunch',
+    keep: [{ q: 'fast foods hamburger single patty plain', name: 'hamburger', g: 110, count: 1 }] },
+  { texts: ['a hot dog with just mustard', 'a hot dog, only mustard on it', 'a hot dog with mustard and nothing else'], meal: 'dinner',
+    keep: [{ q: 'frankfurter beef', name: 'hot dog', g: 48, count: 1 }, { q: 'mustard prepared yellow', name: 'mustard', g: 8 }] },
+  { texts: ['a bagel with just cream cheese', 'a bagel with only cream cheese on it'], meal: 'breakfast',
+    keep: [{ q: 'bagels plain enriched', name: 'bagel', g: 99, count: 1 }, { q: 'cheese cream', name: 'cream cheese', g: 30 }] },
+];
+for (const p of PLAIN_CASES) {
+  for (const k of p.keep) {
+    k.food = search(k.q);
+    if (!k.food) throw new Error(`Plain keep food not found in DB: "${k.q}"`);
+  }
+}
+function makePlainSample() {
+  const p = pick(PLAIN_CASES);
+  const text = pick(p.texts);
+  const claimItems = p.keep.map((k) => {
+    const g = jitter(k.g);
+    const cu = k.count != null ? { count: k.count, unit_grams: Math.round(g / k.count) } : discreteUnit(k.name, g);
+    return {
+      name: k.name,
+      count: cu.count,
+      unit_grams: cu.unit_grams,
+      grams: g,
+      prep: null,
+      confidence: 0.85,
+      db_search_terms: [k.q],
+      est_per100: roundedPer100(k.food),
+      _dbName: k.food.name,
+    };
+  });
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: p.meal,
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
+// ---- v8: bare fluid-ounce drink ("8 ounces of milk" → ~240 g) ----
+// Whole milk only (2% milk / orange juice / cola are held-out eval singles, so
+// a bare single of them regenerates away). In-meal fl-oz renders (renderComponent
+// flOz path) cover those drinks without the hold-out problem.
+const FLOZ_MILK = ALL_POOL_ITEMS.find((x) => x.name === 'whole milk');
+function makeFlOzDrinkSample() {
+  const oz = pick([6, 8, 8, 12, 12, 16, 20]);
+  const grams = Math.round(oz * FLOZ_MILK.flOz);
+  const text = `${oz} ${pick(['oz', 'oz', 'ounces', 'fl oz'])} of ${pick(['milk', 'whole milk'])}`;
+  const claimItems = [{
+    name: 'whole milk',
+    count: null,
+    unit_grams: null,
+    grams,
+    prep: null,
+    confidence: 0.95,
+    db_search_terms: [FLOZ_MILK.q],
+    est_per100: roundedPer100(FLOZ_MILK.food),
+    _dbName: FLOZ_MILK.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: pick(['breakfast', 'snack']),
+  };
+  return { text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
 function makeSampleOnce() {
   const r = rand();
-  if (r < ADDON_FRAC) return makeAddonSample();
-  if (r < ADDON_FRAC + BRANDED_FRAC) return makeBrandedSample();
-  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC) return makeIngredientSample();
-  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC + CLARIFY_FRAC) return makeSingleClarifySample();
-  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC + CLARIFY_FRAC + SINGLE_CONFIDENT_FRAC) return makeSingleConfidentSample();
+  let t = ADDON_FRAC;
+  if (r < t) return makeAddonSample();
+  if (r < (t += BRANDED_FRAC)) return makeBrandedSample();
+  if (r < (t += INGREDIENT_FRAC)) return makeIngredientSample();
+  if (r < (t += CLARIFY_FRAC)) return makeSingleClarifySample();
+  if (r < (t += SINGLE_CONFIDENT_FRAC)) return makeSingleConfidentSample();
+  if (r < (t += BARE_COUNT_FRAC)) return makeBareCountSample();
+  if (r < (t += NEGATION_FRAC)) return makeNegationSample();
+  if (r < (t += FRACTION_DISH_FRAC)) return makeFractionDishSample();
+  if (r < (t += CONTAINER_FRAC)) return makeContainerSample();
+  if (r < (t += PLAIN_FRAC)) return makePlainSample();
+  if (r < (t += FLOZ_DRINK_FRAC)) return makeFlOzDrinkSample();
+  if (r < (t += NONFOOD_FRAC)) return makeNonFoodSample();
   const shape = pick(MEAL_SHAPES);
   const entries = []; // {kind:'item', item, cat} | {kind:'dish', dish}
   // Dedupe by RESOLVED DB FOOD across BOTH plain-item slots and dish-component
@@ -998,15 +1565,19 @@ function makeSampleOnce() {
       return {
         phrase: e.dish.text,
         dish: e.dish,
-        claimItems: e.dish.components.map((c) => ({
-          name: c.name,
-          grams: jitter(c.g),
-          prep: c.prep,
-          confidence: 0.7,
-          db_search_terms: [c.q],
-          est_per100: roundedPer100(c.food),
-          _dbName: c.food.name,
-        })),
+        claimItems: e.dish.components.map((c) => {
+          const g = jitter(c.g);
+          return {
+            name: c.name,
+            ...discreteUnit(c.name, g),
+            grams: g,
+            prep: c.prep,
+            confidence: 0.7,
+            db_search_terms: [c.q],
+            est_per100: roundedPer100(c.food),
+            _dbName: c.food.name,
+          };
+        }),
       };
     }
     const r = renderComponent(e.item, i === vagueIdx);
@@ -1015,6 +1586,8 @@ function makeSampleOnce() {
       vagueItem: r.vague ? e.item : undefined,
       claimItems: [{
         name: e.item.name,
+        count: r.count,
+        unit_grams: r.unit_grams,
         grams: r.grams,
         prep: null,
         confidence: r.vague ? 0.5 : 0.95,

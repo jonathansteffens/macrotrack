@@ -107,17 +107,35 @@ function countInName(name) {
   return COUNT_WORDS[(name || '').trim().toLowerCase().split(/\s+/)[0]] ?? null;
 }
 function seedGrams(item, food) {
-  if (food?.data_type !== 'branded') return item.grams;
+  const branded = food?.data_type === 'branded';
   // Multi-portion rows: label match to the claim name, then closest grams.
-  const portions = JSON.parse(food.portions_json || '[]').filter((p) => p.grams > 0);
-  const toks = (item.name || '').toLowerCase().split(/\s+/).filter((t) => t.length > 2);
-  const sc = (l) => toks.filter((t) => (l || '').toLowerCase().includes(t)).length;
-  const serving = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - item.grams) - Math.abs(b.grams - item.grams))[0]?.grams;
-  if (!serving || serving <= 0) return item.grams;
+  let brandedServing;
+  if (branded) {
+    const portions = JSON.parse(food.portions_json || '[]').filter((p) => p.grams > 0);
+    const toks = (item.name || '').toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+    const sc = (l) => toks.filter((t) => (l || '').toLowerCase().includes(t)).length;
+    brandedServing = portions.sort((a, b) => sc(b.label) - sc(a.label) || Math.abs(a.grams - item.grams) - Math.abs(b.grams - item.grams))[0]?.grams;
+  }
+  // v2 count preference (mirrors resolver.ts seedGrams): whole-unit count ×
+  // per-unit serving (branded DB serving, else unit_grams, else grams/count).
+  if (typeof item.count === 'number' && Number.isFinite(item.count) && item.count > 0) {
+    // Stopgap for the "fake branded SKU" emission {name:"2 big mac", count:1}:
+    // count stuck at 1 but the real count baked into the name — trust the
+    // larger; a genuine count > 1 is untouched. (mirrors resolver.ts,
+    // playground.mjs seedGrams — keep the three in sync.)
+    const effCount = item.count === 1 ? Math.max(item.count, countInName(item.name) ?? 1) : item.count;
+    const count = Math.min(24, Math.max(0.25, effCount));
+    const serving = brandedServing && brandedServing > 0
+      ? brandedServing
+      : item.unit_grams && item.unit_grams > 0 ? item.unit_grams : item.grams / item.count;
+    return Math.round(count * serving);
+  }
+  if (!branded) return item.grams;
+  if (!brandedServing || brandedServing <= 0) return item.grams;
   const explicit = countInName(item.name);
   const plural = /s$/i.test((item.name || '').trim());
-  const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(item.grams / serving))) : 1);
-  return count * serving;
+  const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(item.grams / brandedServing))) : 1);
+  return count * brandedServing;
 }
 
 function resolveClaim(claim) {

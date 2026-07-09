@@ -8,7 +8,18 @@
 export type ClaimItem = {
   /** Plain food name, e.g. "grilled chicken breast" */
   name: string;
-  /** Estimated amount in grams */
+  /**
+   * v2: how many discrete units the user stated (2 for "two burgers", 0.5 for
+   * "half a pizza"); null when the amount isn't a whole-unit count (gram
+   * weights, cups/tablespoons, vague amounts).
+   */
+  count: number | null;
+  /**
+   * v2: estimated grams of ONE unit when `count` is set; null when `count` is
+   * null. The app computes the total as count × unit_grams (see resolver.ts).
+   */
+  unit_grams: number | null;
+  /** Model's total estimate in grams; count × unit_grams wins when count is set */
   grams: number;
   /** Preparation notes affecting nutrition, e.g. "fried in butter" */
   prep: string | null;
