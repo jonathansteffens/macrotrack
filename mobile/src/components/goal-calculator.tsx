@@ -149,7 +149,7 @@ export function GoalCalculator({ onApply }: { onApply: (goals: GoalSuggestion) =
       </View>
 
       <ThemedText type="small" themeColor="textSecondary">
-        Aim — lose is roughly −500 kcal/day, gain +300
+        Aim (lose ≈ −500 kcal/day, gain +300)
       </ThemedText>
       <View style={styles.chipRow}>
         {GOAL_AIMS.map((a) => (
@@ -159,7 +159,7 @@ export function GoalCalculator({ onApply }: { onApply: (goals: GoalSuggestion) =
 
       {suggestion && (
         <ThemedText type="small">
-          Suggests {fmtKcal(suggestion.kcal)} kcal — protein {suggestion.protein} g, carbs{' '}
+          Suggests {fmtKcal(suggestion.kcal)} kcal: protein {suggestion.protein} g, carbs{' '}
           {suggestion.carbs} g, fat {suggestion.fat} g
         </ThemedText>
       )}
@@ -175,7 +175,7 @@ export function GoalCalculator({ onApply }: { onApply: (goals: GoalSuggestion) =
         </ThemedText>
       </Pressable>
       <ThemedText type="small" themeColor="textSecondary">
-        Estimates only — the goal fields stay fully editable.
+        Estimates only. The goal fields stay editable.
       </ThemedText>
     </ThemedView>
   );

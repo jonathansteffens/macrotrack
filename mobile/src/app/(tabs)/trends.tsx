@@ -196,7 +196,7 @@ export default function TrendsScreen() {
               </Pressable>
             </View>
             <ThemedText type="small" themeColor="textSecondary">
-              Use whichever unit you like — just stay consistent.
+              Use any unit you like. Keep it consistent.
             </ThemedText>
           </ThemedView>
         </ScrollView>

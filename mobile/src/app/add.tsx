@@ -201,8 +201,8 @@ export default function AddFoodScreen() {
         <ThemedView type="backgroundElement" style={styles.aiOfferCard}>
           <Pressable style={styles.aiOfferBody} onPress={() => router.push('/settings')}>
             <ThemedText type="small">
-              ✨ You could have typed “eggs and toast” — want the on-device AI? It’s a
-              one-time download.
+              You could have typed “eggs and toast.” The on-device AI estimates whole meals.
+              It’s a one-time download.
             </ThemedText>
           </Pressable>
           <Pressable
@@ -241,7 +241,7 @@ export default function AddFoodScreen() {
             <View>
               <View style={styles.sectionHeaderRow}>
                 <ThemedText type="smallBold" themeColor="textSecondary">
-                  Recipes — tap to log a serving
+                  Recipes
                 </ThemedText>
                 <Pressable hitSlop={8} onPress={() => router.push('/recipe')}>
                   <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
@@ -253,7 +253,7 @@ export default function AddFoodScreen() {
               {templates.length > 0 && (
                 <>
                   <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
-                    Templates — tap to log the whole meal
+                    Templates
                   </ThemedText>
                   {templates.map(renderTemplateRow)}
                 </>

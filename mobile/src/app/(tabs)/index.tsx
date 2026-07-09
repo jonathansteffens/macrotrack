@@ -341,7 +341,7 @@ function MealSection({
       {entries.length === 0 && canCopyYesterday && (
         <Pressable style={styles.copyYesterday} hitSlop={4} onPress={onCopyYesterday}>
           <ThemedText type="small" themeColor="textSecondary">
-            ↺ Copy yesterday’s {MEAL_LABELS[meal].toLowerCase()}
+            Copy yesterday’s {MEAL_LABELS[meal].toLowerCase()}
           </ThemedText>
         </Pressable>
       )}

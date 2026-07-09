@@ -54,7 +54,7 @@ export default function ScanScreen() {
       const numStr = (v: number | null | undefined) => (v != null ? String(v) : undefined);
       Alert.alert(
         'Product not found',
-        `Barcode ${code} isn’t in Open Food Facts. Add it as a custom food from its nutrition label, or search the database instead?`,
+        `Barcode ${code} isn’t in Open Food Facts. Add it as a custom food from its label, or search the database.`,
         [
           { text: 'Keep scanning', style: 'cancel', onPress: resume },
           {
@@ -116,7 +116,7 @@ export default function ScanScreen() {
             </Pressable>
           ) : (
             <ThemedText type="small" themeColor="textSecondary" style={styles.permissionText}>
-              Camera access was denied — enable it in system settings, or type the barcode below.
+              Camera access was denied. Enable it in system settings, or type the barcode below.
             </ThemedText>
           )}
           <ManualEntry

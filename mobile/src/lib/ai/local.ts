@@ -147,7 +147,7 @@ export async function localEstimate(
           }
         : { ok: false, message: 'On-device AI isn’t available on this device.' };
     }
-    return { ok: false, message: 'On-device estimate failed. Please try again.' };
+    return { ok: false, message: 'The estimate failed. Try again or search manually.' };
   }
 
   try {
@@ -157,7 +157,7 @@ export async function localEstimate(
     console.warn('[localEstimate] unparseable model output >>>\n' + raw + '\n<<< end');
     return {
       ok: false,
-      message: 'Could not parse the on-device model response. Please try again.',
+      message: 'Couldn’t read the model’s response. Try again or search manually.',
     };
   }
 }

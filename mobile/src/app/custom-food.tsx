@@ -117,8 +117,8 @@ export default function CustomFoodScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {params.barcode && (
             <ThemedText type="small" themeColor="textSecondary">
-              Barcode {params.barcode} — this product wasn’t in Open Food Facts, so enter its
-              label info once and it will scan instantly next time.
+              Barcode {params.barcode} isn’t in Open Food Facts. Enter its label info once and
+              it will scan instantly next time.
             </ThemedText>
           )}
 

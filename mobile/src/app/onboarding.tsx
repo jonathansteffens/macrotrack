@@ -119,9 +119,9 @@ function WelcomeStep() {
         <Feature emoji="📷" title="Scan barcodes">
           Point the camera at a package and the label fills itself in.
         </Feature>
-        <Feature emoji="✨" title="Describe your meal">
-          “Two eggs and a slice of toast” — the AI assistant estimates portions and logs it,
-          entirely on your phone.
+        <Feature emoji="💬" title="Describe your meal">
+          “Two eggs and a slice of toast.” The AI estimates portions and logs it, all on
+          your phone.
         </Feature>
         <Feature emoji="📊" title="See your trends">
           Daily totals, goals, moving averages, and weight over time.
@@ -154,14 +154,14 @@ function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor
     <View style={styles.step}>
       <ThemedText type="subtitle">What do you want to track?</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        The core macros are on by default. Set a daily goal for each — or leave it blank to
-        just watch the number. You can change all of this later in Settings.
+        The core macros are on by default. Set a daily goal for each, or leave it blank to
+        track the number without a target. You can change all of this later in Settings.
       </ThemedText>
       <Pressable
         style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
         onPress={() => setShowCalculator((s) => !s)}>
         <ThemedText type="small">
-          🧮 Not sure? Calculate goals for me {showCalculator ? '▴' : '▾'}
+          Calculate goals for me {showCalculator ? '▴' : '▾'}
         </ThemedText>
       </Pressable>
       {showCalculator && (
@@ -177,7 +177,7 @@ function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor
         style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
         onPress={() => setShowMore((s) => !s)}>
         <ThemedText type="small">
-          More nutrients (fiber, sugar, sodium…) {showMore ? '▴' : '▾'}
+          More nutrients (fiber, sugar, sodium) {showMore ? '▴' : '▾'}
         </ThemedText>
       </Pressable>
       {showMore && <View style={styles.nutrientList}>{MORE_NUTRIENTS.map(renderRow)}</View>}
@@ -190,16 +190,16 @@ function TipsStep() {
     <View style={styles.step}>
       <ThemedText type="subtitle">Good to know</ThemedText>
       <View style={styles.features}>
-        <Feature emoji="✨" title="Enable the AI assistant">
-          The on-device model is a one-time download — grab it in Settings when
-          you’re on Wi-Fi. After that it works offline.
+        <Feature emoji="💬" title="Enable the AI assistant">
+          The on-device model is a one-time download. Get it in Settings on Wi-Fi, then it
+          works offline.
         </Feature>
         <Feature emoji="⭐" title="Reuse whole meals">
           Star a meal on the Today screen to save it as a template, then log it again in
           one tap.
         </Feature>
-        <Feature emoji="🍲" title="Cook in batches?">
-          Save a recipe with its ingredients and servings — logging “1 serving” does the
+        <Feature emoji="🍲" title="Cook in batches">
+          Save a recipe with its ingredients and servings. Logging “1 serving” does the
           math for you.
         </Feature>
         <Feature emoji="🎯" title="Goals are flexible">

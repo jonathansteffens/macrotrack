@@ -452,7 +452,7 @@ export default function AssistScreen() {
                   <View style={styles.buttonRow}>
                     <ActionButton label="Answer" onPress={sendClarification} />
                     <ActionButton
-                      label="Skip — use estimates"
+                      label="Use estimates"
                       onPress={() => setClaim({ ...claim, needs_clarification: false })}
                     />
                   </View>
@@ -635,7 +635,7 @@ function ItemCard({
       {(lowConfidence || item.match == null) && (
         <View style={styles.cueRow}>
           {item.match == null && <Cue label="AI estimate · no DB match" color={theme.danger} />}
-          {lowConfidence && <Cue label="Low confidence — double-check" color={MacroColors.carbs} />}
+          {lowConfidence && <Cue label="Low confidence · double-check" color={MacroColors.carbs} />}
         </View>
       )}
 

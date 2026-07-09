@@ -100,7 +100,7 @@ export function parseBackup(json: string): Backup {
   }
   if (b.backupVersion > BACKUP_VERSION) {
     throw new Error(
-      `This backup was made by a newer version of the app (v${b.backupVersion}) — update MacroTrack first.`
+      `This backup was made by a newer version of the app (v${b.backupVersion}). Update MacroTrack first.`
     );
   }
   const data = {} as Backup['data'];

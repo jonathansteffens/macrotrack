@@ -55,7 +55,7 @@ export default function AboutScreen() {
             Version {APP_VERSION}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Simple, private macro tracking — your data never leaves your device.
+            Simple, private macro tracking. Your data never leaves your device.
           </ThemedText>
         </View>
 

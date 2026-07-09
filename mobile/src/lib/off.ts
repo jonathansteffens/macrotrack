@@ -64,7 +64,7 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     if (!resp.ok) return failWith(`Open Food Facts returned ${resp.status}`);
     json = await resp.json();
   } catch {
-    return failWith('Network error — check your connection and try again.');
+    return failWith('Network error. Check your connection and try again.');
   }
 
   if (json?.status !== 1 || !json.product) return { status: 'not_found' };

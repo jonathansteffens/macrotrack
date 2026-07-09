@@ -124,7 +124,7 @@ export async function syncCheckinNotification(): Promise<void> {
     await N.scheduleNotificationAsync({
       content: {
         title: 'Evening check-in',
-        body: 'Feel like logging today’s meals? It only takes a minute — no pressure.',
+        body: 'Log today’s meals?',
         sound: false,
       },
       trigger: {

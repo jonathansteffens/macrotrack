@@ -197,7 +197,7 @@ export default function RecipeScreen() {
             style={inputStyle}
             value={query}
             onChangeText={setQuery}
-            placeholder="Add ingredient — search foods…"
+            placeholder="Add an ingredient"
             placeholderTextColor={theme.textSecondary}
             autoCorrect={false}
           />

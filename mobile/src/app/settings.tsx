@@ -89,7 +89,7 @@ export default function SettingsScreen() {
       await downloadLocalModel((f) => setDownloadPct(f));
       setModelStatus(await getLocalModelStatus());
     } catch (e) {
-      Alert.alert('Download failed', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert('Download failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setDownloadPct(null);
     }
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
       await exportBackup();
       setLastBackup(await getLastBackupAt());
     } catch (e) {
-      Alert.alert('Backup failed', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert('Backup failed', e instanceof Error ? e.message : 'Try again.');
     }
   };
 
@@ -144,7 +144,7 @@ export default function SettingsScreen() {
       Alert.alert(
         'Restore from backup?',
         `This backup from ${madeOn} has ${backup.data.log_entries.length} log entries. ` +
-          'Restoring replaces everything currently in the app — this cannot be undone.',
+          'Restoring replaces everything currently in the app. This cannot be undone.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -167,7 +167,7 @@ export default function SettingsScreen() {
         ]
       );
     } catch (e) {
-      Alert.alert('Restore failed', e instanceof Error ? e.message : 'Could not read that file.');
+      Alert.alert('Restore failed', e instanceof Error ? e.message : 'Couldn’t read that file.');
     }
   };
 
@@ -179,14 +179,14 @@ export default function SettingsScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ThemedText type="smallBold">Nutrients & goals</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Toggle what you want to track. For anything on, set a daily goal — or
+            Toggle what you want to track. For anything on, set a daily goal, or
             leave it blank to track the amount without a target.
           </ThemedText>
           <Pressable
             style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
             onPress={() => setShowCalculator((s) => !s)}>
             <ThemedText type="small">
-              🧮 Calculate goals for me {showCalculator ? '▴' : '▾'}
+              Calculate goals for me {showCalculator ? '▴' : '▾'}
             </ThemedText>
           </Pressable>
           {showCalculator && (
@@ -216,7 +216,7 @@ export default function SettingsScreen() {
             Day ends at
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Anything logged before this hour counts toward the previous day — so a
+            Anything logged before this hour counts toward the previous day, so a
             half-past-midnight snack stays with that evening.
           </ThemedText>
           <View style={styles.modelChips}>
@@ -243,7 +243,7 @@ export default function SettingsScreen() {
             Evening check-in
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            An optional once-a-day reminder to log — it stays silent on days you’ve
+            An optional once-a-day reminder to log. It stays silent on days you’ve
             already logged something.
           </ThemedText>
           {checkinSupported() ? (
@@ -283,14 +283,14 @@ export default function SettingsScreen() {
               </View>
               {checkinPermMissing && (
                 <ThemedText type="small" style={{ color: MacroColors.carbs }}>
-                  ⚠ Notifications are blocked for MacroTrack — allow them in your device
+                  ⚠ Notifications are blocked for MacroTrack. Allow them in your device
                   settings to get the check-in.
                 </ThemedText>
               )}
             </>
           ) : (
             <ThemedText type="small" themeColor="textSecondary">
-              Reminders need the iOS/Android app — not available on web.
+              Reminders need the iOS/Android app. Not available on web.
             </ThemedText>
           )}
 
@@ -298,9 +298,8 @@ export default function SettingsScreen() {
             AI assistant
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Meals are estimated by the fine-tuned model running entirely on your phone — no
-            network, no API cost, nothing leaves the device. Download it once to enable AI
-            logging.
+            Meals are estimated by a model that runs entirely on your phone. No network, no
+            API cost, nothing leaves the device. Download it once to enable AI logging.
           </ThemedText>
           <OnDeviceModel
             status={modelStatus}
@@ -332,7 +331,7 @@ export default function SettingsScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {lastBackup
               ? `Last backup: ${new Date(lastBackup).toLocaleDateString()}`
-              : 'No backup yet — the backup file holds your logs, foods, recipes, and settings.'}
+              : 'No backup yet. The backup file holds your logs, foods, recipes, and settings.'}
           </ThemedText>
 
           {dbInfo && (
@@ -408,7 +407,7 @@ function OnDeviceModel({
   if (status === 'unsupported') {
     return (
       <ThemedText type="small" themeColor="textSecondary">
-        On-device AI needs an iOS/Android dev build — not available on web.
+        On-device AI needs an iOS/Android dev build. Not available on web.
       </ThemedText>
     );
   }
@@ -445,8 +444,8 @@ function OnDeviceModel({
         <ThemedText type="small">Download on-device model ({sizeMb} MB, Wi-Fi recommended)</ThemedText>
       </Pressable>
       <ThemedText type="small" themeColor="textSecondary">
-        One-time download; the model runs entirely on your phone. A typical estimate
-        takes a few seconds on a modern phone.
+        One-time download. The model runs on your phone; a typical estimate takes a few
+        seconds.
       </ThemedText>
     </View>
   );

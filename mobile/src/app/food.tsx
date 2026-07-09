@@ -84,7 +84,7 @@ export default function FoodScreen() {
   if (missing) {
     return (
       <ThemedView style={styles.center}>
-        <ThemedText themeColor="textSecondary">This food could not be loaded.</ThemedText>
+        <ThemedText themeColor="textSecondary">This food couldn’t be loaded.</ThemedText>
       </ThemedView>
     );
   }
