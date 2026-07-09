@@ -14,7 +14,7 @@ import {
 import { FoodRow } from '@/components/food-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { searchFoods } from '@/lib/foods';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
@@ -221,7 +221,7 @@ export default function RecipeScreen() {
           )}
 
           <Pressable
-            style={[styles.saveButton, { backgroundColor: MacroColors.kcal, opacity: canSave ? 1 : 0.4 }]}
+            style={[styles.saveButton, { backgroundColor: theme.tintSolid, opacity: canSave ? 1 : 0.4 }]}
             onPress={save}
             disabled={!canSave}>
             <ThemedText type="smallBold" style={styles.saveText}>
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   },
   servingsInput: { minWidth: 90, textAlign: 'center', alignSelf: 'flex-start' },
   sectionTitle: { marginTop: Spacing.two },
-  itemCard: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
+  itemCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
   itemHeader: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   gramsInput: {
@@ -265,9 +265,9 @@ const styles = StyleSheet.create({
     minWidth: 80,
     textAlign: 'center',
   },
-  totalsCard: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.one },
+  totalsCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.one },
   saveButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.two,

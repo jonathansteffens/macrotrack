@@ -19,13 +19,13 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
  */
 
 // ---- Model artifacts (hosted on a public GitHub release) ----
-// The GGUF lives on the `text-v1` release. sizeBytes is byte-exact and checked
-// after download as a cheap integrity guard (sha256 5777ca4e…ede0, in
+// The GGUF lives on the `text-v2` release. sizeBytes is byte-exact and checked
+// after download as a cheap integrity guard (sha256 a72a201e…059f, in
 // models/README.md).
 
 /** Release tag of the bundled fine-tune — recorded on every saved estimator
  *  interaction so exported ai_events say which model made each claim. */
-export const LOCAL_MODEL_RELEASE_TAG = 'text-v1';
+export const LOCAL_MODEL_RELEASE_TAG = 'text-v2';
 
 const MODEL_BASE_URL = `https://github.com/jonathansteffens/macrotrack/releases/download/${LOCAL_MODEL_RELEASE_TAG}`;
 
@@ -33,7 +33,7 @@ type ModelFile = { name: string; sizeBytes: number };
 
 const TEXT_MODEL: ModelFile = {
   name: 'macrotrack-text-0.8b-q4_k_m.gguf',
-  sizeBytes: 529_296_640,
+  sizeBytes: 529_296_704,
 };
 // Text-only: there is no vision projector. The model estimates from a text
 // description of the meal. To restore photo estimates you'd swap in a

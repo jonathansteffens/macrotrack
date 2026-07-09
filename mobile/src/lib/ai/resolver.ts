@@ -1,4 +1,5 @@
-import { searchFoods } from '../foods';
+import { getFoodsDb } from '../db';
+import { normName, searchFoods } from '../foods';
 import { scaleMacros } from '../macros';
 import type { FoodItem, Macros } from '../types';
 import type { ClaimItem, FoodClaim } from './types';
@@ -21,6 +22,8 @@ export type ResolvedItem = {
 };
 
 export async function resolveClaim(claim: FoodClaim): Promise<ResolvedItem[]> {
+  // Load the corroboration token set once so the sync seedGrams can read it.
+  await loadCommonBrandTokens();
   return Promise.all(claim.items.map(resolveItem));
 }
 
@@ -28,6 +31,51 @@ const COUNT_WORDS: Record<string, number> = {
   two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
   ten: 10, eleven: 11, twelve: 12, dozen: 12,
 };
+
+// ---- Branded corroboration guard — keep IN SYNC across resolver.ts,
+//   tools/eval/run-eval.mjs, tools/chat/playground.mjs,
+//   tools/eval/adversarial/run.mjs ----
+// A single generic search token can whole-word match a branded row by accident
+// ("oreo" → "Dairy Queen Royal Oreo Blizzard"); branded serving-scaling would
+// then multiply the model's count by that row's ~350 g serving ("4 oreos" →
+// 1400 g / 4200 kcal). So branded serving-scaling applies ONLY when the match
+// is CORROBORATED by the model's own words: it named the row's brand/chain, OR
+// it named every one of the row's distinctive (product-identity) tokens.
+// COMMON_BRAND_TOKENS = tokens in ≥ COMMON_DF_MIN branded name_norms — chain
+// names (dairy, queen, burger, king, …) plus generic food words (sandwich,
+// cheese, …); everything rarer is a distinctive token (baconator, whopper,
+// blizzard, big, mac, …). Derived once from the bundled foods.db.
+const COMMON_DF_MIN = 20;
+const CORROB_STOPWORDS = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
+function corrTokens(s: string): string[] {
+  return (s || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    .split(' ').filter((t) => t.length >= 3 && !CORROB_STOPWORDS.has(t));
+}
+let commonBrandTokens: Set<string> | null = null;
+async function loadCommonBrandTokens(): Promise<Set<string>> {
+  if (commonBrandTokens) return commonBrandTokens;
+  const rows = await getFoodsDb().getAllAsync<{ name_norm: string }>(
+    "SELECT name_norm FROM foods WHERE data_type = 'branded'"
+  );
+  const df = new Map<string, number>();
+  for (const r of rows) for (const t of new Set(corrTokens(r.name_norm))) df.set(t, (df.get(t) ?? 0) + 1);
+  const set = new Set<string>();
+  for (const [t, n] of df) if (n >= COMMON_DF_MIN) set.add(t);
+  commonBrandTokens = set;
+  return set;
+}
+function brandedCorroborated(item: ClaimItem, rowNameNorm: string): boolean {
+  // Not yet loaded (shouldn't happen — resolveClaim awaits it) → preserve the
+  // legacy branded-snap behavior rather than mis-rejecting a real match.
+  if (!commonBrandTokens) return true;
+  const modelToks = new Set([item.name, ...(item.db_search_terms || [])].flatMap(corrTokens));
+  const rowToks = [...new Set(corrTokens(rowNameNorm))];
+  const distinctive = rowToks.filter((t) => !commonBrandTokens!.has(t));
+  const common = rowToks.filter((t) => commonBrandTokens!.has(t));
+  const namedBrand = common.length > 0 && common.every((t) => modelToks.has(t));
+  const namedProduct = distinctive.length > 0 && distinctive.every((t) => modelToks.has(t));
+  return namedBrand || namedProduct;
+}
 
 /** Explicit count in an item name ("2 whopper", "three tacos"), if any. */
 function countInName(name: string): number | null {
@@ -91,7 +139,12 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
  * else the model's `unit_grams`, else the model's total split by its own count.
  */
 function seedGrams(item: ClaimItem, match: FoodItem | null): number {
-  const brandedServing = match?.dataType === 'branded' ? pickServing(item, match) : undefined;
+  // Branded serving-scaling only when the model's words corroborate the match
+  // (see brandedCorroborated) — an uncorroborated branded row is a coincidental
+  // token collision, so keep the model's own grams instead of snapping.
+  const corroborated =
+    match?.dataType === 'branded' && brandedCorroborated(item, normName(match.name));
+  const brandedServing = corroborated ? pickServing(item, match) : undefined;
   if (typeof item.count === 'number' && Number.isFinite(item.count) && item.count > 0) {
     // Stopgap for the "fake branded SKU" emission {name:"2 big mac", count:1}:
     // the model bakes the real count into the NAME but leaves count stuck at 1.

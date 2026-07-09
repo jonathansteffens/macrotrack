@@ -14,9 +14,10 @@ import {
 import { EstimatingIndicator } from '@/components/estimating-indicator';
 import { FoodSearchModal } from '@/components/food-search-modal';
 import { FractionChips } from '@/components/fraction-chips';
+import { SpeechTextInput } from '@/components/speech-text-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { MacroColors, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { localEstimate } from '@/lib/ai/local';
 import { ensureLoaded } from '@/lib/ai/local-model';
@@ -127,7 +128,6 @@ function reprojectMatch(it: ReviewItem, match: FoodItem | null): Partial<ReviewI
 }
 
 export default function AssistScreen() {
-  const theme = useTheme();
   const params = useLocalSearchParams<{ day?: string; meal?: string }>();
   const day = params.day ?? todayKey();
 
@@ -367,7 +367,6 @@ export default function AssistScreen() {
   };
 
   const totalKcal = items.reduce((s, it) => s + resolvedMacros(it).kcal, 0);
-  const inputStyle = [styles.input, { backgroundColor: theme.backgroundElement, color: theme.text }];
 
   return (
     <KeyboardAvoidingView
@@ -381,12 +380,10 @@ export default function AssistScreen() {
                 Describe what you ate. You can answer follow-up questions before anything is
                 logged.
               </ThemedText>
-              <TextInput
-                style={[...inputStyle, styles.multiline]}
+              <SpeechTextInput
                 value={text}
                 onChangeText={setText}
                 placeholder="e.g. 2 eggs scrambled in butter and a slice of sourdough toast"
-                placeholderTextColor={theme.textSecondary}
                 multiline
                 autoFocus
               />
@@ -427,11 +424,8 @@ export default function AssistScreen() {
                   {claim.questions.map((q, i) => (
                     <View key={i} style={styles.clarifyQuestion}>
                       <ThemedText type="small">{q}</ThemedText>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          { backgroundColor: theme.background, color: theme.text },
-                        ]}
+                      <SpeechTextInput
+                        nested
                         value={clarifyAnswers[i] ?? ''}
                         onChangeText={(t) =>
                           setClarifyAnswers((prev) => {
@@ -441,7 +435,6 @@ export default function AssistScreen() {
                           })
                         }
                         placeholder="Type your answer…"
-                        placeholderTextColor={theme.textSecondary}
                         returnKeyType={i === claim.questions.length - 1 ? 'send' : 'next'}
                         onSubmitEditing={
                           i === claim.questions.length - 1 ? sendClarification : undefined
@@ -662,7 +655,7 @@ function ItemCard({
           </ThemedText>
         </Pressable>
         <Pressable hitSlop={8} onPress={onChangeFood}>
-          <ThemedText type="small" style={{ color: MacroColors.kcal }}>
+          <ThemedText type="small" themeColor="tint">
             Change food
           </ThemedText>
         </Pressable>
@@ -718,11 +711,11 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
-          borderColor: selected ? MacroColors.kcal : 'transparent',
+          backgroundColor: selected ? theme.tintSurface : theme.backgroundElement,
+          borderColor: selected ? theme.tint : 'transparent',
         },
       ]}>
-      <ThemedText type="small" themeColor={selected ? 'text' : 'textSecondary'}>
+      <ThemedText type="small" themeColor={selected ? 'tint' : 'textSecondary'}>
         {label}
       </ThemedText>
     </Pressable>
@@ -749,9 +742,10 @@ function PrimaryButton({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  const theme = useTheme();
   return (
     <Pressable
-      style={[styles.primaryButton, { backgroundColor: MacroColors.kcal, opacity: disabled ? 0.4 : 1 }]}
+      style={[styles.primaryButton, { backgroundColor: theme.tintSolid, opacity: disabled ? 0.4 : 1 }]}
       disabled={disabled}
       onPress={onPress}>
       <ThemedText type="smallBold" style={styles.primaryButtonText}>
@@ -767,16 +761,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.three,
     paddingBottom: Spacing.six,
-  },
-  input: {
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-  },
-  multiline: {
-    minHeight: 90,
-    textAlignVertical: 'top',
   },
   imageRow: {
     flexDirection: 'row',
@@ -799,7 +783,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
@@ -881,7 +865,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,

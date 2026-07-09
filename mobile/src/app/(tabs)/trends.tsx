@@ -7,7 +7,7 @@ import { BarChart } from '@/components/bar-chart';
 import { SparkLine } from '@/components/spark-line';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, shortLabel, todayKey } from '@/lib/dates';
 import { parseDecimal } from '@/lib/macros';
@@ -159,7 +159,7 @@ export default function TrendsScreen() {
               )}
             </View>
             {weight && weight.entries.length > 1 && (
-              <SparkLine values={weight.series} color={MacroColors.kcal} />
+              <SparkLine values={weight.series} color={theme.tint} />
             )}
             <View style={styles.chipRow}>
               <Chip
@@ -188,7 +188,7 @@ export default function TrendsScreen() {
                 onSubmitEditing={submitWeight}
               />
               <Pressable
-                style={[styles.weightButton, { backgroundColor: MacroColors.kcal }]}
+                style={[styles.weightButton, { backgroundColor: theme.tintSolid }]}
                 onPress={submitWeight}>
                 <ThemedText type="smallBold" style={styles.weightButtonText}>
                   Log
@@ -230,11 +230,11 @@ function Chip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
-          borderColor: selected ? MacroColors.kcal : 'transparent',
+          backgroundColor: selected ? theme.tintSurface : theme.backgroundElement,
+          borderColor: selected ? theme.tint : 'transparent',
         },
       ]}>
-      <ThemedText type="small" themeColor={selected ? 'text' : 'textSecondary'}>
+      <ThemedText type="small" themeColor={selected ? 'tint' : 'textSecondary'}>
         {label}
       </ThemedText>
     </Pressable>
@@ -281,13 +281,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
   },
   chartCard: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
     gap: 2,
   },

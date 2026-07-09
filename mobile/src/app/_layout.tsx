@@ -1,12 +1,14 @@
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { AppState, StyleSheet, useColorScheme } from 'react-native';
+import { AppState, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { releaseLocalContext } from '@/lib/ai/local-model';
+import { loadAppearance } from '@/lib/appearance';
 import { syncCheckinNotification } from '@/lib/checkin';
 import { loadDayEndHour } from '@/lib/day-end';
 import { initDb } from '@/lib/db';
@@ -30,6 +32,7 @@ export default function RootLayout() {
   useEffect(() => {
     initDb()
       .then(() => loadDayEndHour())
+      .then(() => loadAppearance())
       .then(() => isOnboardingDone())
       .then((done) => {
         setNeedsOnboarding(!done);

@@ -1,10 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
 
+import { getAppearance, subscribeAppearance } from '@/lib/appearance';
+
 const emptySubscribe = () => () => {};
 
 /**
- * To support static rendering, this value needs to be re-calculated on the client side for web
+ * Web variant: same override-aware resolution as native, but returns a stable
+ * 'light' during server/static render and re-computes on the client after
+ * hydration (see https://docs.expo.dev/guides/color-schemes/).
  */
 export function useColorScheme() {
   // false during server/static render, true after hydration
@@ -14,11 +18,10 @@ export function useColorScheme() {
     () => false
   );
 
-  const colorScheme = useRNColorScheme();
+  const pref = useSyncExternalStore(subscribeAppearance, getAppearance, getAppearance);
+  const os = useRNColorScheme();
 
-  if (hasHydrated) {
-    return colorScheme;
-  }
-
-  return 'light';
+  if (!hasHydrated) return 'light';
+  if (pref === 'light' || pref === 'dark') return pref;
+  return os;
 }

@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, useAnimatedValue, View } from 'react-nati
 
 import { ThemedText } from './themed-text';
 
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -70,7 +70,10 @@ export function EstimatingIndicator({ count = 0 }: { count?: number }) {
           <Animated.View
             style={[
               styles.fill,
-              { width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
+              {
+                backgroundColor: theme.tint,
+                width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+              },
             ]}
           />
         ) : (
@@ -78,6 +81,7 @@ export function EstimatingIndicator({ count = 0 }: { count?: number }) {
             style={[
               styles.shimmer,
               {
+                backgroundColor: theme.tint,
                 left: shimmer.interpolate({
                   inputRange: [0, 1],
                   outputRange: ['-35%', '100%'],
@@ -109,7 +113,6 @@ const styles = StyleSheet.create({
   fill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: MacroColors.kcal,
   },
   shimmer: {
     position: 'absolute',
@@ -117,6 +120,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '35%',
     borderRadius: 3,
-    backgroundColor: MacroColors.kcal,
   },
 });

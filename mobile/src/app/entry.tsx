@@ -7,7 +7,7 @@ import { FractionChips } from '@/components/fraction-chips';
 import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   deleteEntry,
@@ -89,7 +89,7 @@ export default function EntryScreen() {
           Logged as {entry.quantityDesc}
         </ThemedText>
         <Pressable hitSlop={8} onPress={() => setSearchOpen(true)}>
-          <ThemedText type="small" style={{ color: MacroColors.kcal }}>
+          <ThemedText type="small" themeColor="tint">
             Change food
           </ThemedText>
         </Pressable>
@@ -136,18 +136,18 @@ export default function EntryScreen() {
             style={[
               styles.chip,
               {
-                backgroundColor: meal === m ? theme.backgroundSelected : theme.backgroundElement,
-                borderColor: meal === m ? MacroColors.kcal : 'transparent',
+                backgroundColor: meal === m ? theme.tintSurface : theme.backgroundElement,
+                borderColor: meal === m ? theme.tint : 'transparent',
               },
             ]}>
-            <ThemedText type="small" themeColor={meal === m ? 'text' : 'textSecondary'}>
+            <ThemedText type="small" themeColor={meal === m ? 'tint' : 'textSecondary'}>
               {MEAL_LABELS[m]}
             </ThemedText>
           </Pressable>
         ))}
       </View>
 
-      <Pressable style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]} onPress={save}>
+      <Pressable style={[styles.saveButton, { backgroundColor: theme.tintSolid }]} onPress={save}>
         <ThemedText type="smallBold" style={styles.saveText}>
           Save
         </ThemedText>
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   previewCard: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
   },
   mealChips: {
@@ -207,13 +207,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
   },
   saveButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.two,

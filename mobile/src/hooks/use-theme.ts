@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function useTheme() {
   const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
+  // Anything that isn't an explicit 'dark' (null/undefined/'unspecified'/'light')
+  // resolves to the light palette, so indexing Colors is always safe.
+  return Colors[scheme === 'dark' ? 'dark' : 'light'];
 }

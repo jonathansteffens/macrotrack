@@ -14,7 +14,7 @@ import { FractionChips } from '@/components/fraction-chips';
 import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { MacroColors, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
@@ -250,7 +250,7 @@ export default function FoodScreen() {
             <Pressable
               style={[
                 styles.logButton,
-                { backgroundColor: MacroColors.kcal, opacity: canLog ? 1 : 0.4 },
+                { backgroundColor: theme.tintSolid, opacity: canLog ? 1 : 0.4 },
               ]}
               disabled={!canLog}
               onPress={() => log(false)}>
@@ -281,11 +281,11 @@ function UnitChip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
-          borderColor: selected ? MacroColors.kcal : 'transparent',
+          backgroundColor: selected ? theme.tintSurface : theme.backgroundElement,
+          borderColor: selected ? theme.tint : 'transparent',
         },
       ]}>
-      <ThemedText type="small" themeColor={selected ? 'text' : 'textSecondary'}>
+      <ThemedText type="small" themeColor={selected ? 'tint' : 'textSecondary'}>
         {label}
       </ThemedText>
     </Pressable>
@@ -343,14 +343,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
   },
   previewCard: {
     flexDirection: 'row',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
   },
   previewCell: {
@@ -370,13 +370,13 @@ const styles = StyleSheet.create({
   },
   logAnotherButton: {
     flex: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   logButton: {
     flex: 2,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },

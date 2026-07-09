@@ -7,7 +7,7 @@ import { GoalCalculator } from '@/components/goal-calculator';
 import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingEditor } from '@/hooks/use-tracking-editor';
 import { CORE_NUTRIENT_KEYS, NUTRIENTS } from '@/lib/nutrients';
@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
                   styles.dot,
                   {
                     backgroundColor:
-                      i === step ? MacroColors.kcal : theme.backgroundSelected,
+                      i === step ? theme.tint : theme.backgroundSelected,
                   },
                 ]}
               />
@@ -82,7 +82,7 @@ export default function OnboardingScreen() {
               <View style={styles.navButton} />
             )}
             <Pressable
-              style={[styles.navButton, styles.nextButton, { backgroundColor: MacroColors.kcal }]}
+              style={[styles.navButton, styles.nextButton, { backgroundColor: theme.tintSolid }]}
               onPress={() => (step < STEP_COUNT - 1 ? setStep((s) => s + 1) : finish(true))}>
               <ThemedText type="smallBold" style={styles.nextText}>
                 {step < STEP_COUNT - 1 ? 'Next' : 'Get started'}

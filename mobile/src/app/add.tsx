@@ -5,7 +5,7 @@ import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-n
 import { FoodRow } from '@/components/food-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { dismissAiOffer, recordManualSearch, shouldShowAiOffer } from '@/lib/ai-offer';
 import { todayKey } from '@/lib/dates';
@@ -224,7 +224,7 @@ export default function AddFoodScreen() {
             Logged {templateUndo.count} item{templateUndo.count === 1 ? '' : 's'}
           </ThemedText>
           <Pressable hitSlop={8} onPress={undoTemplate}>
-            <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+            <ThemedText type="smallBold" themeColor="tint">
               Undo
             </ThemedText>
           </Pressable>
@@ -244,7 +244,7 @@ export default function AddFoodScreen() {
                   Recipes
                 </ThemedText>
                 <Pressable hitSlop={8} onPress={() => router.push('/recipe')}>
-                  <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+                  <ThemedText type="smallBold" themeColor="tint">
                     ＋ New
                   </ThemedText>
                 </Pressable>

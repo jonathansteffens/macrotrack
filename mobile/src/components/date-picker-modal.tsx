@@ -4,7 +4,8 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { dayKey, keyToDate, todayKey } from '@/lib/dates';
 import { daysWithEntries } from '@/lib/log';
 
@@ -29,6 +30,7 @@ export function DatePickerModal({
   onSelect: (day: string) => void;
   onClose: () => void;
 }) {
+  const theme = useTheme();
   const [view, setView] = useState(() => {
     const d = keyToDate(selected);
     return { y: d.getFullYear(), m: d.getMonth() };
@@ -107,7 +109,7 @@ export function DatePickerModal({
                     <View
                       style={[
                         styles.dayInner,
-                        isSelected && { backgroundColor: MacroColors.kcal },
+                        isSelected && { backgroundColor: theme.tintSolid },
                       ]}>
                       <ThemedText
                         type="small"
@@ -119,7 +121,7 @@ export function DatePickerModal({
                         <View
                           style={[
                             styles.dot,
-                            { backgroundColor: isSelected ? '#ffffff' : MacroColors.kcal },
+                            { backgroundColor: isSelected ? theme.tintText : theme.tint },
                           ]}
                         />
                       )}
@@ -131,7 +133,7 @@ export function DatePickerModal({
 
             <View style={styles.footer}>
               <Pressable hitSlop={8} onPress={() => onSelect(today)}>
-                <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+                <ThemedText type="smallBold" themeColor="tint">
                   Today
                 </ThemedText>
               </Pressable>

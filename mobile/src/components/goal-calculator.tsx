@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   ACTIVITY_LEVELS,
@@ -167,7 +167,7 @@ export function GoalCalculator({ onApply }: { onApply: (goals: GoalSuggestion) =
         disabled={!suggestion}
         style={[
           styles.applyButton,
-          { backgroundColor: MacroColors.kcal, opacity: suggestion ? 1 : 0.4 },
+          { backgroundColor: theme.tintSolid, opacity: suggestion ? 1 : 0.4 },
         ]}
         onPress={() => suggestion && onApply(suggestion)}>
         <ThemedText type="smallBold" style={styles.applyText}>
@@ -197,11 +197,11 @@ function Chip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? theme.backgroundSelected : theme.background,
-          borderColor: selected ? MacroColors.kcal : 'transparent',
+          backgroundColor: selected ? theme.tintSurface : theme.background,
+          borderColor: selected ? theme.tint : 'transparent',
         },
       ]}>
-      <ThemedText type="small" themeColor={selected ? 'text' : 'textSecondary'}>
+      <ThemedText type="small" themeColor={selected ? 'tint' : 'textSecondary'}>
         {label}
       </ThemedText>
     </Pressable>
@@ -210,7 +210,7 @@ function Chip({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
     gap: Spacing.two,
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   applyButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.two + 2,
     alignItems: 'center',
   },

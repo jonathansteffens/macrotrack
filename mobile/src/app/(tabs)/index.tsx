@@ -4,10 +4,17 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DatePickerModal } from '@/components/date-picker-modal';
+import { GoalRings } from '@/components/goal-rings';
 import { MacroBar } from '@/components/macro-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  BottomTabInset,
+  hairlineColor,
+  MaxContentWidth,
+  Radius,
+  Spacing,
+} from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { syncCheckinNotification } from '@/lib/checkin';
 import { addDays, dayLabel, todayKey } from '@/lib/dates';
@@ -120,10 +127,13 @@ export default function TodayScreen() {
     }, [load])
   );
 
-  const kcalCfg = tracking.kcal;
-  const remaining =
-    kcalCfg.enabled && kcalCfg.goal != null ? kcalCfg.goal - totals.kcal : null;
-  const enabledNutrients = NUTRIENTS.filter((n) => tracking[n.key].enabled);
+  // The ring header owns calories + the classic macros; the bar list below it
+  // carries the per-nutrient detail for everything else the user tracks.
+  const RING_KEYS = ['kcal', 'protein', 'carbs', 'fat'];
+  const detailNutrients = NUTRIENTS.filter(
+    (n) => tracking[n.key].enabled && !RING_KEYS.includes(n.key)
+  );
+  const dayEmpty = entries.length === 0;
 
   return (
     <ThemedView style={styles.root}>
@@ -158,31 +168,10 @@ export default function TodayScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* Summary card */}
+          {/* Summary card: goal rings up top, per-nutrient detail bars below */}
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
-            {kcalCfg.enabled && (
-              <View style={styles.kcalRow}>
-                <ThemedText type="subtitle">{fmtKcal(totals.kcal)}</ThemedText>
-                <ThemedText themeColor="textSecondary">
-                  {kcalCfg.goal != null ? ` / ${fmtKcal(kcalCfg.goal)} kcal` : ' kcal'}
-                </ThemedText>
-                {remaining != null &&
-                  (remaining >= 0 ? (
-                    <View style={styles.remainingBox}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {fmtKcal(remaining)} left
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    <View style={[styles.overBadge, { borderColor: theme.danger }]}>
-                      <ThemedText type="small" style={[styles.overText, { color: theme.danger }]}>
-                        +{fmtKcal(-remaining)} over
-                      </ThemedText>
-                    </View>
-                  ))}
-              </View>
-            )}
-            {enabledNutrients.map((n) => (
+            <GoalRings totals={totals} tracking={tracking} />
+            {detailNutrients.map((n) => (
               <MacroBar
                 key={n.key}
                 label={n.label}
@@ -193,6 +182,13 @@ export default function TodayScreen() {
               />
             ))}
           </ThemedView>
+
+          {/* Refined empty state for a day with nothing logged yet */}
+          {dayEmpty && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDay}>
+              Nothing logged yet — describe, search, or scan to start the day.
+            </ThemedText>
+          )}
 
           {/* Habit chip: one tap re-logs the combo this meal slot usually gets */}
           {usual && (
@@ -216,7 +212,7 @@ export default function TodayScreen() {
                 Logged {undo.count} item{undo.count === 1 ? '' : 's'}
               </ThemedText>
               <Pressable hitSlop={8} onPress={undoRelog}>
-                <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+                <ThemedText type="smallBold" themeColor="tint">
                   Undo
                 </ThemedText>
               </Pressable>
@@ -240,10 +236,17 @@ export default function TodayScreen() {
                 meal_guess or time of day) and the entry editor can re-file it
                 later. Manual Search defaults to the current time-of-day meal so
                 a tapped result files sensibly. */}
+            {/* Describe is the primary action of the set — it wears the brand
+                accent; Search and Scan stay quiet siblings. */}
             <Pressable
-              style={[styles.quickAction, { backgroundColor: theme.backgroundElement }]}
+              style={[
+                styles.quickAction,
+                { backgroundColor: theme.tintSurface, borderColor: theme.tint },
+              ]}
               onPress={() => router.push({ pathname: '/assist', params: { day } })}>
-              <ThemedText type="small">✨ Describe</ThemedText>
+              <ThemedText type="smallBold" themeColor="tint">
+                ✨ Describe
+              </ThemedText>
             </Pressable>
             <Pressable
               style={[styles.quickAction, { backgroundColor: theme.backgroundElement }]}
@@ -330,7 +333,7 @@ function MealSection({
           <Pressable
             hitSlop={8}
             onPress={() => router.push({ pathname: '/add', params: { day, meal } })}>
-            <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+            <ThemedText type="smallBold" themeColor="tint">
               + Add
             </ThemedText>
           </Pressable>
@@ -412,35 +415,21 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   summaryCard: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     padding: Spacing.three,
     gap: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: hairlineColor,
   },
-  kcalRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: Spacing.one,
-  },
-  remainingBox: {
-    marginLeft: 'auto',
-  },
-  overBadge: {
-    marginLeft: 'auto',
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.one + 2,
-    paddingVertical: 1,
-  },
-  overText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
+  emptyDay: {
+    textAlign: 'center',
+    paddingHorizontal: Spacing.three,
   },
   mealSection: {
     gap: Spacing.two,
   },
   usualChip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 2,
   },
@@ -459,8 +448,10 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   entryCard: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     paddingHorizontal: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: hairlineColor,
   },
   entryRow: {
     flexDirection: 'row',
@@ -470,7 +461,7 @@ const styles = StyleSheet.create({
   },
   entryRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128,128,128,0.3)',
+    borderTopColor: hairlineColor,
   },
   entryText: {
     flex: 1,
@@ -498,7 +489,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 2,
   },
@@ -509,7 +500,9 @@ const styles = StyleSheet.create({
   },
   quickAction: {
     flex: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },

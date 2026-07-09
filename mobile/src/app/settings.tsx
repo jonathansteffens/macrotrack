@@ -17,9 +17,16 @@ import { GoalCalculator } from '@/components/goal-calculator';
 import { NutrientRow } from '@/components/nutrient-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { hairlineColor, MacroColors, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingEditor } from '@/hooks/use-tracking-editor';
+import {
+  APPEARANCE_OPTIONS,
+  appearanceLabel,
+  getAppearance,
+  setAppearance,
+  type AppearancePref,
+} from '@/lib/appearance';
 import {
   deleteLocalModel,
   downloadLocalModel,
@@ -54,6 +61,7 @@ export default function SettingsScreen() {
   const [checkinPermMissing, setCheckinPermMissing] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [appearance, setAppearanceState] = useState<AppearancePref>(getAppearance);
 
   useEffect(() => {
     getFoodDbInfo().then(setDbInfo);
@@ -68,6 +76,12 @@ export default function SettingsScreen() {
   const chooseDayEnd = (hour: number) => {
     setDayEnd(hour);
     setDayEndHour(hour);
+  };
+
+  // Persisted immediately; the whole app re-themes on the spot.
+  const chooseAppearance = (pref: AppearancePref) => {
+    setAppearanceState(pref);
+    setAppearance(pref);
   };
 
   // Also persisted immediately. Turning it on asks for permission right away;
@@ -213,6 +227,34 @@ export default function SettingsScreen() {
           </View>
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Appearance
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Follow your device’s light/dark setting, or pin the app to one look.
+          </ThemedText>
+          <View style={styles.modelChips}>
+            {APPEARANCE_OPTIONS.map((pref) => (
+              <Pressable
+                key={pref}
+                onPress={() => chooseAppearance(pref)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor:
+                      appearance === pref ? theme.tintSurface : theme.backgroundElement,
+                    borderColor: appearance === pref ? theme.tint : 'transparent',
+                  },
+                ]}>
+                <ThemedText
+                  type="small"
+                  themeColor={appearance === pref ? 'tint' : 'textSecondary'}>
+                  {appearanceLabel(pref)}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
             Day ends at
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
@@ -228,11 +270,11 @@ export default function SettingsScreen() {
                   styles.chip,
                   {
                     backgroundColor:
-                      dayEnd === h ? theme.backgroundSelected : theme.backgroundElement,
-                    borderColor: dayEnd === h ? MacroColors.kcal : 'transparent',
+                      dayEnd === h ? theme.tintSurface : theme.backgroundElement,
+                    borderColor: dayEnd === h ? theme.tint : 'transparent',
                   },
                 ]}>
-                <ThemedText type="small" themeColor={dayEnd === h ? 'text' : 'textSecondary'}>
+                <ThemedText type="small" themeColor={dayEnd === h ? 'tint' : 'textSecondary'}>
                   {dayEndLabel(h)}
                 </ThemedText>
               </Pressable>
@@ -255,11 +297,11 @@ export default function SettingsScreen() {
                     styles.chip,
                     {
                       backgroundColor:
-                        checkin == null ? theme.backgroundSelected : theme.backgroundElement,
-                      borderColor: checkin == null ? MacroColors.kcal : 'transparent',
+                        checkin == null ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: checkin == null ? theme.tint : 'transparent',
                     },
                   ]}>
-                  <ThemedText type="small" themeColor={checkin == null ? 'text' : 'textSecondary'}>
+                  <ThemedText type="small" themeColor={checkin == null ? 'tint' : 'textSecondary'}>
                     Off
                   </ThemedText>
                 </Pressable>
@@ -271,11 +313,11 @@ export default function SettingsScreen() {
                       styles.chip,
                       {
                         backgroundColor:
-                          checkin === h ? theme.backgroundSelected : theme.backgroundElement,
-                        borderColor: checkin === h ? MacroColors.kcal : 'transparent',
+                          checkin === h ? theme.tintSurface : theme.backgroundElement,
+                        borderColor: checkin === h ? theme.tint : 'transparent',
                       },
                     ]}>
-                    <ThemedText type="small" themeColor={checkin === h ? 'text' : 'textSecondary'}>
+                    <ThemedText type="small" themeColor={checkin === h ? 'tint' : 'textSecondary'}>
                       {checkinLabel(h)}
                     </ThemedText>
                   </Pressable>
@@ -375,9 +417,9 @@ export default function SettingsScreen() {
         {editor.dirty && (
           <View style={[styles.saveFooter, { backgroundColor: theme.background }]}>
             <Pressable
-              style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]}
+              style={[styles.saveButton, { backgroundColor: theme.tintSolid }]}
               onPress={save}>
-              <ThemedText type="smallBold" style={styles.saveText}>
+              <ThemedText type="smallBold" style={{ color: theme.tintText }}>
                 Save goals
               </ThemedText>
             </Pressable>
@@ -415,7 +457,7 @@ function OnDeviceModel({
   if (downloadPct != null) {
     return (
       <View style={styles.modelRow}>
-        <ActivityIndicator color={MacroColors.kcal} />
+        <ActivityIndicator color={theme.tint} />
         <ThemedText type="small" themeColor="textSecondary">
           Downloading model… {Math.round(downloadPct * 100)}%
         </ThemedText>
@@ -461,7 +503,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   calcButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 2,
     alignItems: 'center',
@@ -481,21 +523,20 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   chip: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
   },
   saveButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  saveText: { color: '#ffffff' },
   saveFooter: {
     padding: Spacing.three,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128,128,128,0.3)',
+    borderTopColor: hairlineColor,
   },
   aboutSection: {
     marginTop: Spacing.four,

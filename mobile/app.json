@@ -55,7 +55,15 @@
           "cameraPermission": "MacroTrack uses the camera to photograph meals for nutrition estimates."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "MacroTrack uses the microphone so you can speak your meal instead of typing it.",
+          "speechRecognitionPermission": "MacroTrack turns what you say about your meal into editable text, so you can check it before logging.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

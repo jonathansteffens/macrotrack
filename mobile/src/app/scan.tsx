@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getCustomFoodByBarcode } from '@/lib/foods';
@@ -108,7 +108,7 @@ export default function ScanScreen() {
           </ThemedText>
           {permission?.canAskAgain !== false ? (
             <Pressable
-              style={[styles.primaryButton, { backgroundColor: MacroColors.kcal }]}
+              style={[styles.primaryButton, { backgroundColor: theme.tintSolid }]}
               onPress={requestPermission}>
               <ThemedText type="smallBold" style={styles.primaryButtonText}>
                 Allow camera
@@ -199,7 +199,7 @@ function ManualEntry({
         onSubmitEditing={onSubmit}
       />
       <Pressable
-        style={[styles.primaryButton, { backgroundColor: MacroColors.kcal }]}
+        style={[styles.primaryButton, { backgroundColor: theme.tintSolid }]}
         onPress={onSubmit}>
         <ThemedText type="smallBold" style={styles.primaryButtonText}>
           Go
@@ -254,13 +254,13 @@ const styles = StyleSheet.create({
   },
   manualInput: {
     flex: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 2,
     fontSize: 16,
   },
   primaryButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two + 2,
     alignItems: 'center',

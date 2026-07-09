@@ -66,7 +66,9 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
+    // Static fallback tint (iris). Prefer `themeColor="tint"` for a mode-aware
+    // accent; this constant matches the light-mode brand value.
+    color: '#5B5BD6',
   },
   code: {
     fontFamily: Fonts.mono,

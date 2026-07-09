@@ -13,7 +13,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { createCustomFood } from '@/lib/foods';
 import { parseDecimal } from '@/lib/macros';
@@ -148,11 +148,11 @@ export default function CustomFoodScreen() {
                     styles.unitChip,
                     {
                       backgroundColor:
-                        unit === u ? theme.backgroundSelected : theme.backgroundElement,
-                      borderColor: unit === u ? MacroColors.kcal : 'transparent',
+                        unit === u ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: unit === u ? theme.tint : 'transparent',
                     },
                   ]}>
-                  <ThemedText type="small" themeColor={unit === u ? 'text' : 'textSecondary'}>
+                  <ThemedText type="small" themeColor={unit === u ? 'tint' : 'textSecondary'}>
                     {u}
                   </ThemedText>
                 </Pressable>
@@ -207,7 +207,7 @@ export default function CustomFoodScreen() {
           </View>
 
           <Pressable
-            style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]}
+            style={[styles.saveButton, { backgroundColor: theme.tintSolid }]}
             onPress={save}
             disabled={saving}>
             <ThemedText type="smallBold" style={styles.saveText}>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   unitChip: {
-    borderRadius: Spacing.two,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderWidth: 1,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   moreButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 2,
     alignItems: 'center',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   servingLabel: { flex: 2 },
   servingGrams: { flex: 1 },
   saveButton: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.three,

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
 
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   chip: {
-    borderRadius: Spacing.two,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.two + 2,
     paddingVertical: Spacing.one,
   },
