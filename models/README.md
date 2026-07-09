@@ -1,6 +1,6 @@
 # MacroTrack local estimator — model artifacts
 
-## ★ Text-only model (ships now) — `text-v1`
+## ★ Text-only model (ships now) — `text-v2`
 
 The app is text-only, so the on-device estimator is now a small **text** model:
 fine-tuned **Qwen3.5-0.8B** (LoRA), text → FoodClaim JSON. 3.6× smaller and
@@ -9,16 +9,16 @@ See `docs/finetune-text-report.md`; pipeline in `tools/finetune/*text*`.
 
 | File | Size (bytes) | Purpose |
 |---|---|---|
-| `macrotrack-text-0.8b-q4_k_m.gguf` | 529,296,640 | **deployment** text model (llama.rn) |
+| `macrotrack-text-0.8b-q4_k_m.gguf` | 529,296,704 | **deployment** text model (llama.rn) |
 | `mt-0.8b-q5_k_m.gguf` | 577,998,080 | quality-max alternative (+49 MB, −7% speed) |
 | `mt-2b-q4_k_m.gguf` | 1,274,395,904 | higher-quality fallback (2× slower/bigger) |
 
 ```
-a7afefae4e7faaa8d6e7fa3c42cb3ff894e50fd271c5ca0d90c7d3ea90ebfd4a  macrotrack-text-0.8b-q4_k_m.gguf
+a72a201ed8bb673058a55113afc2f1c26d46c324233e0b6668146b85215b059f  macrotrack-text-0.8b-q4_k_m.gguf
 ```
 
 No mmproj (text only). No thinking/reasoning config needed — non-thinking is
-baked into the GGUF chat template. Host on release tag `text-v1`.
+baked into the GGUF chat template. Host on release tag `text-v2`.
 
 ---
 

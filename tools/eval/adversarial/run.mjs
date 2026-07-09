@@ -72,7 +72,7 @@ function search(query, col = 'name_norm') {
   const guard = col === 'display_name_norm' ? 'AND display_name_norm IS NOT NULL' : '';
   return db
     .prepare(
-      `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where} ${guard}
+      `SELECT name, name_norm, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where} ${guard}
        ORDER BY CASE WHEN (' ' || ${col} || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
                 CASE WHEN ${col} LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(${col}) LIMIT 1`
     )
@@ -89,8 +89,48 @@ function countInName(name) {
   if (m) return Math.min(24, parseInt(m[1], 10)) || null;
   return COUNT_WORDS[(name || '').trim().toLowerCase().split(/\s+/)[0]] ?? null;
 }
+
+// ---- Branded corroboration guard — keep IN SYNC across resolver.ts,
+//   tools/eval/run-eval.mjs, tools/chat/playground.mjs,
+//   tools/eval/adversarial/run.mjs ----
+// A single generic search token can whole-word match a branded row by accident
+// ("oreo" → "Dairy Queen Royal Oreo Blizzard"); branded serving-scaling would
+// then multiply the model's count by that row's ~350 g serving ("4 oreos" →
+// 1400 g / 4200 kcal). So branded serving-scaling applies ONLY when the match
+// is CORROBORATED by the model's own words: it named the row's brand/chain, OR
+// it named every one of the row's distinctive (product-identity) tokens.
+// COMMON_BRAND_TOKENS = tokens in ≥ COMMON_DF_MIN branded name_norms — chain
+// names (dairy, queen, burger, king, …) plus generic food words (sandwich,
+// cheese, …); everything rarer is a distinctive token (baconator, whopper,
+// blizzard, big, mac, …). Derived once from the bundled foods.db.
+const COMMON_DF_MIN = 20;
+function corrTokens(s) {
+  return (s || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+    .split(' ').filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+}
+const COMMON_BRAND_TOKENS = (() => {
+  const rows = db.prepare("SELECT name_norm FROM foods WHERE data_type = 'branded'").all();
+  const df = new Map();
+  for (const r of rows) for (const t of new Set(corrTokens(r.name_norm))) df.set(t, (df.get(t) || 0) + 1);
+  const set = new Set();
+  for (const [t, n] of df) if (n >= COMMON_DF_MIN) set.add(t);
+  return set;
+})();
+function brandedCorroborated(item, rowNameNorm) {
+  const modelToks = new Set([item.name, ...(item.db_search_terms || [])].flatMap(corrTokens));
+  const rowToks = [...new Set(corrTokens(rowNameNorm))];
+  const distinctive = rowToks.filter((t) => !COMMON_BRAND_TOKENS.has(t));
+  const common = rowToks.filter((t) => COMMON_BRAND_TOKENS.has(t));
+  const namedBrand = common.length > 0 && common.every((t) => modelToks.has(t));
+  const namedProduct = distinctive.length > 0 && distinctive.every((t) => modelToks.has(t));
+  return namedBrand || namedProduct;
+}
+
 function seedGrams(item, food) {
-  const branded = food?.data_type === 'branded';
+  // Branded serving-scaling only when the model's words corroborate the match
+  // (see brandedCorroborated) — an uncorroborated branded row is a coincidental
+  // token collision, so keep the model's own grams instead of snapping.
+  const branded = food?.data_type === 'branded' && brandedCorroborated(item, food.name_norm);
   // Multi-portion rows: label match to the claim name, then closest grams.
   let brandedServing;
   if (branded) {
