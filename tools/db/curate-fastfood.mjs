@@ -128,7 +128,14 @@ for (const [prefix, m] of byChain) {
     variants.sort((a, b) => a.kcal * a.grams - b.kcal * b.grams);
     items.push(variants[Math.floor(variants.length / 2)]);   // typical size
   }
-  items.sort((a, b) => CAT_PRIORITY.indexOf(a.category) - CAT_PRIORITY.indexOf(b.category));
+  // Keep canonical/plain items first: within a category, shorter names (e.g.
+  // "Soft Taco") beat qualifier-prefixed variants ("Breakfast Soft Taco",
+  // "Spicy Potato Soft Taco") so the plain item survives the cap AND wins the
+  // app's shortest-name-match search for a plain query.
+  items.sort((a, b) =>
+    (CAT_PRIORITY.indexOf(a.category) - CAT_PRIORITY.indexOf(b.category)) ||
+    (a.item.length - b.item.length) ||
+    a.item.localeCompare(b.item));
   const kept = items.slice(0, CAP);
   perChain.push([prefix, m.size, kept.length]);
   for (const r of kept) {
