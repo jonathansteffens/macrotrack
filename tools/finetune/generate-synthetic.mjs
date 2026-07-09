@@ -60,8 +60,16 @@ const BRANDED_FRAC = parseFloat(arg('branded-frac', '0.06'));
 const INGREDIENT_FRAC = parseFloat(arg('ingredient-frac', '0.08'));
 // Fraction that is a single bare ambiguous food ("a soda") needing a
 // clarifying question, as opposed to the vague-item case inside a multi-item
-// meal (see ~15% vagueIdx logic below).
-const CLARIFY_FRAC = parseFloat(arg('single-clarify-frac', '0.035'));
+// meal (see vagueIdx logic below). Lowered from 0.035 — combined with the
+// vagueIdx rate below, 0.035 pushed the overall ask-rate to 14.2% (v4
+// over-asking regression); real inputs with an explicit unit/quantity
+// ("a stick of butter") were being asked about too.
+const CLARIFY_FRAC = parseFloat(arg('single-clarify-frac', '0.02'));
+// Fraction that is a single bare food stated WITH a clear standard unit
+// ("a stick of butter", "a large fries") that must NOT ask — the direct
+// contrastive counterpart to CLARIFY_FRAC/SINGLE_CLARIFY, teaching that an
+// explicit quantity/qualifier resolves the ambiguity.
+const SINGLE_CONFIDENT_FRAC = parseFloat(arg('single-confident-frac', '0.05'));
 
 // Deterministic RNG (mulberry32) so datasets are reproducible
 let s = SEED >>> 0;
@@ -107,6 +115,19 @@ const POOLS = {
     { q: 'tofu firm', name: 'firm tofu', units: [{ kind: 'g', min: 80, max: 200 }] },
     { q: 'lentils cooked boiled', name: 'cooked lentils', units: [{ kind: 'measure', unit: 'cup', g: 198, fractions: true }] },
     { q: 'chickpeas garbanzo cooked boiled', name: 'chickpeas', units: [{ kind: 'measure', unit: 'cup', g: 164, fractions: true }] },
+    // Whole/half rendering (a whole rotisserie chicken bought at the store,
+    // vs. a normal per-meal serving of shredded meat off it).
+    { q: 'chicken broilers rotisserie original seasoning breast meat and skin cooked', name: 'rotisserie chicken',
+      units: [{ kind: 'g', min: 85, max: 250 }],
+      wholeOptions: [
+        { phrase: 'a whole {name}', gMin: 850, gMax: 950 },
+        { phrase: 'half a {name}', gMin: 425, gMax: 475 },
+      ] },
+    // Bulk-count coverage for common small fast-food items ("20 nuggets",
+    // "a dozen wings") — previously these only existed as fixed-gram ADDON
+    // bases with no quantity variation at all.
+    { q: 'chicken nuggets', name: 'chicken nuggets', units: [{ kind: 'count', unit: 'nugget', g: 16, min: 4, max: 10 }] },
+    { q: 'chicken wing fried coated from raw', name: 'fried chicken wings', units: [{ kind: 'count', unit: 'wing', g: 30, min: 3, max: 6 }] },
   ],
   starch: [
     { q: 'rice white long grain regular enriched cooked', name: 'white rice', units: [{ kind: 'measure', unit: 'cup', g: 160, fractions: true }] },
@@ -128,6 +149,9 @@ const POOLS = {
     { q: 'granola homemade', name: 'granola', units: [{ kind: 'measure', unit: 'cup', g: 122, fractions: true }] },
     { q: 'tortillas ready to bake or fry flour shelf stable', name: 'flour tortilla', units: [{ kind: 'count', unit: 'large tortilla', g: 70, min: 1, max: 2 }] },
     { q: 'quinoa cooked', name: 'cooked quinoa', units: [{ kind: 'measure', unit: 'cup', g: 185, fractions: true }] },
+    // NOTE: DB spelling is "doughnut" (not "donut") — the query string must
+    // match that exact spelling or search() throws.
+    { q: 'doughnuts cake type plain', name: 'doughnut', units: [{ kind: 'count', unit: 'doughnut', g: 60, min: 1, max: 3 }] },
   ],
   vegetable: [
     { q: 'broccoli cooked boiled drained without salt', name: 'steamed broccoli', units: [{ kind: 'measure', unit: 'cup', g: 156, fractions: true }] },
@@ -179,7 +203,8 @@ const POOLS = {
     { q: 'ice creams vanilla', name: 'vanilla ice cream', units: [{ kind: 'measure', unit: 'cup', g: 132, fractions: true }] },
   ],
   snack: [
-    { q: 'snacks potato chips plain salted', name: 'potato chips', units: [{ kind: 'g', min: 20, max: 50 }, { kind: 'count', unit: 'small bag', g: 28, min: 1, max: 1 }] },
+    { q: 'snacks potato chips plain salted', name: 'potato chips', units: [{ kind: 'g', min: 20, max: 50 }, { kind: 'count', unit: 'small bag', g: 28, min: 1, max: 1 }],
+      wholeOptions: [{ phrase: 'a family size bag of {name}', gMin: 150, gMax: 300 }] },
     { q: 'popcorn air popped', name: 'air-popped popcorn', units: [{ kind: 'measure', unit: 'cup', g: 8, fractions: false }] },
     { q: 'chocolate dark 70 85', name: 'dark chocolate', units: [{ kind: 'g', min: 15, max: 40 }] },
     { q: 'cookies chocolate chip commercially prepared', name: 'chocolate chip cookies', units: [{ kind: 'count', unit: 'chocolate chip cookie', g: 15, min: 1, max: 3 }] },
@@ -204,7 +229,15 @@ const POOLS = {
   fastfood: [
     { q: 'fast foods potato french fried', name: 'french fries', units: [{ kind: 'count', unit: 'medium serving', g: 115, min: 1, max: 1 }, { kind: 'g', min: 70, max: 170 }] },
     { q: 'taco beef hard shell', name: 'beef tacos', units: [{ kind: 'count', unit: 'beef taco', g: 100, min: 1, max: 3 }] },
-    { q: 'pizza cheese regular crust frozen cooked', name: 'cheese pizza', units: [{ kind: 'count', unit: 'slice', g: 107, min: 1, max: 3 }] },
+    // wholeLabel drops "cheese" for the whole/half phrasing ("a whole
+    // pizza"/"half a pizza" — how people actually say it), even though the
+    // per-slice claim name stays the more specific "cheese pizza".
+    { q: 'pizza cheese regular crust frozen cooked', name: 'cheese pizza', units: [{ kind: 'count', unit: 'slice', g: 107, min: 1, max: 3 }],
+      wholeLabel: 'pizza',
+      wholeOptions: [
+        { phrase: 'a whole {name}', gMin: 850, gMax: 1000 },
+        { phrase: 'half a {name}', gMin: 425, gMax: 500 },
+      ] },
   ],
   // Complete, single-item dishes: NFS/standard-recipe DB entries that already
   // capture the whole dish (per the app's own guidance — decompose mixed
@@ -352,6 +385,35 @@ const DISHES = {
       { q: 'cheese parmesan grated', name: 'parmesan', g: 10, prep: null },
       { q: 'croutons seasoned', name: 'croutons', g: 15, prep: null },
     ] },
+    // Global/off-curated dishes that were previously collapsing into one
+    // garbled item with fabricated search terms when off-menu ("kung pao
+    // chicken with rice" -> "chicken pao chicken white rice"). Proper
+    // multi-component DISHES with verified DB terms fix that at the source.
+    { text: 'kung pao chicken with rice', components: [
+      { q: 'kung pao chicken', name: 'kung pao chicken', g: 250, prep: null },
+      { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, prep: null },
+    ] },
+    { text: 'beef bibimbap', components: [
+      { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 200, prep: null },
+      { q: 'vegetables mixed frozen cooked boiled', name: 'mixed vegetables', g: 100, prep: null },
+      { q: 'egg whole cooked fried', name: 'fried egg', g: 46, prep: 'fried' },
+      { q: 'beef top sirloin steak cooked broiled', name: 'beef', g: 90, prep: 'thinly sliced and stir-fried' },
+    ] },
+    // NOTE: "tikka masala" itself has no DB match (verified: no "tikka" or
+    // "masala" rows) — "chicken curry" is the nearest resolvable analog for
+    // the saucy-chicken component, same approach as the "lasagna" note above.
+    { text: 'chicken tikka masala with rice', components: [
+      { q: 'chicken curry', name: 'chicken tikka masala', g: 300, prep: null },
+      { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, prep: null },
+    ] },
+    { text: 'chicken teriyaki with rice', components: [
+      { q: 'chicken or turkey with teriyaki', name: 'chicken teriyaki', g: 250, prep: null },
+      { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, prep: null },
+    ] },
+    { text: 'beef and broccoli with rice', components: [
+      { q: 'beef and broccoli', name: 'beef and broccoli', g: 250, prep: null },
+      { q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, prep: null },
+    ] },
   ],
   snack: [
     { text: 'a plate of nachos', components: [
@@ -488,6 +550,38 @@ for (const c of SINGLE_CLARIFY) {
   if (!c.food) throw new Error(`Single-clarify food not found in DB: "${c.q}"`);
 }
 
+// ---- Contrastive counterpart to SINGLE_CLARIFY: single bare foods with an
+// EXPLICIT standard unit/qualifier that must NOT trigger a clarifying
+// question. Fixes an over-asking regression where the model started asking
+// on inputs that already state a normal quantity ("a stick of butter", "a
+// slice of pizza", "a large fries") — SINGLE_CLARIFY alone teaches "ask when
+// ambiguous" with no counter-example teaching "don't ask when it's not".
+// A couple of entries deliberately mirror a SINGLE_CLARIFY item with the
+// ambiguity resolved ("a coffee" asks; "black coffee" doesn't) for maximum
+// contrast on minimal edit distance.
+// NOTE: pizza/fries resolve to a DIFFERENT (still perfectly sensible) DB row
+// than the "cheese pizza"/fast-food-fries POOLS/eval defaults — those exact
+// single-item combos are held-out eval cases (cheese-pizza, fries-medium),
+// so using the same row would silently regenerate forever and this example
+// would never actually appear in the output (same trick as the SINGLE_CLARIFY
+// note above). "a can of soda" is deliberately NOT included here — the
+// system prompt calls out regular-vs-diet as a canonical *good* question
+// (>75 kcal swing), so a can size alone doesn't resolve that ambiguity.
+const SINGLE_CONFIDENT = [
+  { text: 'a stick of butter', q: 'butter salted', name: 'butter', g: 113, meal: 'snack' },
+  { text: 'a slice of pizza', q: 'pizza meat and vegetable topping regular crust frozen cooked', name: 'pizza', g: 130, meal: 'dinner' },
+  { text: 'a cup of rice', q: 'rice white long grain regular enriched cooked', name: 'white rice', g: 160, meal: 'lunch' },
+  { text: 'a handful of almonds', q: 'nuts almonds', name: 'almonds', g: 28, meal: 'snack' },
+  { text: 'black coffee', q: 'coffee brewed prepared with tap water', name: 'black coffee', g: 240, meal: 'breakfast' },
+  { text: 'a large fries', q: 'potato french fries from fresh fried', name: 'french fries', g: 154, meal: 'lunch' },
+  { text: 'a can of tuna', q: 'tuna light canned water drained', name: 'canned tuna', g: 140, meal: 'lunch' },
+  { text: 'two slices of bacon', q: 'pork cured bacon cooked', name: 'bacon', g: 18, meal: 'breakfast' },
+];
+for (const c of SINGLE_CONFIDENT) {
+  c.food = search(c.q);
+  if (!c.food) throw new Error(`Single-confident food not found in DB: "${c.q}"`);
+}
+
 // ---- Shared "base" foods for the explicit-ingredient-list sample type
 // (rice under a bowl, tortilla around a burrito/wrap) ----
 const INGREDIENT_BASES = {
@@ -560,9 +654,12 @@ const EVAL_COMBOS = (() => {
 // ---- Rendering ----
 
 const numberWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
-  'eight', 'nine', 'ten', 'eleven', 'twelve'];
-// Render a count as a word/phrase; "a dozen" for 12, digits above the table.
-const nWord = (n) => (n === 12 && rand() < 0.5 ? 'a dozen' : numberWords[n] ?? String(n));
+  'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one',
+  'twenty-two', 'twenty-three', 'twenty-four'];
+// Render a count as digits or words — real users type both ("10 tacos" and
+// "ten tacos", "6 eggs" and "six eggs"), so pick either regardless of size.
+const numForm = (n) => (rand() < 0.45 ? String(n) : (numberWords[n] ?? String(n)));
 const OZ_G = 28.3495;
 const FRACTION_PHRASES = [
   { phrase: 'half a', f: 0.5 },
@@ -583,8 +680,29 @@ const inflectLast = (words, n) => {
   parts[parts.length - 1] = n === 1 ? singular(parts[parts.length - 1]) : plural(parts[parts.length - 1]);
   return parts.join(' ');
 };
+// A handful of pool item names end in "s" but are mass nouns, not plurals
+// ("hummus") — everything else ending in "s" ("scrambled eggs", "black
+// beans", "roasted chicken thighs") is a genuine plural. Used to pick the
+// grammatically-correct vague-question form below ("how much" vs "how
+// many") instead of always using a singular-agreeing "was it", which reads
+// as broken for plural names ("how much scrambled eggs was it").
+const MASS_NOUN_S_EXCEPTIONS = new Set(['hummus']);
+const isPluralName = (name) => {
+  const last = name.split(' ').pop().toLowerCase();
+  return last.endsWith('s') && !MASS_NOUN_S_EXCEPTIONS.has(last);
+};
 
 function renderComponent(item, vague) {
+  // Whole/half/family-size rendering ("a whole pizza", "half a rotisserie
+  // chicken", "a family size bag of chips") — a discrete alternative to the
+  // food's normal units, scaled to a realistic whole-item weight rather than
+  // a per-100g/per-slice estimate.
+  if (!vague && item.wholeOptions && rand() < 0.3) {
+    const w = pick(item.wholeOptions);
+    const g = randInt(w.gMin, w.gMax);
+    const phrase = w.phrase.replace('{name}', item.wholeLabel ?? item.name);
+    return { phrase, grams: g };
+  }
   const unit = pick(item.units);
   if (vague) {
     const phrase = pick([`some ${item.name}`, `a serving of ${item.name}`, `a bit of ${item.name}`]);
@@ -601,20 +719,34 @@ function renderComponent(item, vague) {
     return { phrase: `${g} ${pick(['g', 'grams'])} of ${item.name}`, grams: g };
   }
   if (unit.kind === 'count') {
-    // ~12% bulk quantities ("ten tacos", "a dozen wings", "8 cookies") so the
-    // model learns explicit large counts scale — capped to a realistic total.
+    // Bulk quantities ("ten tacos", "a dozen wings", "20 nuggets") so the
+    // model learns explicit large counts scale — capped to a realistic total
+    // weight (not a fixed count ceiling), so small items (nuggets, cookies,
+    // doughnuts) can go up to ~20-24 while heavier bulkable items stay sane.
+    const bulkable = unit.g <= 120 && !/stick|handful|can|bag|fillet|bowl|serving|small|medium|large|half|family/i.test(unit.unit);
     let n;
-    const bulkable = unit.g <= 120 && !/stick|handful|can|bag|fillet|bowl|serving|small|medium|large|half/i.test(unit.unit);
-    if (bulkable && rand() < 0.15) n = randInt(5, Math.min(12, Math.max(6, Math.floor(1100 / unit.g))));
-    else n = randInt(unit.min, unit.max);
+    let dozenWord = null;
+    if (bulkable && rand() < 0.12) {
+      // "a dozen"/"a half dozen" — well represented across many bulkable
+      // foods (eggs, wings, nuggets, doughnuts, cookies, tacos), not just
+      // whenever a random count happens to land on 12.
+      if (rand() < 0.7) { n = 12; dozenWord = 'a dozen'; }
+      else { n = 6; dozenWord = 'a half dozen'; }
+    } else if (bulkable && rand() < 0.35) {
+      const hi = Math.min(24, Math.max(8, Math.floor(1800 / unit.g)));
+      n = randInt(6, hi);
+    } else {
+      n = randInt(unit.min, unit.max);
+    }
     const unitLast = unit.unit.split(' ').pop();
     const nameLast = item.name.split(' ').pop();
+    const numStr = dozenWord ?? numForm(n);
     // Unit already names the food ("fried egg", "medium banana") →
     // "two fried eggs"; otherwise "two slices of bacon"
     const phrase =
       singular(unitLast) === singular(nameLast)
-        ? `${nWord(n)} ${inflectLast(unit.unit, n)}`
-        : `${nWord(n)} ${inflectLast(unit.unit, n)} of ${item.name}`;
+        ? `${numStr} ${inflectLast(unit.unit, n)}`
+        : `${numStr} ${inflectLast(unit.unit, n)} of ${item.name}`;
     return { phrase, grams: n * unit.g };
   }
   // measure (cup / tablespoon)
@@ -726,12 +858,21 @@ const INGREDIENT_TEMPLATES = [
 
 function makeIngredientSample() {
   const n = randInt(2, 4);
-  const items = [];
-  while (items.length < n) {
-    const it = pick(POOLS[pick(INGREDIENT_CATS)]);
-    if (!items.includes(it)) items.push(it);
-  }
   const tmpl = pick(INGREDIENT_TEMPLATES);
+  // Dedupe by RESOLVED DB FOOD, not by pool-item identity — two different
+  // pool entries can still resolve to the same DB row, and a listed
+  // ingredient must never repeat the base's food either (the "burrito bowl
+  // with rice, beans, ..." bug: a starch-pool rice item picked alongside the
+  // 'rice' base doubled rice+beans in the gold claim, +122% kcal).
+  const usedDbNames = new Set();
+  if (tmpl.base) usedDbNames.add(INGREDIENT_BASES[tmpl.base].food.name);
+  const items = [];
+  for (let tries = 0; items.length < n && tries < 200; tries++) {
+    const it = pick(POOLS[pick(INGREDIENT_CATS)]);
+    if (usedDbNames.has(it.food.name)) continue;
+    items.push(it);
+    usedDbNames.add(it.food.name);
+  }
   const rendered = items.map((it) => ({ item: it, grams: renderComponent(it, false).grams }));
   const names = rendered.map((r) => r.item.name);
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}` : names[0];
@@ -789,31 +930,68 @@ function makeSingleClarifySample() {
   return { text: c.text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
 }
 
+// The contrastive counterpart: a bare food with an explicit unit/qualifier
+// that resolves the ambiguity — always confident, never asks.
+function makeSingleConfidentSample() {
+  const c = pick(SINGLE_CONFIDENT);
+  const claimItems = [{
+    name: c.name,
+    grams: c.g,
+    prep: null,
+    confidence: 0.95,
+    db_search_terms: [c.q],
+    est_per100: roundedPer100(c.food),
+    _dbName: c.food.name,
+  }];
+  const claim = {
+    items: claimItems.map(({ _dbName, ...i }) => i),
+    needs_clarification: false,
+    questions: [],
+    meal_guess: c.meal,
+  };
+  return { text: c.text, claim, combo: comboKey(claimItems.map((i) => i._dbName)) };
+}
+
 function makeSampleOnce() {
   const r = rand();
   if (r < ADDON_FRAC) return makeAddonSample();
   if (r < ADDON_FRAC + BRANDED_FRAC) return makeBrandedSample();
   if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC) return makeIngredientSample();
   if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC + CLARIFY_FRAC) return makeSingleClarifySample();
+  if (r < ADDON_FRAC + BRANDED_FRAC + INGREDIENT_FRAC + CLARIFY_FRAC + SINGLE_CONFIDENT_FRAC) return makeSingleConfidentSample();
   const shape = pick(MEAL_SHAPES);
   const entries = []; // {kind:'item', item, cat} | {kind:'dish', dish}
+  // Dedupe by RESOLVED DB FOOD across BOTH plain-item slots and dish-component
+  // slots — a fixed DISH (e.g. "a chicken caesar salad") already includes
+  // romaine lettuce/tomato/etc. as components, and an independent slot in the
+  // same shape could otherwise pick that exact same resolved food again
+  // (same bug class as makeIngredientSample's duplicate-rice fix above).
+  const usedDbNames = new Set();
   for (const slot of shape.slots) {
     const cat = pick(slot);
     if (cat == null) continue;
     if (cat.startsWith('dish:')) {
-      entries.push({ kind: 'dish', dish: pick(DISHES[cat.slice(5)]) });
+      const dish = pick(DISHES[cat.slice(5)]);
+      if (dish.components.some((c) => usedDbNames.has(c.food.name))) continue;
+      entries.push({ kind: 'dish', dish });
+      for (const c of dish.components) usedDbNames.add(c.food.name);
       continue;
     }
     const item = pick(POOLS[cat]);
-    if (entries.some((e) => e.kind === 'item' && e.item === item)) continue;
+    if (usedDbNames.has(item.food.name)) continue;
     entries.push({ kind: 'item', item, cat });
+    usedDbNames.add(item.food.name);
   }
   if (entries.length === 0) entries.push({ kind: 'item', item: pick(POOLS.fruit), cat: 'fruit' });
 
-  // ~15% of samples make one high-variance PLAIN component vague → gold
-  // question (dishes are excluded: their portions are estimates by nature)
+  // ~10% of samples make one high-variance PLAIN component vague → gold
+  // question (dishes are excluded: their portions are estimates by nature).
+  // Lowered from 0.15 as part of the over-asking-regression fix — combined
+  // with the lower CLARIFY_FRAC and the new SINGLE_CONFIDENT contrastive
+  // samples above, this brings the overall ask-rate from 14.2% back to the
+  // ~5-8% range.
   const plainIdx = entries.map((e, i) => (e.kind === 'item' ? i : -1)).filter((i) => i >= 0);
-  const vagueIdx = plainIdx.length && rand() < 0.15 ? pick(plainIdx) : -1;
+  const vagueIdx = plainIdx.length && rand() < 0.1 ? pick(plainIdx) : -1;
 
   const rendered = entries.map((e, i) => {
     if (e.kind === 'dish') {
@@ -858,7 +1036,9 @@ function makeSampleOnce() {
     items: items.map(({ _dbName, ...item }) => item),
     needs_clarification: !!vague,
     questions: vague
-      ? [`Roughly how much ${vague.vagueItem.name} was it — in grams or typical servings?`]
+      ? [isPluralName(vague.vagueItem.name)
+          ? `Roughly how many ${vague.vagueItem.name} were there — or about how much in grams?`
+          : `Roughly how much ${vague.vagueItem.name} was there — in grams or a typical serving?`]
       : [],
     meal_guess: shape.meal,
   };

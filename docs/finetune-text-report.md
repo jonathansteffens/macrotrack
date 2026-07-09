@@ -15,6 +15,16 @@ Gated-DeltaNet + full-attention, non-thinking by default). Frozen contracts
 trained to exactly and are the single source of truth for the data generator and
 eval harness.
 
+> **UPDATE (2026-07-08): the shipping model is now `v5`, not the v1 below.**
+> After the initial 0.8B shipped, aggressive adversarial testing (200+ diverse
+> real-world inputs, not just the in-distribution `cases.jsonl`) exposed failures
+> the in-dist eval could not see — the model had **overfit to the generator's
+> templates**. Four data-driven fine-tune rounds followed (v2–v5), each gated on
+> a fresh adversarial retest. See **"Adversarial-driven iterations (v2–v5)"** at
+> the end of this report. The shipping artifact is
+> `macrotrack-text-0.8b-q4_k_m.gguf` (v5, sizeBytes 529296704, sha256
+> `a7afefae4e7faaa8d6e7fa3c42cb3ff894e50fd271c5ca0d90c7d3ea90ebfd4a`).
+
 ## Headline — size vs speed vs quality
 
 Text cases = `tools/eval/cases.jsonl` (52 cases, ground truth from `foods.db`,
@@ -233,3 +243,60 @@ node tools/eval/robustness-check.mjs --base-url http://127.0.0.1:8036/v1
   an explicit "no food" path could harden it.
 - **Real-phone latency** still to be confirmed on a Pixel 7 Pro dev build; the
   CPU-4-thread proxy projects ~4–5 s for a typical claim.
+
+---
+
+## Adversarial-driven iterations (v2–v5)
+
+The in-distribution eval (`cases.jsonl`) is composed from the same pools/dishes
+as the training data, so it **cannot detect template overfitting** — the model's
+single biggest weakness. An LLM adversary (Sonnet) generating 200+ diverse
+real-world inputs and judging the resolved macros is a far better gate. It drove
+four rounds; each retrain is one `generate-synthetic.mjs` change + regen +
+retrain + fresh adversarial retest.
+
+**Severe-failure rate on common everyday foods** (the key metric — a macro error
+big enough to mislead a daily total):
+
+| Version | common-food severe-fail | what the round fixed |
+|---|---|---|
+| v1 (first ship) | (looked great on in-dist eval; real rate unmeasured, ~high) | — |
+| v3 | **~47%** | condiment dropping ("toast with butter"→toast) fixed, but exposed hallucination + no scaling + off-template collapse |
+| v4 | **~7–8%** | off-template dishes read named ingredients; single-item dishes (lasagna/pad thai/chili); branded fast-food identification; oz→g; but bulk scaling still broken + **new** over-asking (14%) and item-duplication regressions |
+| **v5 (ships)** | best of the set | **fixed the duplication gold-label bug** (was silently +122% kcal on "burrito bowl with rice, beans, chicken…"), **fixed over-asking** (14%→~7%, explicit-unit inputs no longer ask), added global two-part dishes (kung pao, bibimbap), cleaner item names. In-dist median APE 3.3%, over-asking 0% on `cases.jsonl`. |
+
+**v5 is the shipping model.** It keeps every prior win and fixes v4's two serious
+regressions. Verified head-to-head vs v4 on the flagged clusters: duplication
+(v4 broken → v5 clean), over-asking (v4 3/3 over-ask → v5 0/3).
+
+### Known remaining limitation — explicit large-quantity scaling
+
+"10 tacos", "a dozen donuts", "a whole pizza", "half a rotisserie chicken",
+"family-size bag" under-scale (the model returns roughly a single/small serving).
+This is **not fixed by more data** — v5 added heavy bulk/whole/half/digit-form
+scaling examples (verified correct in the generated data: "a dozen wings"→360 g,
+"18 tacos"→1800 g, "half a rotisserie chicken"→~440 g), yet the model still does
+not reliably learn the count×unit multiplication, and the **2B fails it too**. It
+is a capacity/arithmetic limit of a small model learning numeric scaling from
+synthetic text.
+
+**Recommended real fix (resolver-side, deterministic — not another retrain):**
+parse a leading integer / "a dozen" / "whole" / "half" in the user text and
+multiply the model's single-item grams by it in the resolver (`resolveClaim`),
+before DB lookup. This catches the common "N × item" pattern exactly, regardless
+of model size. Everyday single-serving foods — the overwhelming majority of logs —
+are handled well by v5 as-is; the app's fraction chips + manual gram editing also
+let users correct a portion in one tap.
+
+### Other residual notes (low priority)
+- **Branded macro accuracy** is shakier than identification: "Wendy's Baconator"
+  resolves to the DB's smaller "Son of Baconator" (an apostrophe/shortest-match
+  quirk in the search, resolver-side), and a few chains never in the 20-chain
+  training list fall back to self-estimates. Big Mac / Whopper / Chipotle bowl
+  identify correctly as single items.
+- **cereal's milk portion** occasionally collapses (~27 g vs ~240 g) — a
+  persistent small bug worth a targeted example if revisited.
+
+### Models on disk
+`models/mt-0.8b-v{4,5}-q4_k_m.gguf` and `models/mt-2b-v4-q4_k_m.gguf` are kept as
+comparison/fallback. `macrotrack-text-0.8b-q4_k_m.gguf` == v5 (the ship).

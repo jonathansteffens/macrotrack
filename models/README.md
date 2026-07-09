@@ -14,7 +14,7 @@ See `docs/finetune-text-report.md`; pipeline in `tools/finetune/*text*`.
 | `mt-2b-q4_k_m.gguf` | 1,274,395,904 | higher-quality fallback (2× slower/bigger) |
 
 ```
-5777ca4e2abb439d30dbf4e3dceadd421fac0cd0d62e2e4e3443138c1bc8ede0  macrotrack-text-0.8b-q4_k_m.gguf
+a7afefae4e7faaa8d6e7fa3c42cb3ff894e50fd271c5ca0d90c7d3ea90ebfd4a  macrotrack-text-0.8b-q4_k_m.gguf
 ```
 
 No mmproj (text only). No thinking/reasoning config needed — non-thinking is
