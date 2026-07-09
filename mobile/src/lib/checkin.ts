@@ -32,9 +32,17 @@ export function checkinSupported(): boolean {
 }
 
 // Loaded lazily so the module never touches the web bundle's critical path
-// (same pattern as llama.rn in ai/local-model.ts).
-function notifications() {
-  return import('expo-notifications');
+// (same pattern as llama.rn in ai/local-model.ts). Returns null when the
+// native module isn't in this runtime — Expo Go, or a dev build made before
+// expo-notifications was added — so a missing build never crashes the app;
+// the check-in feature just stays unavailable until the app is rebuilt.
+type NotificationsModule = typeof import('expo-notifications');
+async function notifications(): Promise<NotificationsModule | null> {
+  try {
+    return await import('expo-notifications');
+  } catch {
+    return null;
+  }
 }
 
 /** The configured check-in hour, or null when the check-in is off (default). */
@@ -60,6 +68,7 @@ export async function checkinPermissionMissing(): Promise<boolean> {
   if (!checkinSupported()) return false;
   if ((await getCheckinHour()) == null) return false;
   const N = await notifications();
+  if (!N) return false;
   return !(await N.getPermissionsAsync()).granted;
 }
 
@@ -67,6 +76,7 @@ export async function checkinPermissionMissing(): Promise<boolean> {
 export async function requestCheckinPermission(): Promise<boolean> {
   if (!checkinSupported()) return false;
   const N = await notifications();
+  if (!N) return false;
   const current = await N.getPermissionsAsync();
   if (current.granted) return true;
   if (!current.canAskAgain) return false;
@@ -82,6 +92,7 @@ export async function requestCheckinPermission(): Promise<boolean> {
 export async function syncCheckinNotification(): Promise<void> {
   if (!checkinSupported()) return;
   const N = await notifications();
+  if (!N) return;
   await N.cancelAllScheduledNotificationsAsync();
 
   const hour = await getCheckinHour();
