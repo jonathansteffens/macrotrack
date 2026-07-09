@@ -45,10 +45,25 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
   if (countInName(item.name) && stripped) terms.push(stripped);
   let candidates: FoodItem[] = [];
   for (const term of terms) {
-    // 'all' — the model's search terms resolve against the full database, not
-    // just the curated manual-search subset, for the best chance of a match.
+    // Stage 1 — 'all': the model's search terms resolve against the full
+    // database (technical name_norm), not just the curated manual-search
+    // subset, for the best chance of a canonical match.
     candidates = await searchFoods(term, 6, 'all');
     if (candidates.length > 0) break;
+  }
+  // Stage 2 (STRICT SUPERSET) — only when stage 1 found NOTHING for every term
+  // do we retry the same terms against the plain-language display names
+  // (display_name_norm). Because it fires exclusively on the zero-candidate
+  // path, no resolution stage 1 already produced can change: this can only
+  // rescue a claim that would otherwise fall back to the model's own estimate
+  // (e.g. a friendly "mac and cheese" that missed the technical names). Kept in
+  // sync with tools/eval/run-eval.mjs, tools/chat/playground.mjs, and
+  // tools/eval/adversarial/run.mjs.
+  if (candidates.length === 0) {
+    for (const term of terms) {
+      candidates = await searchFoods(term, 6, 'display');
+      if (candidates.length > 0) break;
+    }
   }
   const match = candidates[0] ?? null;
   return {

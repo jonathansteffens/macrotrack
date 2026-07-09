@@ -35,18 +35,21 @@ const SCHEMA = new Function(`return (${readFileSync(join(ROOT, 'mobile/src/lib/a
 // ---- foods.db resolution: identical to tools/eval/run-eval.mjs ----
 const db = new DatabaseSync(join(ROOT, 'mobile/assets/foods.db'), { readOnly: true });
 const STOP = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
-function search(query) {
+function search(query, col = 'name_norm') {
   const all = query.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
   const meaningful = all.filter((t) => !STOP.has(t));
   const tokens = meaningful.length ? meaningful : all;
   if (!tokens.length) return null;
-  const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
+  const where = tokens.map(() => `(' ' || ${col}) LIKE ? ESCAPE '\\'`).join(' AND ');
   const params = tokens.map((t) => `% ${t.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
-  // Mirrors mobile/src/lib/foods.ts 'all' scope: whole-word first, then prefix, then shortest.
+  // Mirrors mobile/src/lib/foods.ts 'all'/'display' scope: whole-word first, then
+  // prefix, then shortest. col is name_norm for the primary pass and
+  // display_name_norm for the strict-superset fallback (guarded to rows with one).
+  const guard = col === 'display_name_norm' ? 'AND display_name_norm IS NOT NULL' : '';
   return db.prepare(
-    `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where}
-     ORDER BY CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
-              CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
+    `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where} ${guard}
+     ORDER BY CASE WHEN (' ' || ${col} || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+              CASE WHEN ${col} LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(${col}) LIMIT 1`
   ).get(...params, `% ${tokens[0].replace(/[\\%_]/g, (c) => '\\' + c)} %`, `${tokens[0]}%`);
 }
 const COUNT_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, dozen: 12 };
@@ -63,6 +66,16 @@ function resolveItem(item) {
   for (const term of terms) {
     food = search(term);
     if (food) { via = term; break; }
+  }
+  // Stage 2 (STRICT SUPERSET) — only when name_norm matched NOTHING for every
+  // term do we retry against the plain-language display_name_norm, so no
+  // existing resolution can change (mirrors resolver.ts resolveItem; in sync
+  // with tools/eval/run-eval.mjs and tools/eval/adversarial/run.mjs).
+  if (!food) {
+    for (const term of terms) {
+      food = search(term, 'display_name_norm');
+      if (food) { via = term; break; }
+    }
   }
   const per100 = food ?? item.est_per100 ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
   // Mirrors resolver.ts seedGrams: v2 count preference (count × per-unit

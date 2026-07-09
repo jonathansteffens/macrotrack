@@ -91,21 +91,48 @@ function escapeLike(token: string): string {
 const STOPWORDS = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
 
 /**
+ * Whether the bundled foods table carries the display_name_norm column. It is
+ * guaranteed present in the shipped DB, but an older cached copy (imported
+ * before the column existed) may not — so both the manual-search display
+ * matching and the resolver's display stage check this once (cached) and
+ * degrade gracefully rather than throwing "no such column". The column set of
+ * a bundled read-only DB can't change within a session, so caching is safe.
+ */
+let displayNormChecked = false;
+let hasDisplayNorm = false;
+async function foodsHasDisplayNorm(): Promise<boolean> {
+  if (displayNormChecked) return hasDisplayNorm;
+  try {
+    const cols = await getFoodsDb().getAllAsync<{ name: string }>("PRAGMA table_info('foods')");
+    hasDisplayNorm = cols.some((c) => c.name === 'display_name_norm');
+  } catch {
+    hasDisplayNorm = false;
+  }
+  displayNormChecked = true;
+  return hasDisplayNorm;
+}
+
+/**
  * Where a USDA search may draw from. 'common' is the curated manual-search
- * subset (foods.common = 1) — used when a person types a food, so results
+ * subset (foods.common >= 1) — used when a person types a food, so results
  * aren't buried under hundreds of near-duplicate reference entries. 'all' is
  * the full table, used by the AI resolver so the model's search terms can
- * resolve against everything. See the `common` flag in tools/build-food-db.mjs.
+ * resolve against everything. 'display' is an internal capability for the
+ * resolver's second-stage fallback: the SAME tokenized match/ranking as 'all'
+ * but run against the plain-language display_name_norm ("mac and cheese")
+ * instead of the technical name_norm — see resolveItem in ai/resolver.ts. See
+ * the `common` / `display_name` columns in tools/build-food-db.mjs.
  */
-export type SearchScope = 'common' | 'all';
+export type SearchScope = 'common' | 'all' | 'display';
 
 /**
  * Tokenized search over custom foods (first) and the bundled USDA table.
  * Stopwords are dropped, and every remaining token must start a word in the
  * normalized name (word-boundary prefix match). Results whose name starts
  * with the first token rank first, then shorter names. Manual typing uses the
- * 'common' subset; if that finds nothing, it falls back to the full table so
- * obscure foods stay reachable.
+ * 'common' subset (and also matches plain-language display names); if that
+ * finds nothing, it falls back to the full table so obscure foods stay
+ * reachable.
  */
 export async function searchFoods(
   query: string,
@@ -117,7 +144,6 @@ export async function searchFoods(
   const tokens = meaningful.length > 0 ? meaningful : all;
   if (tokens.length === 0) return [];
 
-  const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
   const params = tokens.map((t) => `% ${escapeLike(t)}%`);
   const prefix = `${escapeLike(tokens[0])}%`;
   // Rank: exact whole-word match on the first token first (so "egg" beats
@@ -130,6 +156,32 @@ export async function searchFoods(
   // string length. (No placeholder; it references name_norm directly.)
   const wordCount = `(LENGTH(name_norm) - LENGTH(REPLACE(name_norm, ' ', '')) + 1)`;
 
+  // ---- 'display' scope: the AI resolver's strict-superset second stage ----
+  // Identical WHERE/ranking shape to 'all', but every name_norm reference is
+  // swapped for display_name_norm, guarded to rows that actually have one.
+  // Custom foods are intentionally skipped — stage 1 ('all') already searched
+  // them and they carry no display name. Read defensively: an older bundled DB
+  // may lack the column, in which case return [] rather than throwing.
+  if (scope === 'display') {
+    if (!(await foodsHasDisplayNorm())) return [];
+    const dWhere = tokens
+      .map(() => "(' ' || display_name_norm) LIKE ? ESCAPE '\\'")
+      .join(' AND ');
+    const dWholeWord = `CASE WHEN (' ' || display_name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+    const dWordStart = `CASE WHEN display_name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+    const rows = await getFoodsDb().getAllAsync<FoodRow>(
+      `SELECT * FROM foods WHERE ${dWhere} AND display_name_norm IS NOT NULL
+       ORDER BY ${dWholeWord}, ${dWordStart}, LENGTH(display_name_norm) LIMIT ?`,
+      ...params,
+      wholeWordParam,
+      prefix,
+      limit
+    );
+    return rows.map(usdaRowToFood);
+  }
+
+  const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
+
   const custom = await getUserDb().getAllAsync<FoodRow>(
     `SELECT * FROM custom_foods WHERE ${where}
      ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT 10`,
@@ -138,35 +190,73 @@ export async function searchFoods(
     prefix
   );
 
-  const queryUsda = (commonOnly: boolean) =>
-    commonOnly
-      ? // Manual search: restrict to the common subset. Rank a whole-word match
-        // first, then names that START with the query term (the head-noun match —
-        // so "oil" surfaces "Oil …, NFS", not "Egg, fried with oil"), then the
-        // primary generics (common = 2) above everyday foods (= 1), then plainer
-        // (fewer-word) names, then shortest. Placeholder order (wholeWord, then
-        // wordStart) is unchanged, so the bound params still line up.
-        getFoodsDb().getAllAsync<FoodRow>(
-          `SELECT * FROM foods WHERE ${where} AND common >= 1
-           ORDER BY ${wholeWord}, ${wordStart}, common DESC, ${wordCount}, LENGTH(name_norm) LIMIT ?`,
-          ...params,
-          wholeWordParam,
-          prefix,
-          limit
-        )
-      : // Resolver ('all'): whole-word match on the first token outranks
-        // substring matches (so "chick fil a chicken sandwich" beats "chicken
-        // fillet sandwich" — 'chick' as a word, not inside 'chicken'), matching
-        // the manual-search semantics. Mirrored in tools/eval/run-eval.mjs and
-        // tools/chat/playground.mjs so model terms resolve consistently.
-        getFoodsDb().getAllAsync<FoodRow>(
-          `SELECT * FROM foods WHERE ${where}
-           ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
-          ...params,
-          wholeWordParam,
-          prefix,
-          limit
-        );
+  // Manual search matches the plain-language display_name_norm as well as the
+  // technical name_norm — needs the column, so probe once and fall back to the
+  // original name-only ranking on an old DB. ('all' never touches this.)
+  const displayReady = scope === 'common' ? await foodsHasDisplayNorm() : false;
+
+  const queryUsda = (commonOnly: boolean) => {
+    if (!commonOnly) {
+      // Resolver ('all'): whole-word match on the first token outranks
+      // substring matches (so "chick fil a chicken sandwich" beats "chicken
+      // fillet sandwich" — 'chick' as a word, not inside 'chicken'), matching
+      // the manual-search semantics. Mirrored in tools/eval/run-eval.mjs and
+      // tools/chat/playground.mjs so model terms resolve consistently.
+      // CANONICAL — kept exactly as-is; the display bridge never touches this.
+      return getFoodsDb().getAllAsync<FoodRow>(
+        `SELECT * FROM foods WHERE ${where}
+         ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+        ...params,
+        wholeWordParam,
+        prefix,
+        limit
+      );
+    }
+    if (!displayReady) {
+      // Old bundled DB without display_name_norm: original name-only ranking.
+      // Whole-word first, then head-noun prefix, then the primary generics
+      // (common = 2) above everyday foods (= 1), then plainer, then shortest.
+      return getFoodsDb().getAllAsync<FoodRow>(
+        `SELECT * FROM foods WHERE ${where} AND common >= 1
+         ORDER BY ${wholeWord}, ${wordStart}, common DESC, ${wordCount}, LENGTH(name_norm) LIMIT ?`,
+        ...params,
+        wholeWordParam,
+        prefix,
+        limit
+      );
+    }
+    // Display-aware common subset (Part 2 of the common-name bridge): a row
+    // qualifies if ALL tokens hit name_norm OR ALL hit display_name_norm, and
+    // every ranking tier takes MIN(name, display) so the friendlier field can
+    // only ever help a row's rank, never hurt it. Tiers preserved in spirit:
+    // whole-word, word-start, common DESC, word-count (plainness), raw length.
+    // COALESCE guards the length/word-count of rows with a NULL display name.
+    const whereDisp = tokens
+      .map(() => "(' ' || display_name_norm) LIKE ? ESCAPE '\\'")
+      .join(' AND ');
+    const wholeWordDisp = `CASE WHEN (' ' || display_name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+    const wordStartDisp = `CASE WHEN display_name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+    const wordCountDisp = `(LENGTH(display_name_norm) - LENGTH(REPLACE(display_name_norm, ' ', '')) + 1)`;
+    return getFoodsDb().getAllAsync<FoodRow>(
+      `SELECT * FROM foods
+       WHERE ( (${where})
+               OR (${whereDisp} AND display_name_norm IS NOT NULL) ) AND common >= 1
+       ORDER BY
+         MIN(${wholeWord}, ${wholeWordDisp}),
+         MIN(${wordStart}, ${wordStartDisp}),
+         common DESC,
+         MIN(${wordCount}, COALESCE(${wordCountDisp}, 9999)),
+         MIN(LENGTH(name_norm), COALESCE(LENGTH(display_name_norm), 9999))
+       LIMIT ?`,
+      ...params, // WHERE — name_norm tokens
+      ...params, // WHERE — display_name_norm tokens
+      wholeWordParam, // ORDER — whole-word (name)
+      wholeWordParam, // ORDER — whole-word (display)
+      prefix, // ORDER — word-start (name)
+      prefix, // ORDER — word-start (display)
+      limit
+    );
+  };
   let usda = await queryUsda(scope === 'common');
   // Nothing in the curated subset? Fall back to the full table so a manual
   // search for something obscure still finds it.

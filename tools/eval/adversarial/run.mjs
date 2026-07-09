@@ -54,7 +54,7 @@ const SCHEMA = new Function(`return (${schemaSrc.match(/FOOD_CLAIM_SCHEMA = ({[\
 const db = new DatabaseSync(join(ROOT, 'mobile', 'assets', 'foods.db'), { readOnly: true });
 const STOPWORDS = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
 
-function search(query) {
+function search(query, col = 'name_norm') {
   const all = query
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
@@ -63,15 +63,18 @@ function search(query) {
   const meaningful = all.filter((t) => !STOPWORDS.has(t));
   const tokens = meaningful.length > 0 ? meaningful : all;
   if (!tokens.length) return null;
-  const where = tokens.map(() => "(' ' || name_norm) LIKE ? ESCAPE '\\'").join(' AND ');
+  const where = tokens.map(() => `(' ' || ${col}) LIKE ? ESCAPE '\\'`).join(' AND ');
   const params = tokens.map((t) => `% ${t.replace(/[\\%_]/g, (c) => '\\' + c)}%`);
   const prefix = `${tokens[0]}%`;
   const wholeWord = `% ${tokens[0].replace(/[\\%_]/g, (c) => '\\' + c)} %`;
+  // col is name_norm for the primary pass, display_name_norm for the strict-
+  // superset fallback (guarded to rows that actually have a display name).
+  const guard = col === 'display_name_norm' ? 'AND display_name_norm IS NOT NULL' : '';
   return db
     .prepare(
-      `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where}
-       ORDER BY CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
-                CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(name_norm) LIMIT 1`
+      `SELECT name, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where} ${guard}
+       ORDER BY CASE WHEN (' ' || ${col} || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+                CASE WHEN ${col} LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(${col}) LIMIT 1`
     )
     .get(...params, wholeWord, prefix);
 }
@@ -124,6 +127,16 @@ function resolveClaim(claim) {
     for (const term of [...(item.db_search_terms || []), item.name]) {
       food = search(term);
       if (food) break;
+    }
+    // Stage 2 (STRICT SUPERSET) — only when name_norm matched NOTHING for every
+    // term do we retry against the plain-language display_name_norm, so no
+    // existing resolution can change (mirrors resolver.ts resolveItem; in sync
+    // with tools/eval/run-eval.mjs and tools/chat/playground.mjs).
+    if (!food) {
+      for (const term of [...(item.db_search_terms || []), item.name]) {
+        food = search(term, 'display_name_norm');
+        if (food) break;
+      }
     }
     const per100 = food ?? item.est_per100;
     const grams = seedGrams(item, food);
