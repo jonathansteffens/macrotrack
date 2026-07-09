@@ -48,20 +48,54 @@ export default function ScanScreen() {
       setStatus('scanning');
     };
     if (result.status === 'not_found') {
+      // OFF sometimes has a name + partial macros but no usable energy — carry
+      // whatever it returned into the custom-food form so it's half-filled.
+      const partial = result.partial;
+      const numStr = (v: number | null | undefined) => (v != null ? String(v) : undefined);
       Alert.alert(
         'Product not found',
-        `Barcode ${code} isn’t in Open Food Facts. Add it as a custom food from its nutrition label?`,
+        `Barcode ${code} isn’t in Open Food Facts. Add it as a custom food from its nutrition label, or search the database instead?`,
         [
           { text: 'Keep scanning', style: 'cancel', onPress: resume },
           {
+            text: 'Search database instead',
+            onPress: () => router.replace({ pathname: '/add', params: { day, meal } }),
+          },
+          {
             text: 'Add custom food',
             onPress: () =>
-              router.replace({ pathname: '/custom-food', params: { barcode: code, day, meal } }),
+              router.replace({
+                pathname: '/custom-food',
+                params: {
+                  barcode: code,
+                  day,
+                  meal,
+                  prefillName: partial?.name,
+                  prefillProtein: numStr(partial?.protein),
+                  prefillCarbs: numStr(partial?.carbs),
+                  prefillFat: numStr(partial?.fat),
+                },
+              }),
           },
         ]
       );
     } else {
-      Alert.alert('Lookup failed', result.message, [{ text: 'OK', onPress: resume }]);
+      // status === 'error' — almost always no connectivity. New scans hit the
+      // network; foods scanned before still resolve from the local cache.
+      Alert.alert(
+        'No connection',
+        "New barcode scans need an internet connection. Foods you’ve scanned before still work offline.",
+        [
+          { text: 'Cancel', style: 'cancel', onPress: resume },
+          {
+            text: 'Retry',
+            onPress: () => {
+              busy.current = false;
+              handleCode(code);
+            },
+          },
+        ]
+      );
     }
   };
 

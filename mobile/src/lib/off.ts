@@ -14,9 +14,22 @@ const OFF_FIELDS =
 const USER_AGENT = 'MacroTrack/0.1 (personal macro tracker)';
 const CACHE_TTL_DAYS = 30;
 
+/**
+ * What OFF knew about a product it couldn't fully resolve (missing usable
+ * energy) — enough to pre-fill the custom-food form so the user isn't retyping
+ * everything from the label.
+ */
+export type PartialProduct = {
+  name: string;
+  brand: string | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+};
+
 export type BarcodeLookup =
   | { status: 'found'; food: FoodItem }
-  | { status: 'not_found' }
+  | { status: 'not_found'; partial?: PartialProduct }
   | { status: 'error'; message: string };
 
 type OffNutriments = Record<string, number | string | undefined>;
@@ -31,6 +44,13 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
   const cached = await getCached(barcode);
   if (cached) return { status: 'found', food: cached };
 
+  // When the refresh fails, fall back to any cached copy — even one past its
+  // TTL — before surfacing an error; only error when there's no cache at all.
+  const failWith = async (message: string): Promise<BarcodeLookup> => {
+    const stale = await getCached(barcode, { allowStale: true });
+    return stale ? { status: 'found', food: stale } : { status: 'error', message };
+  };
+
   let json: any;
   try {
     const controller = new AbortController();
@@ -41,15 +61,17 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     });
     clearTimeout(timer);
     if (resp.status === 404) return { status: 'not_found' };
-    if (!resp.ok) return { status: 'error', message: `Open Food Facts returned ${resp.status}` };
+    if (!resp.ok) return failWith(`Open Food Facts returned ${resp.status}`);
     json = await resp.json();
   } catch {
-    return { status: 'error', message: 'Network error — check your connection and try again.' };
+    return failWith('Network error — check your connection and try again.');
   }
 
   if (json?.status !== 1 || !json.product) return { status: 'not_found' };
   const p = json.product;
   const n: OffNutriments = p.nutriments ?? {};
+  const name = (p.product_name ?? '').trim();
+  const brand = (p.brands ?? '').split(',')[0].trim() || null;
 
   // Energy: prefer kcal directly, fall back to kJ
   let kcal = num(n['energy-kcal_100g']);
@@ -57,7 +79,22 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
     const kj = num(n['energy_100g']);
     if (kj != null) kcal = kj / 4.184;
   }
-  if (kcal == null) return { status: 'not_found' }; // unusable without energy
+  if (kcal == null || !name) {
+    // OFF knows this product but can't give a usable per-100 energy (or name).
+    // Hand back the macros it did have so custom-food can pre-fill them.
+    return {
+      status: 'not_found',
+      partial: name
+        ? {
+            name,
+            brand,
+            protein: num(n['proteins_100g']),
+            carbs: num(n['carbohydrates_100g']),
+            fat: num(n['fat_100g']),
+          }
+        : undefined,
+    };
+  }
 
   // Sodium comes back in grams; salt fallback (salt ≈ 2.5 × sodium)
   let sodiumMg: number | null = null;
@@ -88,9 +125,6 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
   const unit: 'g' | 'ml' =
     servingUnit === 'ml' || p.nutrition_data_per === '100ml' ? 'ml' : 'g';
 
-  const name = (p.product_name ?? '').trim();
-  if (!name) return { status: 'not_found' };
-
   await getUserDb().runAsync(
     `INSERT OR REPLACE INTO barcode_cache
        (barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
@@ -99,7 +133,7 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     barcode,
     name,
-    (p.brands ?? '').split(',')[0].trim() || null,
+    brand,
     kcal,
     num(n['proteins_100g']) ?? 0,
     num(n['carbohydrates_100g']) ?? 0,
@@ -121,14 +155,18 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
   return food ? { status: 'found', food } : { status: 'error', message: 'Cache write failed' };
 }
 
-async function getCached(barcode: string): Promise<FoodItem | null> {
+async function getCached(
+  barcode: string,
+  { allowStale = false }: { allowStale?: boolean } = {}
+): Promise<FoodItem | null> {
   const row = await getUserDb().getFirstAsync<{ fetched_at: string }>(
     'SELECT fetched_at FROM barcode_cache WHERE barcode = ?',
     barcode
   );
   if (!row) return null;
   const ageDays = (Date.now() - Date.parse(row.fetched_at)) / 86_400_000;
-  // Stale entries are still used if the refresh fails — data > no data.
-  if (ageDays > CACHE_TTL_DAYS) return null;
+  // Fresh entries serve without a network call. Stale entries are still used
+  // when the refresh fails (allowStale) — data > no data. See lookupBarcode.
+  if (!allowStale && ageDays > CACHE_TTL_DAYS) return null;
   return getFoodByRef(`barcode:${barcode}`);
 }

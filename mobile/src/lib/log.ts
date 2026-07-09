@@ -1,5 +1,5 @@
 import { getUserDb } from './db';
-import { rescaleMacros, scaleMacros, ZERO_MACROS } from './macros';
+import { fmtGrams, rescaleMacros, scaleMacros, ZERO_MACROS } from './macros';
 import type { FoodItem, LogEntry, Macros, MealType } from './types';
 
 type EntryRow = {
@@ -25,6 +25,7 @@ type EntryRow = {
   iron_mg: number | null;
   potassium_mg: number | null;
   source: string;
+  origin?: string | null;
 };
 
 function rowToEntry(r: EntryRow): LogEntry {
@@ -53,20 +54,33 @@ function rowToEntry(r: EntryRow): LogEntry {
       potassiumMg: r.potassium_mg,
     },
     source: r.source as LogEntry['source'],
+    origin: (r.origin as LogEntry['origin']) ?? null,
   };
 }
 
 export async function logFood(
   food: FoodItem,
-  opts: { day: string; meal: MealType; grams: number; quantityDesc: string }
+  opts: {
+    day: string;
+    meal: MealType;
+    grams: number;
+    quantityDesc: string;
+    /**
+     * The flow that created this entry, when it isn't the plain food search —
+     * 'assist' tags an AI-review log so it carries the "AI" provenance chip even
+     * though its macros come from the canonical DB (`source` still records the
+     * real macro provenance). Omitted → a normal DB/custom/barcode log.
+     */
+    origin?: LogEntry['origin'];
+  }
 ): Promise<number> {
   const m = scaleMacros(food.per100, opts.grams);
   const res = await getUserDb().runAsync(
     `INSERT INTO log_entries
        (day, ts, meal, food_name, food_ref, quantity_desc, grams,
         kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
-        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source, origin)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     opts.day,
     new Date().toISOString(),
     opts.meal,
@@ -87,7 +101,8 @@ export async function logFood(
     m.ironMg,
     m.potassiumMg,
     food.unit ?? 'g',
-    food.source
+    food.source,
+    opts.origin ?? null
   );
   return res.lastInsertRowId;
 }
@@ -142,10 +157,11 @@ export async function relogEntries(
   entries: LogEntry[],
   day: string,
   meal: MealType
-): Promise<void> {
+): Promise<number[]> {
   const db = getUserDb();
+  const ids: number[] = [];
   for (const e of entries) {
-    await db.runAsync(
+    const res = await db.runAsync(
       `INSERT INTO log_entries
          (day, ts, meal, food_name, food_ref, quantity_desc, grams,
           kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
@@ -173,7 +189,20 @@ export async function relogEntries(
       e.unit ?? 'g',
       e.source
     );
+    ids.push(res.lastInsertRowId);
   }
+  return ids;
+}
+
+/** Distinct day keys with at least one entry in [from, to] (inclusive) — one
+ *  cheap query to mark days on the calendar. */
+export async function daysWithEntries(from: string, to: string): Promise<Set<string>> {
+  const rows = await getUserDb().getAllAsync<{ day: string }>(
+    'SELECT DISTINCT day FROM log_entries WHERE day >= ? AND day <= ?',
+    from,
+    to
+  );
+  return new Set(rows.map((r) => r.day));
 }
 
 /** Meals that have at least one entry on `day` (for "copy yesterday"). */
@@ -276,10 +305,57 @@ export async function updateEntryQuantity(
   );
 }
 
+/**
+ * Swap the food an entry points at (the "wrong food" fix). Keeps the logged
+ * amount, but re-derives macros from the new food's per-100 basis and rewrites
+ * the identity fields (name/ref/unit/source). If the entry has no gram weight
+ * its macros can't be rescaled, so only the identity is swapped.
+ */
+export async function updateEntryFood(id: number, food: FoodItem): Promise<void> {
+  const entry = await getEntry(id);
+  if (!entry) return;
+  const foodName = food.brand ? `${food.name} (${food.brand})` : food.name;
+  const unit = food.unit ?? 'g';
+  const m = entry.grams != null ? scaleMacros(food.per100, entry.grams) : entry.macros;
+  const quantityDesc =
+    entry.grams != null ? `${fmtGrams(entry.grams)} ${unit}` : entry.quantityDesc;
+  await getUserDb().runAsync(
+    `UPDATE log_entries SET food_ref = ?, food_name = ?, quantity_desc = ?, unit = ?, source = ?,
+       kcal = ?, protein = ?, carbs = ?, fat = ?, fiber = ?, sugar = ?, sodium_mg = ?,
+       sat_fat = ?, cholesterol_mg = ?, calcium_mg = ?, iron_mg = ?, potassium_mg = ?
+     WHERE id = ?`,
+    food.ref,
+    foodName,
+    quantityDesc,
+    unit,
+    food.source,
+    m.kcal,
+    m.protein,
+    m.carbs,
+    m.fat,
+    m.fiber,
+    m.sugar,
+    m.sodiumMg,
+    m.satFat,
+    m.cholesterolMg,
+    m.calciumMg,
+    m.ironMg,
+    m.potassiumMg,
+    id
+  );
+}
+
 export async function updateEntryMeal(id: number, meal: MealType): Promise<void> {
   await getUserDb().runAsync('UPDATE log_entries SET meal = ? WHERE id = ?', meal, id);
 }
 
 export async function deleteEntry(id: number): Promise<void> {
   await getUserDb().runAsync('DELETE FROM log_entries WHERE id = ?', id);
+}
+
+/** Delete a specific set of entries (undo of a batch quick-log). */
+export async function deleteEntries(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(', ');
+  await getUserDb().runAsync(`DELETE FROM log_entries WHERE id IN (${placeholders})`, ...ids);
 }

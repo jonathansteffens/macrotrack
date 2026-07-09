@@ -8,6 +8,9 @@ export { normName };
 type FoodRow = {
   id: number;
   name: string;
+  /** Friendly display name (foods table only; NULL for most rows, absent on
+   *  custom_foods / barcode_cache which have no such column). */
+  display_name?: string | null;
   brand?: string | null;
   category?: string | null;
   kcal: number;
@@ -58,6 +61,7 @@ function usdaRowToFood(r: FoodRow): FoodItem {
     ref: `usda:${r.id}`,
     source: 'usda',
     name: r.name,
+    displayName: r.display_name ?? null,
     brand: null,
     category: r.category ?? null,
     per100: rowMacros(r),
@@ -121,6 +125,10 @@ export async function searchFoods(
   const wholeWord = `CASE WHEN (' ' || name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
   const wholeWordParam = `% ${escapeLike(tokens[0])} %`;
   const wordStart = `CASE WHEN name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+  // Word count of the name — a "plainness" tiebreak so the everyday staple
+  // ("Rice, cooked") outranks a wordier variant before falling back to raw
+  // string length. (No placeholder; it references name_norm directly.)
+  const wordCount = `(LENGTH(name_norm) - LENGTH(REPLACE(name_norm, ' ', '')) + 1)`;
 
   const custom = await getUserDb().getAllAsync<FoodRow>(
     `SELECT * FROM custom_foods WHERE ${where}
@@ -132,11 +140,15 @@ export async function searchFoods(
 
   const queryUsda = (commonOnly: boolean) =>
     commonOnly
-      ? // Manual search: restrict to the common subset, whole-word match first,
-        // then primary generics (common = 2) above everyday foods (= 1).
+      ? // Manual search: restrict to the common subset. Rank a whole-word match
+        // first, then names that START with the query term (the head-noun match —
+        // so "oil" surfaces "Oil …, NFS", not "Egg, fried with oil"), then the
+        // primary generics (common = 2) above everyday foods (= 1), then plainer
+        // (fewer-word) names, then shortest. Placeholder order (wholeWord, then
+        // wordStart) is unchanged, so the bound params still line up.
         getFoodsDb().getAllAsync<FoodRow>(
           `SELECT * FROM foods WHERE ${where} AND common >= 1
-           ORDER BY ${wholeWord}, common DESC, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+           ORDER BY ${wholeWord}, ${wordStart}, common DESC, ${wordCount}, LENGTH(name_norm) LIMIT ?`,
           ...params,
           wholeWordParam,
           prefix,

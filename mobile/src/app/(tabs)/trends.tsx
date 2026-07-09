@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,12 +9,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { shortLabel } from '@/lib/dates';
-import { fmtGrams, parseDecimal } from '@/lib/macros';
+import { addDays, shortLabel, todayKey } from '@/lib/dates';
+import { parseDecimal } from '@/lib/macros';
 import { NUTRIENTS, NUTRIENTS_BY_KEY, type NutrientKey } from '@/lib/nutrients';
 import { defaultTracking, getTracking } from '@/lib/tracking';
 import { getTrends, type DayTotal, type TrendSummary } from '@/lib/trends';
-import { logWeight, weightTrend, type WeightEntry } from '@/lib/weights';
+import { fmtWeight, logWeight, weightTrend, type WeightEntry } from '@/lib/weights';
 
 const RANGES = [7, 30, 90] as const;
 
@@ -30,6 +30,7 @@ export default function TrendsScreen() {
     change: number | null;
   } | null>(null);
   const [weightText, setWeightText] = useState('');
+  const [weightDay, setWeightDay] = useState<'today' | 'yesterday'>('today');
 
   const loadWeight = useCallback(() => {
     weightTrend(range).then(setWeight);
@@ -46,7 +47,8 @@ export default function TrendsScreen() {
   const submitWeight = async () => {
     const w = parseDecimal(weightText);
     if (w == null || w <= 0) return;
-    await logWeight(w);
+    const day = weightDay === 'yesterday' ? addDays(todayKey(), -1) : todayKey();
+    await logWeight(w, day);
     setWeightText('');
     loadWeight();
   };
@@ -70,7 +72,16 @@ export default function TrendsScreen() {
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <ThemedText type="subtitle">Trends</ThemedText>
+          <View style={styles.titleRow}>
+            <ThemedText type="subtitle" style={styles.flex}>
+              Trends
+            </ThemedText>
+            <Pressable hitSlop={12} onPress={() => router.push('/settings')}>
+              <ThemedText type="default" themeColor="textSecondary">
+                ⚙
+              </ThemedText>
+            </Pressable>
+          </View>
 
           {/* Range selector */}
           <View style={styles.chipRow}>
@@ -141,15 +152,27 @@ export default function TrendsScreen() {
               <ThemedText type="smallBold">Weight</ThemedText>
               {weight && weight.entries.length > 0 && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  {fmtGrams(weight.entries[weight.entries.length - 1].weight)}
+                  {fmtWeight(weight.entries[weight.entries.length - 1].weight)}
                   {weight.change != null &&
-                    `  (${weight.change > 0 ? '+' : ''}${fmtGrams(weight.change)} over range)`}
+                    `  (${weight.change > 0 ? '+' : ''}${fmtWeight(weight.change)} over range)`}
                 </ThemedText>
               )}
             </View>
             {weight && weight.entries.length > 1 && (
               <SparkLine values={weight.series} color={MacroColors.kcal} />
             )}
+            <View style={styles.chipRow}>
+              <Chip
+                label="Today"
+                selected={weightDay === 'today'}
+                onPress={() => setWeightDay('today')}
+              />
+              <Chip
+                label="Yesterday"
+                selected={weightDay === 'yesterday'}
+                onPress={() => setWeightDay('yesterday')}
+              />
+            </View>
             <View style={styles.weightRow}>
               <TextInput
                 style={[
@@ -159,7 +182,7 @@ export default function TrendsScreen() {
                 value={weightText}
                 onChangeText={setWeightText}
                 keyboardType="decimal-pad"
-                placeholder="Today’s weight"
+                placeholder={weightDay === 'yesterday' ? 'Yesterday’s weight' : 'Today’s weight'}
                 placeholderTextColor={theme.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={submitWeight}
@@ -247,6 +270,11 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flex: { flex: 1 },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

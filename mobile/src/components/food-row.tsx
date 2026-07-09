@@ -24,7 +24,7 @@ export function FoodRow({ food, onPress }: { food: FoodItem; onPress: () => void
           style={styles.card}>
           <View style={styles.nameRow}>
             <ThemedText type="small" numberOfLines={2} style={styles.name}>
-              {food.name}
+              {food.displayName ?? food.name}
               {food.brand ? ` (${food.brand})` : ''}
             </ThemedText>
             {badge && (

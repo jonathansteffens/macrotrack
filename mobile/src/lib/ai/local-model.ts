@@ -168,6 +168,16 @@ export function runOnLocalContext<T>(fn: (ctx: LlamaContext) => Promise<T>): Pro
   return run;
 }
 
+/**
+ * Fire-and-forget warm-up: kick off the lazy context load so the model is
+ * ready by the time the user submits (the assist screen calls this on mount
+ * while the user is still typing). Errors — missing model, unsupported
+ * platform — are swallowed; the real estimate call surfaces them to the UI.
+ */
+export function ensureLoaded(): void {
+  runOnLocalContext(() => Promise.resolve()).catch(() => {});
+}
+
 /** Unload the model — call when the app backgrounds to free memory. */
 export async function releaseLocalContext(): Promise<void> {
   const p = contextPromise;

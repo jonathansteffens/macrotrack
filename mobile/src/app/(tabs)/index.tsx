@@ -1,8 +1,9 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DatePickerModal } from '@/components/date-picker-modal';
 import { MacroBar } from '@/components/macro-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { syncCheckinNotification } from '@/lib/checkin';
 import { addDays, dayLabel, todayKey } from '@/lib/dates';
 import { usualComboForMeal, type UsualCombo } from '@/lib/habits';
-import { dayTotals, entriesForDay, mealsLoggedOn, relogEntries } from '@/lib/log';
+import { dayTotals, deleteEntries, entriesForDay, mealsLoggedOn, relogEntries } from '@/lib/log';
 import { fmtKcal, ZERO_MACROS } from '@/lib/macros';
 import { NUTRIENTS, nutrientValue } from '@/lib/nutrients';
 import { saveTemplate } from '@/lib/templates';
@@ -25,6 +26,17 @@ import {
   type MealType,
 } from '@/lib/types';
 
+/** A tiny provenance tag for an entry row, or null for plain DB/custom foods.
+ *  Anything logged via the AI review flow gets "AI" — whether it fell back to
+ *  the model's estimate (source/quantityDesc marker) or matched a DB food
+ *  (origin marker) — before the barcode "scan" tag. */
+function provenanceLabel(e: LogEntry): string | null {
+  if (e.source === 'ai_estimate' || e.origin === 'assist' || e.quantityDesc.includes('(AI estimate)'))
+    return 'AI';
+  if (e.source === 'barcode') return 'scan';
+  return null;
+}
+
 export default function TodayScreen() {
   const theme = useTheme();
   const [day, setDay] = useState(todayKey());
@@ -34,6 +46,10 @@ export default function TodayScreen() {
   // Repeat-logging affordances — only offered on the actual today.
   const [copyableMeals, setCopyableMeals] = useState<Set<MealType>>(new Set());
   const [usual, setUsual] = useState<UsualCombo | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  // Undo bar for the batch quick-logs (copy-yesterday / habit chip): the exact
+  // ids just inserted, so Undo removes only those.
+  const [undo, setUndo] = useState<{ ids: number[]; count: number } | null>(null);
   const relogging = useRef(false);
 
   const load = useCallback(async () => {
@@ -59,14 +75,35 @@ export default function TodayScreen() {
   }, [day]);
 
   const relog = async (entriesToLog: LogEntry[], meal: MealType) => {
-    if (relogging.current) return;
+    if (relogging.current || entriesToLog.length === 0) return;
     relogging.current = true;
     try {
-      await relogEntries(entriesToLog, day, meal);
+      const ids = await relogEntries(entriesToLog, day, meal);
+      setUndo({ ids, count: ids.length });
       await load();
     } finally {
       relogging.current = false;
     }
+  };
+
+  const undoRelog = async () => {
+    if (!undo) return;
+    await deleteEntries(undo.ids);
+    setUndo(null);
+    await load();
+  };
+
+  // Auto-dismiss the undo bar after a few seconds.
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
+
+  // Changing the day dismisses a stale undo bar (its ids belong to another view).
+  const goToDay = (next: string) => {
+    setUndo(null);
+    setDay(next);
   };
 
   const copyYesterday = async (meal: MealType) => {
@@ -93,17 +130,17 @@ export default function TodayScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Date navigation header */}
         <View style={styles.header}>
-          <Pressable hitSlop={12} onPress={() => setDay((d) => addDays(d, -1))}>
+          <Pressable hitSlop={12} onPress={() => goToDay(addDays(day, -1))}>
             <ThemedText type="subtitle" themeColor="textSecondary">
               ‹
             </ThemedText>
           </Pressable>
-          <Pressable hitSlop={12} onPress={() => setDay(todayKey())}>
+          <Pressable hitSlop={12} onPress={() => setCalendarOpen(true)}>
             <ThemedText type="default" style={styles.dayLabel}>
               {dayLabel(day)}
             </ThemedText>
           </Pressable>
-          <Pressable hitSlop={12} onPress={() => setDay((d) => addDays(d, 1))}>
+          <Pressable hitSlop={12} onPress={() => goToDay(addDays(day, 1))}>
             <ThemedText type="subtitle" themeColor="textSecondary">
               ›
             </ThemedText>
@@ -129,18 +166,20 @@ export default function TodayScreen() {
                 <ThemedText themeColor="textSecondary">
                   {kcalCfg.goal != null ? ` / ${fmtKcal(kcalCfg.goal)} kcal` : ' kcal'}
                 </ThemedText>
-                {remaining != null && (
-                  <View style={styles.remainingBox}>
-                    <ThemedText
-                      type="small"
-                      themeColor="textSecondary"
-                      style={remaining < 0 && { color: MacroColors.protein }}>
-                      {remaining >= 0
-                        ? `${fmtKcal(remaining)} left`
-                        : `${fmtKcal(-remaining)} over`}
-                    </ThemedText>
-                  </View>
-                )}
+                {remaining != null &&
+                  (remaining >= 0 ? (
+                    <View style={styles.remainingBox}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {fmtKcal(remaining)} left
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <View style={[styles.overBadge, { borderColor: theme.danger }]}>
+                      <ThemedText type="small" style={[styles.overText, { color: theme.danger }]}>
+                        +{fmtKcal(-remaining)} over
+                      </ThemedText>
+                    </View>
+                  ))}
               </View>
             )}
             {enabledNutrients.map((n) => (
@@ -170,6 +209,20 @@ export default function TodayScreen() {
             </Pressable>
           )}
 
+          {/* Undo the last batch quick-log */}
+          {undo && (
+            <View style={[styles.undoBar, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
+                Logged {undo.count} item{undo.count === 1 ? '' : 's'}
+              </ThemedText>
+              <Pressable hitSlop={8} onPress={undoRelog}>
+                <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+                  Undo
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
+
           {/* Meals */}
           {MEALS.map((meal) => (
             <MealSection
@@ -183,21 +236,41 @@ export default function TodayScreen() {
           ))}
 
           <View style={styles.quickActions}>
-            {/* No meal picked here — the target screens guess one (AI meal_guess
-                or time of day), and the entry editor can re-file it later. */}
+            {/* AI + Scan pick no meal — the target screens guess one (AI
+                meal_guess or time of day) and the entry editor can re-file it
+                later. Manual Search defaults to the current time-of-day meal so
+                a tapped result files sensibly. */}
             <Pressable
-              style={[styles.scanButton, { backgroundColor: theme.backgroundElement }]}
+              style={[styles.quickAction, { backgroundColor: theme.backgroundElement }]}
               onPress={() => router.push({ pathname: '/assist', params: { day } })}>
-              <ThemedText type="small">✨ AI assistant</ThemedText>
+              <ThemedText type="small">✨ Describe</ThemedText>
             </Pressable>
             <Pressable
-              style={[styles.scanButton, { backgroundColor: theme.backgroundElement }]}
+              style={[styles.quickAction, { backgroundColor: theme.backgroundElement }]}
+              onPress={() =>
+                router.push({ pathname: '/add', params: { day, meal: mealForTime() } })
+              }>
+              <ThemedText type="small">🔍 Search</ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.quickAction, { backgroundColor: theme.backgroundElement }]}
               onPress={() => router.push({ pathname: '/scan', params: { day } })}>
-              <ThemedText type="small">📷 Scan barcode</ThemedText>
+              <ThemedText type="small">📷 Scan</ThemedText>
             </Pressable>
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {calendarOpen && (
+        <DatePickerModal
+          selected={day}
+          onSelect={(d) => {
+            goToDay(d);
+            setCalendarOpen(false);
+          }}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -215,6 +288,7 @@ function MealSection({
   canCopyYesterday: boolean;
   onCopyYesterday: () => void;
 }) {
+  const theme = useTheme();
   const mealKcal = entries.reduce((s, e) => s + e.macros.kcal, 0);
 
   const saveAsTemplate = () => {
@@ -240,9 +314,12 @@ function MealSection({
         <View style={styles.mealHeaderRight}>
           {entries.length > 0 && (
             <>
-              <Pressable hitSlop={8} onPress={saveAsTemplate}>
+              <Pressable
+                hitSlop={8}
+                onPress={saveAsTemplate}
+                accessibilityLabel="Save meal as a template">
                 <ThemedText type="small" themeColor="textSecondary">
-                  ☆
+                  ☆ Save
                 </ThemedText>
               </Pressable>
               <ThemedText type="small" themeColor="textSecondary">
@@ -277,9 +354,18 @@ function MealSection({
               style={[styles.entryRow, i > 0 && styles.entryRowBorder]}
               onPress={() => router.push({ pathname: '/entry', params: { id: String(e.id) } })}>
               <View style={styles.entryText}>
-                <ThemedText type="small" numberOfLines={1}>
-                  {e.foodName}
-                </ThemedText>
+                <View style={styles.entryNameRow}>
+                  <ThemedText type="small" numberOfLines={1} style={styles.entryName}>
+                    {e.foodName}
+                  </ThemedText>
+                  {provenanceLabel(e) && (
+                    <View style={[styles.provChip, { backgroundColor: theme.backgroundSelected }]}>
+                      <ThemedText type="small" themeColor="textSecondary" style={styles.provText}>
+                        {provenanceLabel(e)}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
                 <ThemedText type="small" themeColor="textSecondary">
                   {e.quantityDesc}
                 </ThemedText>
@@ -338,6 +424,18 @@ const styles = StyleSheet.create({
   remainingBox: {
     marginLeft: 'auto',
   },
+  overBadge: {
+    marginLeft: 'auto',
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.one + 2,
+    paddingVertical: 1,
+  },
+  overText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
   mealSection: {
     gap: Spacing.two,
   },
@@ -378,11 +476,38 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 1,
   },
+  entryNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  entryName: {
+    flexShrink: 1,
+  },
+  provChip: {
+    borderRadius: Spacing.one,
+    paddingHorizontal: Spacing.one + 1,
+    paddingVertical: 0,
+  },
+  provText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  undoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+  },
+  flex: { flex: 1 },
   quickActions: {
     flexDirection: 'row',
     gap: Spacing.two,
   },
-  scanButton: {
+  quickAction: {
     flex: 1,
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,

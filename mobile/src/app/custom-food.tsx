@@ -30,14 +30,17 @@ export default function CustomFoodScreen() {
     meal?: string;
     barcode?: string;
     prefillName?: string;
+    prefillProtein?: string;
+    prefillCarbs?: string;
+    prefillFat?: string;
   }>();
 
   const [name, setName] = useState(params.prefillName ?? '');
   const [brand, setBrand] = useState('');
   const [kcal, setKcal] = useState('');
-  const [protein, setProtein] = useState('');
-  const [carbs, setCarbs] = useState('');
-  const [fat, setFat] = useState('');
+  const [protein, setProtein] = useState(params.prefillProtein ?? '');
+  const [carbs, setCarbs] = useState(params.prefillCarbs ?? '');
+  const [fat, setFat] = useState(params.prefillFat ?? '');
   const [fiber, setFiber] = useState('');
   const [sugar, setSugar] = useState('');
   const [sodium, setSodium] = useState('');
@@ -50,6 +53,9 @@ export default function CustomFoodScreen() {
   const [servingGrams, setServingGrams] = useState('');
   const [unit, setUnit] = useState<'g' | 'ml'>('g');
   const [saving, setSaving] = useState(false);
+  // The 8 micronutrients are hidden by default — the label's big four are what
+  // matters; anyone who has the rest can expand to enter them.
+  const [showMore, setShowMore] = useState(false);
 
   const save = async () => {
     const kcalNum = parseDecimal(kcal);
@@ -158,15 +164,27 @@ export default function CustomFoodScreen() {
             <NumField label="Protein (g)" value={protein} onChange={setProtein} style={inputStyle} />
             <NumField label="Carbs (g)" value={carbs} onChange={setCarbs} style={inputStyle} />
             <NumField label="Fat (g)" value={fat} onChange={setFat} style={inputStyle} />
-            <NumField label="Fiber (g)" value={fiber} onChange={setFiber} style={inputStyle} />
-            <NumField label="Sugar (g)" value={sugar} onChange={setSugar} style={inputStyle} />
-            <NumField label="Sodium (mg)" value={sodium} onChange={setSodium} style={inputStyle} />
-            <NumField label="Sat fat (g)" value={satFat} onChange={setSatFat} style={inputStyle} />
-            <NumField label="Cholesterol (mg)" value={cholesterol} onChange={setCholesterol} style={inputStyle} />
-            <NumField label="Calcium (mg)" value={calcium} onChange={setCalcium} style={inputStyle} />
-            <NumField label="Iron (mg)" value={iron} onChange={setIron} style={inputStyle} />
-            <NumField label="Potassium (mg)" value={potassium} onChange={setPotassium} style={inputStyle} />
           </View>
+
+          <Pressable
+            style={[styles.moreButton, { backgroundColor: theme.backgroundElement }]}
+            onPress={() => setShowMore((s) => !s)}>
+            <ThemedText type="small">
+              More nutrients (optional) {showMore ? '▴' : '▾'}
+            </ThemedText>
+          </Pressable>
+          {showMore && (
+            <View style={styles.grid}>
+              <NumField label="Fiber (g)" value={fiber} onChange={setFiber} style={inputStyle} />
+              <NumField label="Sugar (g)" value={sugar} onChange={setSugar} style={inputStyle} />
+              <NumField label="Sodium (mg)" value={sodium} onChange={setSodium} style={inputStyle} />
+              <NumField label="Sat fat (g)" value={satFat} onChange={setSatFat} style={inputStyle} />
+              <NumField label="Cholesterol (mg)" value={cholesterol} onChange={setCholesterol} style={inputStyle} />
+              <NumField label="Calcium (mg)" value={calcium} onChange={setCalcium} style={inputStyle} />
+              <NumField label="Iron (mg)" value={iron} onChange={setIron} style={inputStyle} />
+              <NumField label="Potassium (mg)" value={potassium} onChange={setPotassium} style={inputStyle} />
+            </View>
+          )}
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Serving size (optional)
@@ -275,6 +293,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  moreButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+    alignItems: 'center',
   },
   numField: {
     width: '31%',

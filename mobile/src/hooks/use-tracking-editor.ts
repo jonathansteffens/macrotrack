@@ -20,6 +20,12 @@ export function useTrackingEditor() {
   const [goalText, setGoalText] = useState<Record<NutrientKey, string>>(
     () => Object.fromEntries(NUTRIENTS.map((n) => [n.key, ''])) as Record<NutrientKey, string>
   );
+  // Snapshot of the last-persisted state, so callers can tell whether there are
+  // unsaved edits (drives the sticky "Save goals" footer in Settings).
+  const [baseline, setBaseline] = useState<{
+    enabled: Record<NutrientKey, boolean>;
+    goalText: Record<NutrientKey, string>;
+  } | null>(null);
 
   useEffect(() => {
     getTracking().then((cfg) => {
@@ -31,8 +37,19 @@ export function useTrackingEditor() {
       }
       setEnabled(en);
       setGoalText(gt);
+      setBaseline({ enabled: en, goalText: gt });
     });
   }, []);
+
+  const dirty =
+    baseline != null &&
+    NUTRIENTS.some(
+      (n) =>
+        enabled[n.key] !== baseline.enabled[n.key] || goalText[n.key] !== baseline.goalText[n.key]
+    );
+
+  /** Reset the "unsaved edits" baseline to the current state (call after save). */
+  const markSaved = () => setBaseline({ enabled: { ...enabled }, goalText: { ...goalText } });
 
   const toggle = (key: NutrientKey) => {
     const turningOn = !enabled[key];
@@ -80,5 +97,5 @@ export function useTrackingEditor() {
     return config;
   };
 
-  return { enabled, goalText, toggle, setGoal, applyGoals, buildConfig };
+  return { enabled, goalText, toggle, setGoal, applyGoals, buildConfig, dirty, markSaved };
 }

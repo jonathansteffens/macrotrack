@@ -8,9 +8,9 @@ import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { dismissAiOffer, recordManualSearch, shouldShowAiOffer } from '@/lib/ai-offer';
-import { LOCAL_MODEL_TOTAL_BYTES } from '@/lib/ai/local-model';
 import { todayKey } from '@/lib/dates';
 import { recentFoods, searchFoods } from '@/lib/foods';
+import { deleteEntries } from '@/lib/log';
 import { fmtKcal } from '@/lib/macros';
 import { listRecipes, recipePerServing, type Recipe } from '@/lib/recipes';
 import {
@@ -35,10 +35,18 @@ export default function AddFoodScreen() {
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [aiOffer, setAiOffer] = useState(false);
+  // While searching, Recipes/Templates collapse behind a header+count so they
+  // stay reachable without burying the food matches. Collapsed by default.
+  const [expandRecipes, setExpandRecipes] = useState(false);
+  const [expandTemplates, setExpandTemplates] = useState(false);
   const searchId = useRef(0);
   // The lifetime search counter bumps at most once per screen visit, so
   // keystroke-debounced re-searches don't inflate it.
   const countedSearch = useRef(false);
+  // Inline undo for one-tap template logging: the exact ids just inserted, so
+  // Undo removes only those. This screen owns the bar because the today
+  // screen's undo state is local and unreachable across the navigation boundary.
+  const [templateUndo, setTemplateUndo] = useState<{ ids: number[]; count: number } | null>(null);
 
   // Reload on focus so a recipe/template created in a pushed modal shows on return.
   useFocusEffect(
@@ -70,12 +78,27 @@ export default function AddFoodScreen() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // Auto-dismiss the undo bar after a few seconds (mirrors the today screen).
+  useEffect(() => {
+    if (!templateUndo) return;
+    const t = setTimeout(() => setTemplateUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [templateUndo]);
+
   const openFood = (food: FoodItem) =>
     router.push({ pathname: '/food', params: { ref: food.ref, day, meal } });
 
+  // One-tap template log stays on this screen and surfaces an inline undo bar
+  // (rather than returning immediately), so the log is reversible in one tap.
   const applyTemplate = async (t: MealTemplate) => {
-    await logTemplate(t, day, (meal as MealType | undefined) ?? mealForTime());
-    router.back();
+    const ids = await logTemplate(t, day, (meal as MealType | undefined) ?? mealForTime());
+    setTemplateUndo({ ids, count: ids.length });
+  };
+
+  const undoTemplate = async () => {
+    if (!templateUndo) return;
+    await deleteEntries(templateUndo.ids);
+    setTemplateUndo(null);
   };
 
   const confirmDeleteTemplate = (t: MealTemplate) => {
@@ -106,6 +129,40 @@ export default function AddFoodScreen() {
         .slice(0, 3);
   const matchingRefs = new Set(matchingRecents.map((f) => f.ref));
   const data = showingRecents ? recents : results.filter((f) => !matchingRefs.has(f.ref));
+
+  const renderRecipeRow = (r: Recipe) => (
+    <Pressable
+      key={r.id}
+      style={styles.templateRow}
+      onPress={() => router.push({ pathname: '/food', params: { ref: `recipe:${r.id}`, day, meal } })}
+      onLongPress={() => router.push({ pathname: '/recipe', params: { id: String(r.id) } })}>
+      <ThemedView type="backgroundElement" style={styles.templateCard}>
+        <ThemedText type="small" numberOfLines={1} style={styles.templateName}>
+          🍲 {r.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} kcal ea
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
+
+  const renderTemplateRow = (t: MealTemplate) => (
+    <Pressable
+      key={t.id}
+      style={styles.templateRow}
+      onPress={() => applyTemplate(t)}
+      onLongPress={() => confirmDeleteTemplate(t)}>
+      <ThemedView type="backgroundElement" style={styles.templateCard}>
+        <ThemedText type="small" numberOfLines={1} style={styles.templateName}>
+          ☆ {t.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {t.items.length} items · {fmtKcal(templateKcal(t))} kcal
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
 
   return (
     <ThemedView style={styles.root}>
@@ -144,8 +201,8 @@ export default function AddFoodScreen() {
         <ThemedView type="backgroundElement" style={styles.aiOfferCard}>
           <Pressable style={styles.aiOfferBody} onPress={() => router.push('/settings')}>
             <ThemedText type="small">
-              ✨ You could have typed “eggs and toast” — want the on-device AI? One-time{' '}
-              {Math.round(LOCAL_MODEL_TOTAL_BYTES / (1024 * 1024))} MB download.
+              ✨ You could have typed “eggs and toast” — want the on-device AI? It’s a
+              one-time download.
             </ThemedText>
           </Pressable>
           <Pressable
@@ -159,6 +216,19 @@ export default function AddFoodScreen() {
             </ThemedText>
           </Pressable>
         </ThemedView>
+      )}
+
+      {templateUndo && (
+        <View style={[styles.undoBar, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
+            Logged {templateUndo.count} item{templateUndo.count === 1 ? '' : 's'}
+          </ThemedText>
+          <Pressable hitSlop={8} onPress={undoTemplate}>
+            <ThemedText type="smallBold" style={{ color: MacroColors.kcal }}>
+              Undo
+            </ThemedText>
+          </Pressable>
+        </View>
       )}
 
       <FlatList
@@ -179,47 +249,13 @@ export default function AddFoodScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
-              {recipes.map((r) => (
-                <Pressable
-                  key={r.id}
-                  style={styles.templateRow}
-                  onPress={() =>
-                    router.push({ pathname: '/food', params: { ref: `recipe:${r.id}`, day, meal } })
-                  }
-                  onLongPress={() =>
-                    router.push({ pathname: '/recipe', params: { id: String(r.id) } })
-                  }>
-                  <ThemedView type="backgroundElement" style={styles.templateCard}>
-                    <ThemedText type="small" numberOfLines={1} style={styles.templateName}>
-                      🍲 {r.name}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} kcal ea
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ))}
+              {recipes.map(renderRecipeRow)}
               {templates.length > 0 && (
                 <>
                   <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
                     Templates — tap to log the whole meal
                   </ThemedText>
-                  {templates.map((t) => (
-                    <Pressable
-                      key={t.id}
-                      style={styles.templateRow}
-                      onPress={() => applyTemplate(t)}
-                      onLongPress={() => confirmDeleteTemplate(t)}>
-                      <ThemedView type="backgroundElement" style={styles.templateCard}>
-                        <ThemedText type="small" numberOfLines={1} style={styles.templateName}>
-                          ☆ {t.name}
-                        </ThemedText>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {t.items.length} items · {fmtKcal(templateKcal(t))} kcal
-                        </ThemedText>
-                      </ThemedView>
-                    </Pressable>
-                  ))}
+                  {templates.map(renderTemplateRow)}
                 </>
               )}
               {recents.length > 0 && (
@@ -228,23 +264,55 @@ export default function AddFoodScreen() {
                 </ThemedText>
               )}
             </View>
-          ) : matchingRecents.length > 0 ? (
+          ) : (
             <View>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
-                Recent
-              </ThemedText>
-              {matchingRecents.map((f) => (
-                <View key={f.ref} style={styles.recentMatch}>
-                  <FoodRow food={f} onPress={() => openFood(f)} />
-                </View>
-              ))}
-              {data.length > 0 && (
-                <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
-                  All foods
-                </ThemedText>
+              {/* Still reachable while searching: collapsed with a count. */}
+              {recipes.length > 0 && (
+                <>
+                  <Pressable
+                    style={styles.collapseHeader}
+                    hitSlop={4}
+                    onPress={() => setExpandRecipes((v) => !v)}>
+                    <ThemedText type="smallBold" themeColor="textSecondary">
+                      Recipes ({recipes.length}) {expandRecipes ? '▴' : '▾'}
+                    </ThemedText>
+                  </Pressable>
+                  {expandRecipes && recipes.map(renderRecipeRow)}
+                </>
               )}
+              {templates.length > 0 && (
+                <>
+                  <Pressable
+                    style={styles.collapseHeader}
+                    hitSlop={4}
+                    onPress={() => setExpandTemplates((v) => !v)}>
+                    <ThemedText type="smallBold" themeColor="textSecondary">
+                      Templates ({templates.length}) {expandTemplates ? '▴' : '▾'}
+                    </ThemedText>
+                  </Pressable>
+                  {expandTemplates && templates.map(renderTemplateRow)}
+                </>
+              )}
+              {matchingRecents.length > 0 && (
+                <>
+                  <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
+                    Recent
+                  </ThemedText>
+                  {matchingRecents.map((f) => (
+                    <View key={f.ref} style={styles.recentMatch}>
+                      <FoodRow food={f} onPress={() => openFood(f)} />
+                    </View>
+                  ))}
+                </>
+              )}
+              {data.length > 0 &&
+                (recipes.length > 0 || templates.length > 0 || matchingRecents.length > 0) && (
+                  <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
+                    All foods
+                  </ThemedText>
+                )}
             </View>
-          ) : null
+          )
         }
         ListEmptyComponent={
           <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
@@ -293,6 +361,15 @@ const styles = StyleSheet.create({
   aiOfferBody: {
     flex: 1,
   },
+  undoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+  },
+  flex: { flex: 1 },
   listContent: {
     paddingBottom: Spacing.five,
     paddingTop: Spacing.one,
@@ -306,6 +383,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.two,
+  },
+  collapseHeader: {
+    paddingVertical: Spacing.two,
   },
   recentMatch: {
     marginBottom: Spacing.two,

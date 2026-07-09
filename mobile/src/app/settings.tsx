@@ -116,7 +116,9 @@ export default function SettingsScreen() {
       return;
     }
     await setTracking(config);
-    router.back();
+    // Stay on the screen and clear the dirty state — the sticky footer hides
+    // itself once there's nothing unsaved.
+    editor.markSaved();
   };
 
   const backupNow = async () => {
@@ -307,12 +309,6 @@ export default function SettingsScreen() {
             onDelete={removeModel}
           />
 
-          <Pressable style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]} onPress={save}>
-            <ThemedText type="smallBold" style={styles.saveText}>
-              Save
-            </ThemedText>
-          </Pressable>
-
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Your data
           </ThemedText>
@@ -326,14 +322,6 @@ export default function SettingsScreen() {
               style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
               onPress={restoreFromFile}>
               <ThemedText type="small">Restore from backup</ThemedText>
-            </Pressable>
-            <Pressable
-              style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
-              onPress={async () => {
-                const n = await exportTrainingData();
-                if (n === 0) Alert.alert('Nothing to export', 'No AI interactions recorded yet.');
-              }}>
-              <ThemedText type="small">Export AI training data</ThemedText>
             </Pressable>
             <Pressable
               style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
@@ -357,7 +345,45 @@ export default function SettingsScreen() {
               </ThemedText>
             </View>
           )}
+
+          {/* Advanced — power-user export tucked under a subtle caption. */}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.sectionTitle}>
+            Advanced
+          </ThemedText>
+          <View style={styles.modelChips}>
+            <Pressable
+              style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+              onPress={async () => {
+                const n = await exportTrainingData();
+                if (n === 0) Alert.alert('Nothing to export', 'No AI interactions recorded yet.');
+              }}>
+              <ThemedText type="small">Export corrections (for model tuning)</ThemedText>
+            </Pressable>
+          </View>
+
+          <Pressable
+            style={styles.aboutRow}
+            hitSlop={8}
+            onPress={() => router.push('/about')}>
+            <ThemedText type="small" themeColor="textSecondary">
+              About & attributions ›
+            </ThemedText>
+          </Pressable>
         </ScrollView>
+
+        {/* Sticky Save — only while goal edits are pending; other settings
+            auto-save, so they don't need it. */}
+        {editor.dirty && (
+          <View style={[styles.saveFooter, { backgroundColor: theme.background }]}>
+            <Pressable
+              style={[styles.saveButton, { backgroundColor: MacroColors.kcal }]}
+              onPress={save}>
+              <ThemedText type="smallBold" style={styles.saveText}>
+                Save goals
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
       </ThemedView>
     </KeyboardAvoidingView>
   );
@@ -403,7 +429,7 @@ function OnDeviceModel({
       <View style={styles.modelRow}>
         <ThemedText type="small">On-device model installed ✓</ThemedText>
         <Pressable hitSlop={8} onPress={onDelete}>
-          <ThemedText type="small" style={{ color: MacroColors.protein }}>
+          <ThemedText type="small" style={{ color: theme.danger }}>
             Delete
           </ThemedText>
         </Pressable>
@@ -465,11 +491,20 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
     alignItems: 'center',
-    marginTop: Spacing.two,
   },
   saveText: { color: '#ffffff' },
+  saveFooter: {
+    padding: Spacing.three,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128,128,128,0.3)',
+  },
   aboutSection: {
     marginTop: Spacing.four,
     gap: Spacing.one,
+  },
+  aboutRow: {
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
   },
 });

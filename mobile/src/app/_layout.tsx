@@ -14,6 +14,13 @@ import { isOnboardingDone } from '@/lib/onboarding';
 
 SplashScreen.preventAutoHideAsync();
 
+/**
+ * Grace period before the on-device model is unloaded on backgrounding. A brief
+ * app switch (checking a recipe, answering a text) shouldn't force a
+ * multi-hundred-MB reload, so we wait rather than releasing immediately.
+ */
+const MODEL_RELEASE_DELAY_MS = 5 * 60 * 1000;
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [ready, setReady] = useState(false);
@@ -38,15 +45,44 @@ export default function RootLayout() {
     if (ready && needsOnboarding) router.replace('/onboarding');
   }, [ready, needsOnboarding]);
 
-  // Unload the on-device model (~0.6 GB working set) when the app leaves the
-  // foreground —
-  // essential on iOS, where a large resident set gets the app killed. No-op on
+  // Manage the on-device model's ~0.6 GB working set across foreground/
+  // background. Chosen semantics:
+  //  - Backgrounded/inactive → schedule release after MODEL_RELEASE_DELAY_MS.
+  //    Returning to the foreground before then CANCELS it, so the model stays
+  //    warm across quick app switches.
+  //  - `memoryWarning` (iOS) → release immediately, grace period or not.
+  // Background JS timers are best-effort (the OS may defer/suspend them), which
+  // is acceptable: a suspended app's memory is also reclaimable by the OS, and
+  // the memory-warning path is the hard backstop under real pressure. No-op on
   // web and when no model is loaded.
   useEffect(() => {
+    let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+    const cancelPending = () => {
+      if (releaseTimer) {
+        clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
+    };
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background' || state === 'inactive') void releaseLocalContext();
+      if (state === 'active') {
+        cancelPending();
+      } else {
+        cancelPending();
+        releaseTimer = setTimeout(() => {
+          releaseTimer = null;
+          void releaseLocalContext();
+        }, MODEL_RELEASE_DELAY_MS);
+      }
     });
-    return () => sub.remove();
+    const memSub = AppState.addEventListener('memoryWarning', () => {
+      cancelPending();
+      void releaseLocalContext();
+    });
+    return () => {
+      cancelPending();
+      sub.remove();
+      memSub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -84,7 +120,8 @@ export default function RootLayout() {
           options={{ presentation: 'modal', title: 'Custom food' }}
         />
         <Stack.Screen name="recipe" options={{ presentation: 'modal', title: 'Recipe' }} />
-        <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Goals' }} />
+        <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
+        <Stack.Screen name="about" options={{ presentation: 'modal', title: 'About' }} />
       </Stack>
     </ThemeProvider>
   );

@@ -13,6 +13,9 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 
   return (
     <Text
+      // Cap Dynamic Type / font-scale growth so large accessibility sizes don't
+      // blow out fixed-height rows. Callers can override via props ({...rest}).
+      maxFontSizeMultiplier={1.4}
       style={[
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,

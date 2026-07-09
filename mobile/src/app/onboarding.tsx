@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MacroColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingEditor } from '@/hooks/use-tracking-editor';
-import { NUTRIENTS } from '@/lib/nutrients';
+import { CORE_NUTRIENT_KEYS, NUTRIENTS } from '@/lib/nutrients';
 import { markOnboardingDone } from '@/lib/onboarding';
 import { setTracking } from '@/lib/tracking';
 
@@ -21,6 +21,9 @@ import { setTracking } from '@/lib/tracking';
  */
 
 const STEP_COUNT = 3;
+
+const PRIMARY_NUTRIENTS = NUTRIENTS.filter((n) => CORE_NUTRIENT_KEYS.includes(n.key));
+const MORE_NUTRIENTS = NUTRIENTS.filter((n) => !CORE_NUTRIENT_KEYS.includes(n.key));
 
 export default function OnboardingScreen() {
   const theme = useTheme();
@@ -43,15 +46,6 @@ export default function OnboardingScreen() {
   return (
     <ThemedView style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        {/* Skip — keeps defaults, straight into the app */}
-        <View style={styles.topBar}>
-          <Pressable hitSlop={12} onPress={() => finish(false)}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Skip
-            </ThemedText>
-          </Pressable>
-        </View>
-
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -95,6 +89,14 @@ export default function OnboardingScreen() {
               </ThemedText>
             </Pressable>
           </View>
+          {/* Full-width escape hatch — keeps defaults, straight into the app. */}
+          <Pressable
+            style={[styles.skipButton, { backgroundColor: theme.backgroundElement }]}
+            onPress={() => finish(false)}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              Set up later
+            </ThemedText>
+          </Pressable>
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -135,11 +137,24 @@ function WelcomeStep() {
 function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor> }) {
   const theme = useTheme();
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const renderRow = (n: (typeof NUTRIENTS)[number]) => (
+    <NutrientRow
+      key={n.key}
+      label={n.label}
+      unit={n.unit}
+      color={n.color}
+      enabled={editor.enabled[n.key]}
+      goal={editor.goalText[n.key]}
+      onToggle={() => editor.toggle(n.key)}
+      onGoal={(t) => editor.setGoal(n.key, t)}
+    />
+  );
   return (
     <View style={styles.step}>
       <ThemedText type="subtitle">What do you want to track?</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        Toggle the nutrients you care about. Set a daily goal for each — or leave it blank to
+        The core macros are on by default. Set a daily goal for each — or leave it blank to
         just watch the number. You can change all of this later in Settings.
       </ThemedText>
       <Pressable
@@ -157,20 +172,15 @@ function NutrientsStep({ editor }: { editor: ReturnType<typeof useTrackingEditor
           }}
         />
       )}
-      <View style={styles.nutrientList}>
-        {NUTRIENTS.map((n) => (
-          <NutrientRow
-            key={n.key}
-            label={n.label}
-            unit={n.unit}
-            color={n.color}
-            enabled={editor.enabled[n.key]}
-            goal={editor.goalText[n.key]}
-            onToggle={() => editor.toggle(n.key)}
-            onGoal={(t) => editor.setGoal(n.key, t)}
-          />
-        ))}
-      </View>
+      <View style={styles.nutrientList}>{PRIMARY_NUTRIENTS.map(renderRow)}</View>
+      <Pressable
+        style={[styles.calcButton, { backgroundColor: theme.backgroundElement }]}
+        onPress={() => setShowMore((s) => !s)}>
+        <ThemedText type="small">
+          More nutrients (fiber, sugar, sodium…) {showMore ? '▴' : '▾'}
+        </ThemedText>
+      </Pressable>
+      {showMore && <View style={styles.nutrientList}>{MORE_NUTRIENTS.map(renderRow)}</View>}
     </View>
   );
 }
@@ -181,7 +191,7 @@ function TipsStep() {
       <ThemedText type="subtitle">Good to know</ThemedText>
       <View style={styles.features}>
         <Feature emoji="✨" title="Enable the AI assistant">
-          The on-device model is a one-time ~0.5 GB download — grab it in Settings when
+          The on-device model is a one-time download — grab it in Settings when
           you’re on Wi-Fi. After that it works offline.
         </Feature>
         <Feature emoji="⭐" title="Reuse whole meals">
@@ -231,12 +241,6 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
   },
   content: {
     padding: Spacing.three,
@@ -304,5 +308,10 @@ const styles = StyleSheet.create({
   },
   nextText: {
     color: '#ffffff',
+  },
+  skipButton: {
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
   },
 });

@@ -150,6 +150,9 @@ export async function initDb(): Promise<void> {
     "ALTER TABLE barcode_cache ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE custom_foods ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE log_entries ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
+    // Entry-creation flow, distinct from macro `source` — nullable, so ordinary
+    // logs read as "no special origin" (see log.ts logFood / provenanceLabel).
+    'ALTER TABLE log_entries ADD COLUMN origin TEXT',
     // Extra nutrients added later — nullable, so existing rows read as "unknown".
     ...['barcode_cache', 'custom_foods', 'log_entries'].flatMap((t) =>
       nutrientCols.map((c) => `ALTER TABLE ${t} ADD COLUMN ${c} REAL`)

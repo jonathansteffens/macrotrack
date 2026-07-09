@@ -8,6 +8,15 @@ import { getUserDb } from './db';
 
 export type WeightEntry = { day: string; weight: number };
 
+/**
+ * Format a body weight for display: a plain number to one decimal. Body weight
+ * is unit-agnostic (lbs or kg, whatever the user consistently enters), so it is
+ * NOT formatted with fmtGrams — it isn't grams.
+ */
+export function fmtWeight(n: number): string {
+  return (Math.round(n * 10) / 10).toFixed(1);
+}
+
 export async function logWeight(weight: number, day = todayKey()): Promise<void> {
   await getUserDb().runAsync(
     'INSERT OR REPLACE INTO weights (day, weight, ts) VALUES (?, ?, ?)',

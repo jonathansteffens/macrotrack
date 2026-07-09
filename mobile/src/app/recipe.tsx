@@ -231,7 +231,7 @@ export default function RecipeScreen() {
 
           {editId != null && (
             <Pressable style={styles.deleteButton} onPress={confirmDelete}>
-              <ThemedText type="smallBold" style={{ color: MacroColors.protein }}>
+              <ThemedText type="smallBold" style={{ color: theme.danger }}>
                 Delete recipe
               </ThemedText>
             </Pressable>

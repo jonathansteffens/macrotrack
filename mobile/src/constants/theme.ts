@@ -14,6 +14,10 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    // Danger/error/over-budget — a saturated red distinct from the softer
+    // protein salmon (#E4645C) so "over" / destructive / error never reads as
+    // just another macro. Used ONLY for those three meanings.
+    danger: '#D93B30',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +25,7 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    danger: '#FF6B60',
   },
 } as const;
 

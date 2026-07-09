@@ -20,7 +20,7 @@ import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
-import { NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
+import { CORE_NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
 import {
   MEAL_LABELS,
   MEALS,
@@ -31,7 +31,10 @@ import {
 } from '@/lib/types';
 
 /** The four core macros have their own cells; everything else lists here. */
-const CORE_KEYS = new Set<NutrientKey>(['kcal', 'protein', 'carbs', 'fat']);
+const CORE_KEYS = new Set<NutrientKey>(CORE_NUTRIENT_KEYS);
+
+/** Grams per ounce — the amount field can be entered in oz for weight foods. */
+const OZ_TO_G = 28.3495;
 
 /** "Fiber 3 g · Sodium 120 mg · …" for every non-core nutrient that has data. */
 function extraNutrientLine(m: Macros): string {
@@ -57,6 +60,10 @@ export default function FoodScreen() {
   // No meal in the params (e.g. quick actions) → guess from the time of day.
   const [meal, setMeal] = useState<MealType>(() => (params.meal as MealType) ?? mealForTime());
   const [saving, setSaving] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  // Enter the base amount in grams or ounces (weight foods only). Logs always
+  // store grams — this only changes how the number is typed/shown.
+  const [weighUnit, setWeighUnit] = useState<'g' | 'oz'>('g');
 
   useEffect(() => {
     if (!params.ref) return;
@@ -84,22 +91,39 @@ export default function FoodScreen() {
   if (!food) return <ThemedView style={styles.center} />;
 
   const amount = parseDecimal(amountText);
-  const gramsPerUnit = unitIdx === 0 ? 1 : food.portions[unitIdx - 1].grams;
+  const unitLabel = food.unit ?? 'g';
+  // The oz toggle only applies to the base weight unit (grams); it's hidden for
+  // ml foods and household portions.
+  const showOzToggle = unitIdx === 0 && unitLabel === 'g';
+  const baseGrams = weighUnit === 'oz' ? OZ_TO_G : 1;
+  const gramsPerUnit = unitIdx === 0 ? baseGrams : food.portions[unitIdx - 1].grams;
   const grams = amount != null ? amount * gramsPerUnit : null;
   const preview = grams != null ? scaleMacros(food.per100, grams) : null;
 
-  const unitLabel = food.unit ?? 'g';
+  const canLog = grams != null && grams > 0 && !saving;
   const quantityDesc =
     unitIdx === 0
-      ? `${fmtGrams(amount)} ${unitLabel}`
+      ? `${fmtGrams(amount)} ${weighUnit === 'oz' ? 'oz' : unitLabel}`
       : `${fmtGrams(amount)} × ${food.portions[unitIdx - 1].label}`;
 
-  const log = async () => {
+  // Convert the typed value in place when switching g ⇄ oz.
+  const setWeigh = (u: 'g' | 'oz') => {
+    if (u === weighUnit) return;
+    const a = parseDecimal(amountText);
+    if (a != null) setAmountText(fmtGrams(u === 'oz' ? a / OZ_TO_G : a * OZ_TO_G));
+    setWeighUnit(u);
+  };
+
+  // Default action dismisses the whole add flow (done). "Log another" instead
+  // returns to a fresh Add-food search with this same meal preselected, so
+  // logging several items in one sitting doesn't mean re-navigating each time.
+  const log = async (again: boolean) => {
     if (grams == null || grams <= 0 || saving) return;
     setSaving(true);
     try {
       await logFood(food, { day, meal, grams, quantityDesc });
       router.dismissAll();
+      if (again) router.push({ pathname: '/add', params: { day, meal } });
     } finally {
       setSaving(false);
     }
@@ -112,13 +136,29 @@ export default function FoodScreen() {
       <ThemedView style={styles.root}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ThemedText type="default" style={styles.name}>
-            {food.name}
+            {food.displayName ?? food.name}
             {food.brand ? ` (${food.brand})` : ''}
           </ThemedText>
           {food.category && (
             <ThemedText type="small" themeColor="textSecondary">
               {food.category}
             </ThemedText>
+          )}
+          {/* Plain name leads; the canonical DB name is tucked behind a
+              disclosure for anyone who wants to verify the source. */}
+          {food.displayName && food.displayName !== food.name && (
+            <View style={styles.details}>
+              <Pressable hitSlop={6} onPress={() => setShowDetails((v) => !v)}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Details {showDetails ? '▴' : '▾'}
+                </ThemedText>
+              </Pressable>
+              {showDetails && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  USDA name: {food.name}
+                </ThemedText>
+              )}
+            </View>
           )}
 
           {/* Amount + unit */}
@@ -141,6 +181,7 @@ export default function FoodScreen() {
                   onPress={() => {
                     setUnitIdx(0);
                     setAmountText('100');
+                    setWeighUnit('g');
                   }}
                 />
                 {food.portions.map((p, i) => (
@@ -157,6 +198,15 @@ export default function FoodScreen() {
               </View>
             </ScrollView>
           </View>
+          {showOzToggle && (
+            <View style={styles.weighToggle}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Enter in
+              </ThemedText>
+              <UnitChip label="grams" selected={weighUnit === 'g'} onPress={() => setWeigh('g')} />
+              <UnitChip label="oz" selected={weighUnit === 'oz'} onPress={() => setWeigh('oz')} />
+            </View>
+          )}
           <FractionChips value={amount} onValue={(v) => setAmountText(fmtGrams(v))} />
           <PortionAnchors />
 
@@ -185,16 +235,30 @@ export default function FoodScreen() {
             ))}
           </View>
 
-          <Pressable
-            style={[
-              styles.logButton,
-              { backgroundColor: MacroColors.kcal, opacity: grams != null && grams > 0 ? 1 : 0.4 },
-            ]}
-            onPress={log}>
-            <ThemedText type="smallBold" style={styles.logButtonText}>
-              {saving ? 'Logging…' : 'Log food'}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.logRow}>
+            <Pressable
+              style={[
+                styles.logAnotherButton,
+                { backgroundColor: theme.backgroundElement, opacity: canLog ? 1 : 0.4 },
+              ]}
+              disabled={!canLog}
+              onPress={() => log(true)}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Log another
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.logButton,
+                { backgroundColor: MacroColors.kcal, opacity: canLog ? 1 : 0.4 },
+              ]}
+              disabled={!canLog}
+              onPress={() => log(false)}>
+              <ThemedText type="smallBold" style={styles.logButtonText}>
+                {saving ? 'Logging…' : 'Log food'}
+              </ThemedText>
+            </Pressable>
+          </View>
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
@@ -252,7 +316,15 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: '700',
   },
+  details: {
+    gap: 2,
+  },
   amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  weighToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
@@ -291,11 +363,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  logButton: {
+  logRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  logAnotherButton: {
+    flex: 1,
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
     alignItems: 'center',
-    marginTop: Spacing.two,
+  },
+  logButton: {
+    flex: 2,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
   },
   logButtonText: {
     color: '#ffffff',

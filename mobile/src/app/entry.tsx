@@ -2,15 +2,22 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { FoodSearchModal } from '@/components/food-search-modal';
 import { FractionChips } from '@/components/fraction-chips';
 import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MacroColors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { deleteEntry, getEntry, updateEntryMeal, updateEntryQuantity } from '@/lib/log';
+import {
+  deleteEntry,
+  getEntry,
+  updateEntryFood,
+  updateEntryMeal,
+  updateEntryQuantity,
+} from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, rescaleMacros } from '@/lib/macros';
-import { MEAL_LABELS, MEALS, type LogEntry, type MealType } from '@/lib/types';
+import { MEAL_LABELS, MEALS, type FoodItem, type LogEntry, type MealType } from '@/lib/types';
 
 export default function EntryScreen() {
   const theme = useTheme();
@@ -18,6 +25,7 @@ export default function EntryScreen() {
   const [entry, setEntry] = useState<LogEntry | null>(null);
   const [gramsText, setGramsText] = useState('');
   const [meal, setMeal] = useState<MealType>('snack');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     getEntry(Number(params.id)).then((e) => {
@@ -46,6 +54,17 @@ export default function EntryScreen() {
     router.back();
   };
 
+  // Wrong-food fix: swap the underlying food, keeping the logged amount.
+  const changeFood = async (food: FoodItem) => {
+    await updateEntryFood(entry.id, food);
+    const updated = await getEntry(entry.id);
+    if (updated) {
+      setEntry(updated);
+      setGramsText(updated.grams != null ? fmtGrams(updated.grams) : '');
+    }
+    setSearchOpen(false);
+  };
+
   const confirmDelete = () => {
     Alert.alert('Delete entry', `Remove "${entry.foodName}" from this day?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -65,9 +84,16 @@ export default function EntryScreen() {
       <ThemedText type="default" style={styles.name}>
         {entry.foodName}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        Logged as {entry.quantityDesc}
-      </ThemedText>
+      <View style={styles.subRow}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
+          Logged as {entry.quantityDesc}
+        </ThemedText>
+        <Pressable hitSlop={8} onPress={() => setSearchOpen(true)}>
+          <ThemedText type="small" style={{ color: MacroColors.kcal }}>
+            Change food
+          </ThemedText>
+        </Pressable>
+      </View>
 
       {entry.grams != null ? (
         <>
@@ -127,10 +153,19 @@ export default function EntryScreen() {
         </ThemedText>
       </Pressable>
       <Pressable style={styles.deleteButton} onPress={confirmDelete}>
-        <ThemedText type="smallBold" style={{ color: MacroColors.protein }}>
+        <ThemedText type="smallBold" style={{ color: theme.danger }}>
           Delete entry
         </ThemedText>
       </Pressable>
+
+      {searchOpen && (
+        <FoodSearchModal
+          title="Change food"
+          initialQuery={entry.foodName}
+          onSelect={changeFood}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -142,7 +177,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   center: { flex: 1 },
+  flex: { flex: 1 },
   name: { fontWeight: '700' },
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   gramsRow: {
     flexDirection: 'row',
     alignItems: 'center',

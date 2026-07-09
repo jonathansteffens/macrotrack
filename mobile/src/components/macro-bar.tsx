@@ -45,17 +45,32 @@ export function MacroBar({ label, value, goal, color, unit = 'g' }: Props) {
         <ThemedText type="small" themeColor="textSecondary">
           {label}
         </ThemedText>
-        <ThemedText type="small" style={over && { color }}>
-          {Math.round(value)}
-          {u} / {Math.round(goal)}
-          {u}
-        </ThemedText>
+        <View style={styles.valueRow}>
+          {/* Explicit over-budget cue — a compact pill, never color alone. */}
+          {over && (
+            <View style={[styles.overBadge, { borderColor: theme.danger }]}>
+              <ThemedText type="small" style={[styles.overText, { color: theme.danger }]}>
+                +{Math.round(value - goal)}
+                {u} over
+              </ThemedText>
+            </View>
+          )}
+          <ThemedText type="small" style={over ? { color: theme.danger } : undefined}>
+            {Math.round(value)}
+            {u} / {Math.round(goal)}
+            {u}
+          </ThemedText>
+        </View>
       </View>
       <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
         <View
           style={[
             styles.fill,
-            { backgroundColor: color, width: `${pct * 100}%`, opacity: over ? 1 : 0.85 },
+            {
+              backgroundColor: over ? theme.danger : color,
+              width: `${pct * 100}%`,
+              opacity: over ? 1 : 0.85,
+            },
           ]}
         />
       </View>
@@ -71,6 +86,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  overBadge: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.one + 2,
+    paddingVertical: 1,
+  },
+  overText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
   },
   track: {
     height: 8,

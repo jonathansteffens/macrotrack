@@ -40,6 +40,10 @@ export function runOnLocalContext<T>(_fn: (ctx: never) => Promise<T>): Promise<T
   return Promise.reject(new LocalModelUnavailable('unsupported'));
 }
 
+export function ensureLoaded(): void {
+  // no on-device model to warm up on web
+}
+
 export async function releaseLocalContext(): Promise<void> {
   // no context on web
 }

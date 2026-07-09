@@ -53,6 +53,12 @@ export type FoodItem = {
   brand: string | null;
   category: string | null;
   per100: Macros;
+  /**
+   * Friendly, human-readable name for display (foods.db `display_name`, e.g.
+   * "Chicken breast, roasted"). Present for ~3.7k curated USDA rows; null/absent
+   * otherwise. UI falls back to `name`. Search still keys off the canonical name.
+   */
+  displayName?: string | null;
   /** Base unit for amounts. Defaults to grams; 'ml' for liquids (mL ≈ g). */
   unit?: 'g' | 'ml';
   portions: Portion[];
@@ -76,4 +82,11 @@ export type LogEntry = {
   unit?: 'g' | 'ml';
   macros: Macros;
   source: FoodSource | 'manual' | 'ai_estimate';
+  /**
+   * How the entry was created, when that differs from a plain food log —
+   * 'assist' marks the AI-review flow so the row shows the "AI" provenance chip
+   * even when it matched a canonical DB food (`source` still holds the macro
+   * provenance). Absent/null for ordinary logs.
+   */
+  origin?: 'assist' | null;
 };
