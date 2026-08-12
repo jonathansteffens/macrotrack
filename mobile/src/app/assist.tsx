@@ -36,6 +36,8 @@ import {
 import type { EstimateTurn, FoodClaim } from '@/lib/ai/types';
 import { todayKey } from '@/lib/dates';
 import { logFood, logAiEstimate } from '@/lib/log';
+import { amountLabel, formatAmount } from '@/lib/units';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import { MEAL_LABELS, MEALS, mealForTime, type FoodItem, type MealType } from '@/lib/types';
 
@@ -149,6 +151,8 @@ export default function AssistScreen() {
   const [lastTurns, setLastTurns] = useState<EstimateTurn[]>([]);
   // Which review item (if any) has the "Change food" search sheet open.
   const [searchItemIdx, setSearchItemIdx] = useState<number | null>(null);
+  // Display-unit preference, used to word the logged quantity.
+  const unitPrefs = useUnitPrefs();
 
   // Warm the model up while the user is still typing, so the first estimate
   // doesn't pay the full context-load cost. Fire-and-forget; no-op if the model
@@ -341,12 +345,20 @@ export default function AssistScreen() {
       for (const item of items) {
         const macros = resolvedMacros(item);
         if (item.match) {
-          const unit = item.match.unit ?? 'g';
+          // Logged wording follows the user's unit preference ("12 fl oz
+          // (355 g)"), so the history list reads in their units rather than in
+          // grams. The stored `grams` is unchanged and still drives macros.
           await logFood(item.match, {
             day,
             meal,
             grams: item.grams,
-            quantityDesc: `${fmtGrams(item.grams)} ${unit}`,
+            quantityDesc: amountLabel(
+              formatAmount(item.grams, {
+                name: displayName(item),
+                match: item.match,
+                prefs: unitPrefs,
+              })
+            ),
             origin: 'assist',
           });
         } else {
@@ -573,6 +585,15 @@ function ItemCard({
   onRevertUsual: () => void;
   onChangeFood: () => void;
 }) {
+  const unitPrefs = useUnitPrefs();
+  // null when the natural rendering IS grams — no point showing "355 g  355 g".
+  const amount = formatAmount(item.grams, {
+    name: displayName(item),
+    match: item.match,
+    prefs: unitPrefs,
+  });
+  const natural = amount.secondary != null ? amount.primary : null;
+
   const theme = useTheme();
   const macros = resolvedMacros(item);
   // Below the prompt's "real uncertainty" line — invite an edit, don't block.
@@ -607,6 +628,14 @@ function ItemCard({
         <ThemedText type="small" themeColor="textSecondary">
           g
         </ThemedText>
+        {natural != null && (
+          // The editor stays in grams (canonical, and the serving stepper is
+          // derived from it); this is the same amount written the way people
+          // actually say it — "12 fl oz", "3 eggs".
+          <ThemedText type="small" themeColor="tint" numberOfLines={1}>
+            {natural}
+          </ThemedText>
+        )}
         <View style={styles.itemMacros}>
           <ThemedText type="small">
             {fmtKcal(macros.kcal)} kcal · P {fmtGrams(macros.protein)} · C {fmtGrams(macros.carbs)}{' '}

@@ -1,4 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { amountLabel, formatAmount } from '@/lib/units';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -36,9 +38,27 @@ export default function EntryScreen() {
     });
   }, [params.id]);
 
+  // Every hook must run before the loading guard below, or the hook order
+  // changes the moment `entry` arrives.
+  const unitPrefs = useUnitPrefs();
+
   if (!entry) return <ThemedView style={styles.center} />;
 
   const newGrams = parseDecimal(gramsText);
+  // The typed amount in the user's preferred units. `liquid` comes from the
+  // entry's own unit, since a logged entry keeps no FoodItem to classify from.
+  const naturalAmount =
+    newGrams != null && newGrams > 0
+      ? (() => {
+          const a = formatAmount(newGrams, {
+            name: entry.foodName,
+            match: null,
+            prefs: unitPrefs,
+            liquid: entry.unit === 'ml',
+          });
+          return a.secondary != null ? a.primary : null;
+        })()
+      : null;
   const preview =
     entry.grams != null && newGrams != null && entry.grams > 0
       ? rescaleMacros(entry.macros, newGrams / entry.grams)
@@ -46,7 +66,18 @@ export default function EntryScreen() {
 
   const save = async () => {
     if (entry.grams != null && newGrams != null && newGrams > 0 && newGrams !== entry.grams) {
-      await updateEntryQuantity(entry.id, newGrams, `${fmtGrams(newGrams)} ${entry.unit ?? 'g'}`);
+      await updateEntryQuantity(
+        entry.id,
+        newGrams,
+        amountLabel(
+          formatAmount(newGrams, {
+            name: entry.foodName,
+            match: null,
+            prefs: unitPrefs,
+            liquid: entry.unit === 'ml',
+          })
+        )
+      );
     }
     if (meal !== entry.meal) {
       await updateEntryMeal(entry.id, meal);
@@ -112,6 +143,14 @@ export default function EntryScreen() {
               selectTextOnFocus
             />
           </View>
+          {naturalAmount != null && (
+            // The same amount in the user's preferred units, updating as they
+            // type. The field itself stays in grams: that is what the stored
+            // entry and its macros are scaled from.
+            <ThemedText type="small" themeColor="tint" style={styles.naturalAmount}>
+              {naturalAmount}
+            </ThemedText>
+          )}
           <FractionChips value={newGrams} onValue={(v) => setGramsText(fmtGrams(v))} />
           <PortionAnchors />
         </>
@@ -184,6 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  naturalAmount: { marginTop: 4 },
   gramsRow: {
     flexDirection: 'row',
     alignItems: 'center',

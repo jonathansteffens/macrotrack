@@ -9,6 +9,7 @@ import { Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { releaseLocalContext } from '@/lib/ai/local-model';
 import { loadAppearance } from '@/lib/appearance';
+import { loadUnitPrefs } from '@/lib/unit-prefs';
 import { syncCheckinNotification } from '@/lib/checkin';
 import { loadDayEndHour } from '@/lib/day-end';
 import { initDb } from '@/lib/db';
@@ -33,6 +34,7 @@ export default function RootLayout() {
     initDb()
       .then(() => loadDayEndHour())
       .then(() => loadAppearance())
+      .then(() => loadUnitPrefs())
       .then(() => isOnboardingDone())
       .then((done) => {
         setNeedsOnboarding(!done);

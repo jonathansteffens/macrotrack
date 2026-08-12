@@ -27,6 +27,16 @@ import {
   setAppearance,
   type AppearancePref,
 } from '@/lib/appearance';
+import { setUnitOverride, setUnitSystem } from '@/lib/unit-prefs';
+import {
+  UNIT_CHOICES,
+  foodClassLabel,
+  unitChoiceLabel,
+  type FoodClass,
+  type UnitChoice,
+  type UnitSystem,
+} from '@/lib/units';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import {
   deleteLocalModel,
   downloadLocalModel,
@@ -62,6 +72,7 @@ export default function SettingsScreen() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [appearance, setAppearanceState] = useState<AppearancePref>(getAppearance);
+  const unitPrefs = useUnitPrefs();
 
   useEffect(() => {
     getFoodDbInfo().then(setDbInfo);
@@ -253,6 +264,67 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
+
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Units
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            How amounts are written. Drinks read as fl oz, countable foods as
+            pieces (&ldquo;3 eggs&rdquo;), everything else by weight, with grams
+            always shown alongside. Estimates and amounts you&rsquo;re editing
+            re-read straight away; entries already in your log keep the wording
+            they were saved with. Your logged amounts and macros never change.
+          </ThemedText>
+          <View style={styles.modelChips}>
+            {(['us', 'metric'] as UnitSystem[]).map((sys) => (
+              <Pressable
+                key={sys}
+                onPress={() => setUnitSystem(sys)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor:
+                      unitPrefs.system === sys ? theme.tintSurface : theme.backgroundElement,
+                    borderColor: unitPrefs.system === sys ? theme.tint : 'transparent',
+                  },
+                ]}>
+                <ThemedText
+                  type="small"
+                  themeColor={unitPrefs.system === sys ? 'tint' : 'textSecondary'}>
+                  {sys === 'us' ? 'US (oz, fl oz)' : 'Metric (g, mL)'}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+
+          {(Object.keys(UNIT_CHOICES) as FoodClass[]).map((cls) => (
+            <View key={cls}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.unitClassLabel}>
+                {foodClassLabel(cls)}
+              </ThemedText>
+              <View style={styles.modelChips}>
+                {UNIT_CHOICES[cls].map((choice: UnitChoice) => {
+                  const active = (unitPrefs.overrides[cls] ?? 'auto') === choice;
+                  return (
+                    <Pressable
+                      key={choice}
+                      onPress={() => setUnitOverride(cls, choice)}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: active ? theme.tintSurface : theme.backgroundElement,
+                          borderColor: active ? theme.tint : 'transparent',
+                        },
+                      ]}>
+                      <ThemedText type="small" themeColor={active ? 'tint' : 'textSecondary'}>
+                        {unitChoiceLabel(choice)}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Day ends at
@@ -538,6 +610,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: hairlineColor,
   },
+  unitClassLabel: { marginTop: 10 },
   aboutSection: {
     marginTop: Spacing.four,
     gap: Spacing.one,
