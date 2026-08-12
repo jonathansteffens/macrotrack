@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyQuantityOverride } from '../parse/quantity-override.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -95,7 +96,7 @@ function brandedCorroborated(item, rowNameNorm) {
   return namedBrand || namedProduct;
 }
 
-function resolveItem(item) {
+function resolveItem(item, userText) {
   const stripped = (item.name || '').replace(/^(\d{1,2}|[a-z]+)\s+/i, '');
   const terms = [...(item.db_search_terms || []), item.name];
   if (countInName(item.name) && stripped) terms.push(stripped);
@@ -149,6 +150,9 @@ function resolveItem(item) {
     const count = explicit ?? (plural ? Math.min(24, Math.max(1, Math.round(grams / brandedServing))) : 1);
     grams = count * brandedServing;
   }
+  // Deterministic quantity override, last so it sees the resolver's own answer
+  // (branded snap included) as its baseline — same module resolver.ts calls.
+  grams = applyQuantityOverride(item, userText, grams);
   const f = grams / 100;
   return {
     name: item.name, grams, prep: item.prep, confidence: item.confidence,
@@ -156,8 +160,11 @@ function resolveItem(item) {
     kcal: per100.kcal * f, protein: (per100.protein ?? 0) * f, carbs: (per100.carbs ?? 0) * f, fat: (per100.fat ?? 0) * f,
   };
 }
-function resolveClaim(claim) {
-  const items = (claim.items || []).map(resolveItem);
+function resolveClaim(claim, userText) {
+  // Deterministic quantity override — same module the app's resolver.ts calls,
+  // so the playground shows what the app would actually compute.
+  const overrideText = (claim.items || []).length === 1 ? userText : undefined;
+  const items = (claim.items || []).map((it) => resolveItem(it, overrideText));
   const totals = items.reduce((s, r) => ({ kcal: s.kcal + r.kcal, protein: s.protein + r.protein, carbs: s.carbs + r.carbs, fat: s.fat + r.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
   return { items, totals, needs_clarification: !!claim.needs_clarification, questions: claim.questions || [], meal_guess: claim.meal_guess };
 }
@@ -397,14 +404,20 @@ const server = createServer(async (req, res) => {
       // with the full resolved claim.
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
       const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+      // The override reads the user's own wording; the last user message is
+      // the description this claim answers.
+      const userText = [...(messages || [])].reverse().find((m) => m.role === 'user')?.content;
       let out;
       try {
+        // No override on the streaming preview: mid-decode we do not yet know
+        // whether the claim will be single-item, and the 'done' event below
+        // re-resolves the whole claim with it anyway.
         out = await callModelStream(messages, (item, index) => send({ type: 'item', index, item: resolveItem(item) }));
       } catch (e) { send({ type: 'error', error: e.message }); res.end(); return; }
       let claim;
       try { claim = JSON.parse(out.content); }
       catch { send({ type: 'error', error: 'Model returned non-JSON: ' + String(out.content).slice(0, 300) }); res.end(); return; }
-      send({ type: 'done', claim, resolved: resolveClaim(claim), rawContent: out.content, ms: out.ms, tokPerSec: out.timings?.predicted_per_second ?? null });
+      send({ type: 'done', claim, resolved: resolveClaim(claim, userText), rawContent: out.content, ms: out.ms, tokPerSec: out.timings?.predicted_per_second ?? null });
       res.end();
       return;
     }

@@ -25,6 +25,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyQuantityOverride } from '../parse/quantity-override.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const arg = (name, dflt) => {
@@ -180,7 +181,10 @@ function seedGrams(item, food) {
   return count * brandedServing;
 }
 
-function resolveClaim(claim) {
+function resolveClaim(claim, userText) {
+  // Deterministic quantity override — same module the app's resolver.ts calls.
+  // Single-item claims only (see tools/parse/quantity-override.mjs).
+  const overrideText = claim.items.length === 1 ? userText : undefined;
   return claim.items.map((item) => {
     let food = null;
     for (const term of [...item.db_search_terms, item.name]) {
@@ -199,7 +203,7 @@ function resolveClaim(claim) {
       }
     }
     const per100 = food ?? item.est_per100;
-    const grams = seedGrams(item, food);
+    const grams = applyQuantityOverride(item, overrideText, seedGrams(item, food));
     const f = grams / 100;
     return {
       name: item.name,
@@ -262,7 +266,7 @@ async function runCase(client, c) {
       } catch {
         return { id: c.id, valid: false, raw: String(text).slice(0, 500) };
       }
-      const resolved = resolveClaim(claim);
+      const resolved = resolveClaim(claim, c.text);
       const pred = resolved.reduce(
         (s, r) => ({
           kcal: s.kcal + r.kcal,

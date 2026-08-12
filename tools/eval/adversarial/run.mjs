@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CASES } from './cases.mjs';
+import { applyQuantityOverride } from '../../parse/quantity-override.mjs';
 
 // Resolved relative to this script, not the caller's cwd or a hardcoded
 // checkout path -- tools/eval/adversarial/ -> repo root is 3 levels up.
@@ -161,7 +162,12 @@ function seedGrams(item, food) {
   return count * brandedServing;
 }
 
-function resolveClaim(claim) {
+function resolveClaim(claim, userText) {
+  // Deterministic quantity override, identical to the app's resolver.ts (both
+  // call tools/parse/quantity-override.mjs). Single-item claims only: with
+  // several foods in play there is no telling which one a lone stated quantity
+  // governs.
+  const overrideText = claim.items.length === 1 ? userText : undefined;
   return claim.items.map((item) => {
     let food = null;
     for (const term of [...(item.db_search_terms || []), item.name]) {
@@ -179,7 +185,7 @@ function resolveClaim(claim) {
       }
     }
     const per100 = food ?? item.est_per100;
-    const grams = seedGrams(item, food);
+    const grams = applyQuantityOverride(item, overrideText, seedGrams(item, food));
     const f = grams / 100;
     return {
       name: item.name,
@@ -228,7 +234,7 @@ async function runCase(c) {
       } catch {
         return { ...c, invalid: true, raw: String(text).slice(0, 500) };
       }
-      const resolved = resolveClaim(claim);
+      const resolved = resolveClaim(claim, c.text);
       const totalGrams = resolved.reduce((s, r) => s + r.resolvedGrams, 0);
       const totals = resolved.reduce(
         (s, r) => ({ kcal: s.kcal + r.kcal, protein: s.protein + r.protein, carbs: s.carbs + r.carbs, fat: s.fat + r.fat }),

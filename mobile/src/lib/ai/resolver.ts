@@ -2,6 +2,8 @@ import { getFoodsDb } from '../db';
 import { normName, searchFoods } from '../foods';
 import { scaleMacros } from '../macros';
 import type { FoodItem, Macros } from '../types';
+import { lookupDish, lookupPiece } from './portion-lookup';
+import { parseQuantity } from './quantity';
 import type { ClaimItem, FoodClaim } from './types';
 
 /**
@@ -21,10 +23,16 @@ export type ResolvedItem = {
   grams: number;
 };
 
-export async function resolveClaim(claim: FoodClaim): Promise<ResolvedItem[]> {
+export async function resolveClaim(claim: FoodClaim, userText?: string): Promise<ResolvedItem[]> {
   // Load the corroboration token set once so the sync seedGrams can read it.
   await loadCommonBrandTokens();
-  return Promise.all(claim.items.map(resolveItem));
+  // The quantity override (see applyQuantityOverride) reads the user's own
+  // words, so it applies only to a SINGLE-item claim: with several foods in
+  // play there is no way to know which one a lone stated quantity governs.
+  // parseQuantity declines multi-item text on its own, but the claim's shape is
+  // the authoritative check and costs nothing.
+  const overrideText = claim.items.length === 1 ? userText : undefined;
+  return Promise.all(claim.items.map((item) => resolveItem(item, overrideText)));
 }
 
 const COUNT_WORDS: Record<string, number> = {
@@ -85,7 +93,7 @@ function countInName(name: string): number | null {
   return COUNT_WORDS[w] ?? null;
 }
 
-async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
+async function resolveItem(item: ClaimItem, userText?: string): Promise<ResolvedItem> {
   // The model sometimes bakes an explicit count into the item name
   // ("2 whopper") — search with the count stripped too, so it still matches.
   const stripped = item.name.replace(/^(\d{1,2}|[a-z]+)\s+/i, '');
@@ -118,8 +126,61 @@ async function resolveItem(item: ClaimItem): Promise<ResolvedItem> {
     claim: item,
     match,
     alternatives: candidates.slice(0, 5),
-    grams: seedGrams(item, match),
+    grams: applyQuantityOverride(item, userText, seedGrams(item, match)),
   };
+}
+
+/**
+ * Override the model's quantity reading with a deterministic parse of the
+ * user's own words, where the grammar is confident.
+ *
+ * The model does five jobs; parsing "how much" is the one it is worst at, and
+ * it is the one job that is pure arithmetic. Measured on the 58 band cases of
+ * the adversarial gate, replaying three model revisions offline
+ * (tools/eval/quantity-sim.mjs):
+ *
+ *              within-tolerance          catastrophic
+ *   model      70.7-81.0%                5.2-6.9%
+ *   +override  89.7-93.1%                0.0-1.7%
+ *
+ * with ZERO cases made worse on any revision. As important as the level: the
+ * spread across model revisions collapses from 10.3 points to 3.4, so accuracy
+ * stops depending on which training round happened to be lucky.
+ *
+ * `baseline` is the resolver's own answer, which already includes the branded
+ * serving snap — so recovering the per-unit weight as baseline/count preserves
+ * that snapping instead of falling back to the model's raw unit_grams.
+ */
+function applyQuantityOverride(item: ClaimItem, userText: string | undefined, baseline: number): number {
+  if (!userText) return baseline;
+  const parsed = parseQuantity(userText);
+  if (!parsed) return baseline;
+
+  // An explicit weight is exact — no lookup, no estimate.
+  if (parsed.kind === 'weight') return parsed.grams;
+
+  // Fractions apply to the WHOLE dish, not to one serving of it ("a quarter of
+  // the lasagna" is a quarter of the pan). Whole-dish weights live in the
+  // curated table; without one, keep the model's reading.
+  if (parsed.kind === 'fraction') {
+    const dish = lookupDish(parsed.food) ?? lookupDish(item.name);
+    return dish ? Math.round(parsed.fraction * dish.grams) : baseline;
+  }
+  if (parsed.kind === 'whole') {
+    const dish = lookupDish(item.name);
+    return dish ? dish.grams : baseline;
+  }
+
+  const piece = lookupPiece(item.name, parsed.unitNoun);
+  const effectiveUnit = item.count && item.count > 0 ? baseline / item.count : null;
+  // Grammar agrees with the model and no curated weight applies → change
+  // nothing; the resolver's own answer is already the better one.
+  if (parsed.count === item.count && !piece) return baseline;
+  const unit = piece ? piece.grams : effectiveUnit;
+  if (!unit || unit <= 0) return baseline;
+  // Same clamp seedGrams applies, so an absurd count can't run away.
+  const count = Math.min(24, Math.max(0.25, parsed.count));
+  return Math.round(count * unit);
 }
 
 /**

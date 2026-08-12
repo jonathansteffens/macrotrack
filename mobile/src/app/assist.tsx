@@ -187,7 +187,14 @@ export default function AssistScreen() {
       }
       return;
     }
-    const resolved = await resolveClaim(res.claim);
+    // The quantity override (resolver.applyQuantityOverride) re-reads the user's
+    // own wording, so it gets the ORIGINAL description — and only on the first
+    // estimate. Once a clarification round adds turns, a later answer may revise
+    // the amount ("how many? — six"), and the opening text's parse could
+    // contradict it; there we defer to the model entirely.
+    const userTurns = newTurns.filter((t) => t.role === 'user');
+    const overrideText = userTurns.length === 1 ? userTurns[0].input.text : undefined;
+    const resolved = await resolveClaim(res.claim, overrideText);
     setTurns([...newTurns, { role: 'assistant', claim: res.claim }]);
     setClaim(res.claim);
     // Correction memory: foods the user has re-portioned ≥2 times before open
