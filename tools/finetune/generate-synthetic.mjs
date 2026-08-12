@@ -32,6 +32,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { paraphraseIsFaithful } from './paraphrase-guard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const arg = (name, dflt) => {
@@ -270,9 +271,36 @@ const POOLS = {
     // NOTE: 'muffins mini' resolves to the SAME DB row as the blueberry-muffin
     // starch item (per-100g identical); the point here is the small 30 g unit.
     { q: 'muffins mini', name: 'mini muffins', units: [{ kind: 'count', unit: 'mini muffin', g: 30, min: 3, max: 6 }] },
-    // Small-piece calibration: potstickers/dumplings ~35 g each (DB row is the
-    // steamed wonton/dumpling/pot-sticker). Bulkable — "8 potstickers" scales.
-    { q: 'dumpling steamed', name: 'potstickers', units: [{ kind: 'count', unit: 'potsticker', g: 35, min: 3, max: 8 }] },
+    // Small-piece calibration: steamed potstickers/dumplings ~24 g each. DB row
+    // "Wonton, dumpling or pot sticker, steamed" lists "1 item, any size" = 25 g
+    // (portions_json), so 24 g is DB-authoritative. v8's 35 g overshot the
+    // adversarial bands ("12 dumplings" 150-340, "four dumplings" 50-110,
+    // "a dozen dumplings" 150-340). Bulkable — "8 potstickers" scales.
+    { q: 'dumpling steamed', name: 'potstickers', units: [{ kind: 'count', unit: 'potsticker', g: 24, min: 3, max: 8 }] },
+    // Same DB row, 'dumplings'-named so the model actually sees the word
+    // "dumpling" with the correct ~24 g/piece — renderComponent only ever
+    // renders the pool `name`, and 'potstickers' never emits "dumpling".
+    { q: 'dumpling steamed', name: 'dumplings', units: [{ kind: 'count', unit: 'dumpling', g: 24, min: 3, max: 10 }] },
+    // Small sandwich cookies / Oreos ~11 g each. Gold macros from DB row
+    // "Cookie, chocolate sandwich" (q resolves there, non-branded); its
+    // portions_json lists "1 Oreo sandwich" = 11 g, matching the ~11.3 g/cookie
+    // label (34 g per 3-cookie serving). Adversarial "4 oreos" band 35-60 g;
+    // db_search_terms uses the generic query so it never snaps to the branded
+    // "Dairy Queen Royal Oreo Blizzard" row that a bare "oreo" token hits.
+    { q: 'chocolate sandwich cookie', name: 'oreos', units: [{ kind: 'count', unit: 'oreo', g: 11, min: 2, max: 6 }] },
+    // Tater tots ~15 g each. Gold macros from DB "Potato tots, frozen, fried"
+    // (237 kcal/100g, q resolves there). Its portions_json "1 piece" = 8 g is
+    // the small FNDDS school/institutional tot; standard retail/restaurant
+    // tater tots run ~10-17 g (well-known label refs: Ore-Ida ~9-10 g,
+    // Sonic/restaurant ~15 g), so 15 g/piece — v8 had the model near 100 g/tot.
+    // Adversarial "16 tater tots" band 200-360 g (16 x 15 = 240).
+    { q: 'potato tots fried', name: 'tater tots', units: [{ kind: 'count', unit: 'tater tot', g: 15, min: 6, max: 20 }] },
+    // Shrimp tempura ~20 g each (battered). Gold macros from DB "Fast foods,
+    // shrimp, breaded and fried" (308 kcal/100g, q resolves there). Its
+    // portions_json "3 pieces shrimp" = 39 g (~13 g) is popcorn-shrimp sized;
+    // tempura uses larger shrimp + thicker batter (~15-25 g/piece, well-known
+    // reference), so 20 g. Adversarial "9 shrimp tempura pieces" band 110-250 g.
+    { q: 'shrimp breaded fried', name: 'shrimp tempura', units: [{ kind: 'count', unit: 'piece', g: 20, min: 3, max: 10 }] },
   ],
   // `flOz` (grams per FLUID ounce) marks a liquid whose "N oz" means fluid
   // ounces, not weight ounces — 1 fl oz ≈ 30 g (a cup = 8 fl oz ≈ 244 g). Fixes
@@ -610,6 +638,16 @@ for (const pair of ADDON_PAIRS) {
 // "a sandwich" → 1); null for liquids/bowls ("a soda", "a beer", "a bowl of
 // soup") and vague amounts ("some chicken"). unit_grams is derived (g / count).
 const SINGLE_CLARIFY = [
+  // v9 added 'a soft drink' and 'some soda' here to make bare drinks ask. It
+  // backfired on both ends of the contrast: "a soda" STILL did not ask (its
+  // output was byte-identical to v8), while "a can of coke" — correctly
+  // confident in v8 — started asking "What kind of coke, and was there a
+  // drink?". The paraphrase pass is the likely mechanism: 14.7% of clarify rows
+  // drifted, and the teacher rewrote "some soda" to "Sipped a couple of sodas",
+  // so the literal bare phrase rarely survived while container/count-flavoured
+  // paraphrases of it did. Reverted to v8's single row; the fidelity guard above
+  // now keeps these rows intact, which is the real prerequisite for teaching the
+  // bare-drink ask at all. Re-attempt only after confirming the guard holds.
   { text: 'a soda', q: 'beverages cola or pepper types', name: 'soda', g: 355, count: null, question: 'Regular or diet?' },
   { text: 'a coffee', q: 'coffee brewed prepared with tap water', name: 'coffee', g: 240, count: null, question: 'Black, or with milk and sugar?' },
   { text: 'a burger', q: 'fast foods cheeseburger single patty plain', name: 'cheeseburger', g: 170, count: 1, question: 'Just the patty, or a full cheeseburger with bun and toppings?' },
@@ -1175,8 +1213,11 @@ const BARE_COUNT_ITEMS = [
   'roast chicken', 'scrambled eggs', 'hard-boiled eggs', 'mozzarella sticks',
   'meatballs', 'chicken tenders', 'mini muffins', 'pancakes', 'doughnut', 'pretzels',
   // v8: bagels reach the dozen/half-dozen renders ("half a dozen bagels"), and
-  // the small-piece foods (shrimp ~12 g, potstickers ~35 g) render bare counts.
+  // the small-piece foods (shrimp ~12 g, potstickers ~24 g) render bare counts.
   'plain bagel', 'potstickers', 'cooked shrimp',
+  // v9: bare small-piece counts the adversarial gate feeds terse ("16 tater
+  // tots", "4 oreos", "12 dumplings", "9 shrimp tempura pieces").
+  'dumplings', 'oreos', 'tater tots', 'shrimp tempura',
 ].map(poolByName).filter(Boolean);
 if (BARE_COUNT_ITEMS.length < 10) {
   console.warn(`WARNING: only ${BARE_COUNT_ITEMS.length} bare-count items resolved — a pool name may have changed.`);
@@ -1184,7 +1225,7 @@ if (BARE_COUNT_ITEMS.length < 10) {
 
 function bareMealGuess(name) {
   if (/pancake|muffin|doughnut|egg/i.test(name)) return 'breakfast';
-  if (/cookie|chip|pretzel|stick|nugget|wing|meatball|tender/i.test(name)) return pick(['snack', 'lunch']);
+  if (/cookie|oreo|chip|pretzel|stick|nugget|wing|meatball|tender|tot|dumpling|tempura|shrimp/i.test(name)) return pick(['snack', 'lunch']);
   return pick(['lunch', 'dinner']);
 }
 
@@ -1652,6 +1693,9 @@ function makeSample() {
 const REWRITE_SYSTEM =
   'Rewrite the meal description the way a real person would casually type it into a food tracking app: one short message. Keep every food and every quantity exactly the same (same numbers, same units). Vary phrasing, order, and style. Reply with ONLY the rewritten description — do not add foods, seasonings, comments, questions, or emoji, do not repeat the list, and never mention anything that is not in the original.';
 
+// v10 paraphrase fidelity guard — see tools/finetune/paraphrase-guard.mjs for
+// the measured drift this exists to stop (13.2% of v9's rows).
+
 async function paraphraseOpenAI(samples) {
   // Samples are in RNG order (i.e. already shuffled), so "the first frac"
   // is an unbiased subset — and deterministic for a given seed.
@@ -1659,6 +1703,8 @@ async function paraphraseOpenAI(samples) {
   console.log(`Paraphrasing ${nTarget}/${samples.length} user texts via ${PARAPHRASE_URL} (${PARAPHRASE_MODEL})…`);
   let next = 0;
   let done = 0;
+  let rejectedQty = 0;
+  let rejectedLen = 0;
   async function worker() {
     while (next < nTarget) {
       const i = next++;
@@ -1682,7 +1728,13 @@ async function paraphraseOpenAI(samples) {
           // guard against ramblers: a faithful rewrite is about as long as
           // the original — much longer means commentary/repetition crept in
           const clean = text?.replace(/^["']+|["']+$/g, '').trim();
-          if (clean && clean.length <= Math.max(80, userMsg.content.length * 2.5)) {
+          if (clean && clean.length > Math.max(80, userMsg.content.length * 2.5)) {
+            rejectedLen++;
+          } else if (clean && !paraphraseIsFaithful(userMsg.content, clean)) {
+            // Quantity/negation drift — keep the template text rather than
+            // train the model on a description its own label contradicts.
+            rejectedQty++;
+          } else if (clean) {
             userMsg.content = clean;
           }
         }
@@ -1693,6 +1745,9 @@ async function paraphraseOpenAI(samples) {
     }
   }
   await Promise.all(Array.from({ length: PARAPHRASE_CONCURRENCY }, worker));
+  const kept = nTarget - rejectedQty - rejectedLen;
+  console.log(`  paraphrase accepted ${kept}/${nTarget} (${(kept / nTarget * 100).toFixed(1)}%); ` +
+    `rejected ${rejectedQty} for quantity/negation drift, ${rejectedLen} for length`);
 }
 
 async function paraphraseAnthropic(samples) {

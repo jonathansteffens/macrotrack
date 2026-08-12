@@ -14,7 +14,7 @@
   "warmup_ratio": 0.03,
   "weight_decay": 0.01,
   "max_seq_len": 2048,
-  "text_sft": "data/sft/sft-text.jsonl",
+  "text_sft": "data/sft/sft-text-v10.jsonl",
   "holdout_frac": 0.01,
   "probe_every_steps": 400,
   "probe_n": 24
