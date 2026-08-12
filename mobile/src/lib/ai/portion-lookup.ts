@@ -11,7 +11,32 @@
  * simulation before any of this shipped.
  */
 
+import type { FoodItem } from '../types';
 import { PIECE_GRAMS, DISH_GRAMS } from './portions';
+
+/**
+ * A US fluid ounce of a water-like drink, vs a weight ounce. The two differ by
+ * only ~4%, but WHICH applies is a 12x question when the model is left to guess:
+ * on "a 12 oz can of coke" it returns 4572 g, while the capitalised
+ * "A 12 oz can of coke" returns 368 g — deterministically, on one letter.
+ */
+export const FL_OZ_G = 29.5735;
+export const WEIGHT_OZ_G = 28.3495;
+
+const DRINK_CATEGORY_RE = /beverage|drink|beer|wine|smoothie|soda|juice/i;
+
+/**
+ * Is the matched food a liquid? foods.db knows: an explicit ml unit, a drink-ish
+ * category (Beverages / Soft drinks / Beer / Wine / ...), or portions labelled
+ * in fl oz. Returns null with no match, meaning "cannot say — keep the model's
+ * answer".
+ */
+export function isLiquidFood(match: FoodItem | null): boolean | null {
+  if (!match) return null;
+  if (match.unit === 'ml') return true;
+  if (DRINK_CATEGORY_RE.test(match.category ?? '')) return true;
+  return match.portions.some((p) => /fl\s*oz/i.test(p.label));
+}
 
 /** Brand/size words carry no portion information. */
 const STOP_TOKENS = new Set(['mcdonalds', 'krispy', 'kreme', 'taco', 'bell', 'wendys', 'burger',

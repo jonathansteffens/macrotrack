@@ -242,7 +242,7 @@
           "kcal": 307,
           "protein": 15.9,
           "carbs": 14.9,
-          "fat": 18.9
+          "fat": 19.8
         }
       }
     ],
@@ -278,15 +278,15 @@
       "lo": 150,
       "hi": 340
     },
-    "meal_guess": "snack",
+    "meal_guess": "lunch",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
       {
         "name": "dumplings",
         "count": 12,
-        "unit_grams": 24,
-        "grams": 288,
+        "unit_grams": 25,
+        "grams": 300,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
@@ -304,8 +304,8 @@
       {
         "name": "dumplings",
         "rawCount": 12,
-        "rawUnitGrams": 24,
-        "rawGrams": 288,
+        "rawUnitGrams": 25,
+        "rawGrams": 300,
         "resolvedGrams": 288,
         "matched": "Wonton, dumpling or pot sticker, steamed",
         "dataType": "survey",
@@ -350,7 +350,7 @@
           "kcal": 271,
           "protein": 19.2,
           "carbs": 14.4,
-          "fat": 14
+          "fat": 12.1
         }
       }
     ],
@@ -401,10 +401,10 @@
           "shrimp breaded fried"
         ],
         "est_per100": {
-          "kcal": 308,
-          "protein": 7.8,
+          "kcal": 386,
+          "protein": 8.9,
           "carbs": 28,
-          "fat": 18.9
+          "fat": 29.4
         }
       }
     ],
@@ -511,7 +511,7 @@
         "est_per100": {
           "kcal": 237,
           "protein": 4.8,
-          "carbs": 39.8,
+          "carbs": 36.8,
           "fat": 10.8
         }
       }
@@ -527,7 +527,7 @@
         "dataType": null,
         "kcal": 777.3599999999999,
         "protein": 15.743999999999998,
-        "carbs": 130.54399999999998,
+        "carbs": 120.70399999999998,
         "fat": 35.424
       }
     ],
@@ -535,7 +535,7 @@
     "totals": {
       "kcal": 777.3599999999999,
       "protein": 15.743999999999998,
-      "carbs": 130.54399999999998,
+      "carbs": 120.70399999999998,
       "fat": 35.424
     }
   },
@@ -563,7 +563,7 @@
           "pork cured bacon cooked"
         ],
         "est_per100": {
-          "kcal": 532,
+          "kcal": 538,
           "protein": 35.7,
           "carbs": 1.4,
           "fat": 43.3
@@ -617,10 +617,10 @@
           "potato tots fried"
         ],
         "est_per100": {
-          "kcal": 237,
-          "protein": 1.9,
-          "carbs": 24.4,
-          "fat": 12.7
+          "kcal": 173,
+          "protein": 3.8,
+          "carbs": 21.5,
+          "fat": 8.8
         }
       }
     ],
@@ -836,7 +836,7 @@
           "kcal": 426,
           "protein": 5.2,
           "carbs": 50.8,
-          "fat": 22.7
+          "fat": 22.9
         }
       }
     ],
@@ -933,8 +933,8 @@
       {
         "name": "dumplings",
         "count": 4,
-        "unit_grams": 24,
-        "grams": 96,
+        "unit_grams": 29,
+        "grams": 116,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
@@ -952,8 +952,8 @@
       {
         "name": "dumplings",
         "rawCount": 4,
-        "rawUnitGrams": 24,
-        "rawGrams": 96,
+        "rawUnitGrams": 29,
+        "rawGrams": 116,
         "resolvedGrams": 96,
         "matched": "Wonton, dumpling or pot sticker, steamed",
         "dataType": "survey",
@@ -1050,7 +1050,7 @@
         ],
         "est_per100": {
           "kcal": 382,
-          "protein": 10.6,
+          "protein": 13.7,
           "carbs": 2.7,
           "fat": 34.4
         }
@@ -1157,10 +1157,10 @@
           "cake white prepared"
         ],
         "est_per100": {
-          "kcal": 357,
+          "kcal": 371,
           "protein": 5.4,
-          "carbs": 57.2,
-          "fat": 12.4
+          "carbs": 50.8,
+          "fat": 1.3
         }
       }
     ],
@@ -1214,7 +1214,7 @@
           "kcal": 286,
           "protein": 14.4,
           "carbs": 8.1,
-          "fat": 18.9
+          "fat": 20.2
         }
       }
     ],
@@ -1257,8 +1257,8 @@
       {
         "name": "doughnuts",
         "count": 12,
-        "unit_grams": 56,
-        "grams": 672,
+        "unit_grams": 57,
+        "grams": 684,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
@@ -1276,8 +1276,8 @@
       {
         "name": "doughnuts",
         "rawCount": 12,
-        "rawUnitGrams": 56,
-        "rawGrams": 672,
+        "rawUnitGrams": 57,
+        "rawGrams": 684,
         "resolvedGrams": 720,
         "matched": "Doughnuts, cake-type, plain, sugared or glazed",
         "dataType": "sr_legacy",
@@ -1419,8 +1419,8 @@
       {
         "name": "oysters",
         "count": 6,
-        "unit_grams": 13,
-        "grams": 79,
+        "unit_grams": 8,
+        "grams": 48,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
@@ -1438,23 +1438,23 @@
       {
         "name": "oysters",
         "rawCount": 6,
-        "rawUnitGrams": 13,
-        "rawGrams": 79,
-        "resolvedGrams": 78,
+        "rawUnitGrams": 8,
+        "rawGrams": 48,
+        "resolvedGrams": 48,
         "matched": "Oysters, raw",
         "dataType": "survey",
-        "kcal": 39.78,
-        "protein": 4.4538,
-        "carbs": 2.1216000000000004,
-        "fat": 1.3338
+        "kcal": 24.48,
+        "protein": 2.7407999999999997,
+        "carbs": 1.3056,
+        "fat": 0.8208
       }
     ],
-    "totalGrams": 78,
+    "totalGrams": 48,
     "totals": {
-      "kcal": 39.78,
-      "protein": 4.4538,
-      "carbs": 2.1216000000000004,
-      "fat": 1.3338
+      "kcal": 24.48,
+      "protein": 2.7407999999999997,
+      "carbs": 1.3056,
+      "fat": 0.8208
     }
   },
   {
@@ -1466,7 +1466,7 @@
       "lo": 260,
       "hi": 460
     },
-    "meal_guess": "breakfast",
+    "meal_guess": "snack",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
@@ -1481,10 +1481,10 @@
           "muffins mini"
         ],
         "est_per100": {
-          "kcal": 371,
+          "kcal": 370,
           "protein": 5.2,
           "carbs": 53.8,
-          "fat": 15.3
+          "fat": 18.9
         }
       }
     ],
@@ -1698,7 +1698,7 @@
         ],
         "est_per100": {
           "kcal": 184,
-          "protein": 27.4,
+          "protein": 27.5,
           "carbs": 0,
           "fat": 8.2
         }
@@ -1805,10 +1805,10 @@
           "club sandwich"
         ],
         "est_per100": {
-          "kcal": 220,
-          "protein": 14.8,
-          "carbs": 21.1,
-          "fat": 7.3
+          "kcal": 174,
+          "protein": 14.1,
+          "carbs": 14.5,
+          "fat": 5.3
         }
       }
     ],
@@ -1898,49 +1898,49 @@
       "lo": 180,
       "hi": 320
     },
-    "meal_guess": "lunch",
+    "meal_guess": "snack",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
       {
-        "name": "burrito",
-        "count": 0.5,
-        "unit_grams": 149,
-        "grams": 74,
+        "name": "flour tortilla",
+        "count": 1,
+        "unit_grams": 71,
+        "grams": 71,
         "prep": null,
-        "confidence": 0.85,
+        "confidence": 0.7,
         "db_search_terms": [
-          "burrito"
+          "tortillas ready to bake or fry flour shelf stable"
         ],
         "est_per100": {
-          "kcal": 130,
-          "protein": 13,
-          "carbs": 13,
-          "fat": 5.3
+          "kcal": 297,
+          "protein": 8,
+          "carbs": 49.3,
+          "fat": 7.6
         }
       }
     ],
     "resolved": [
       {
-        "name": "burrito",
-        "rawCount": 0.5,
-        "rawUnitGrams": 149,
-        "rawGrams": 74,
-        "resolvedGrams": 75,
-        "matched": "Burrito, NFS",
-        "dataType": "survey",
-        "kcal": 164.25,
-        "protein": 8.34,
-        "carbs": 17.9025,
-        "fat": 6.404999999999999
+        "name": "flour tortilla",
+        "rawCount": 1,
+        "rawUnitGrams": 71,
+        "rawGrams": 71,
+        "resolvedGrams": 71,
+        "matched": "Tortillas, ready-to-bake or -fry, flour, shelf stable",
+        "dataType": "sr_legacy",
+        "kcal": 210.86999999999998,
+        "protein": 5.687099999999999,
+        "carbs": 34.981700000000004,
+        "fat": 5.3818
       }
     ],
-    "totalGrams": 75,
+    "totalGrams": 71,
     "totals": {
-      "kcal": 164.25,
-      "protein": 8.34,
-      "carbs": 17.9025,
-      "fat": 6.404999999999999
+      "kcal": 210.86999999999998,
+      "protein": 5.687099999999999,
+      "carbs": 34.981700000000004,
+      "fat": 5.3818
     }
   },
   {
@@ -2024,7 +2024,7 @@
           "kcal": 274,
           "protein": 14.4,
           "carbs": 24.7,
-          "fat": 14.3
+          "fat": 12.3
         }
       }
     ],
@@ -2288,7 +2288,7 @@
         "prep": null,
         "confidence": 0.85,
         "db_search_terms": [
-          "bread white commercially prepared"
+          "bread whole wheat commercially prepared"
         ],
         "est_per100": {
           "kcal": 270,
@@ -2305,20 +2305,20 @@
         "rawUnitGrams": 490,
         "rawGrams": 490,
         "resolvedGrams": 490,
-        "matched": "Bread, white, commercially prepared",
+        "matched": "Bread, whole-wheat, commercially prepared",
         "dataType": "foundation",
-        "kcal": 1323,
-        "protein": 46.207,
-        "carbs": 241.08000000000004,
-        "fat": 17.591
+        "kcal": 1244.6000000000001,
+        "protein": 60.27000000000001,
+        "carbs": 211.19000000000003,
+        "fat": 17.395
       }
     ],
     "totalGrams": 490,
     "totals": {
-      "kcal": 1323,
-      "protein": 46.207,
-      "carbs": 241.08000000000004,
-      "fat": 17.591
+      "kcal": 1244.6000000000001,
+      "protein": 60.27000000000001,
+      "carbs": 211.19000000000003,
+      "fat": 17.395
     }
   },
   {
@@ -2507,10 +2507,10 @@
           "beef ribeye"
         ],
         "est_per100": {
-          "kcal": 178,
-          "protein": 25.7,
+          "kcal": 274,
+          "protein": 24.8,
           "carbs": 0,
-          "fat": 8.8
+          "fat": 18.8
         }
       }
     ],
@@ -2562,7 +2562,7 @@
         ],
         "est_per100": {
           "kcal": 61,
-          "protein": 25.1,
+          "protein": 22.8,
           "carbs": 1.5,
           "fat": 1.5
         }
@@ -2612,13 +2612,13 @@
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
-          "fast foods thick burger patty"
+          "beef patty thick cooked"
         ],
         "est_per100": {
-          "kcal": 312,
-          "protein": 14.7,
-          "carbs": 25.7,
-          "fat": 19.8
+          "kcal": 286,
+          "protein": 25.3,
+          "carbs": 15.4,
+          "fat": 15.1
         }
       }
     ],
@@ -2631,18 +2631,18 @@
         "resolvedGrams": 227,
         "matched": null,
         "dataType": null,
-        "kcal": 708.24,
-        "protein": 33.369,
-        "carbs": 58.339,
-        "fat": 44.946000000000005
+        "kcal": 649.22,
+        "protein": 57.431000000000004,
+        "carbs": 34.958,
+        "fat": 34.277
       }
     ],
     "totalGrams": 227,
     "totals": {
-      "kcal": 708.24,
-      "protein": 33.369,
-      "carbs": 58.339,
-      "fat": 44.946000000000005
+      "kcal": 649.22,
+      "protein": 57.431000000000004,
+      "carbs": 34.958,
+      "fat": 34.277
     }
   },
   {
@@ -2723,10 +2723,10 @@
           "Fast foods Big Mac"
         ],
         "est_per100": {
-          "kcal": 371,
-          "protein": 14.9,
-          "carbs": 49.4,
-          "fat": 15.9
+          "kcal": 375,
+          "protein": 14.8,
+          "carbs": 49.3,
+          "fat": 15.3
         }
       }
     ],
@@ -2816,7 +2816,7 @@
       "lo": 420,
       "hi": 580
     },
-    "meal_guess": "snack",
+    "meal_guess": "lunch",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
@@ -2832,9 +2832,9 @@
         ],
         "est_per100": {
           "kcal": 271,
-          "protein": 5.2,
-          "carbs": 35.8,
-          "fat": 13.9
+          "protein": 5.1,
+          "carbs": 35.2,
+          "fat": 13.7
         }
       }
     ],
@@ -2848,17 +2848,17 @@
         "matched": null,
         "dataType": null,
         "kcal": 1951.2,
-        "protein": 37.440000000000005,
-        "carbs": 257.76,
-        "fat": 100.08
+        "protein": 36.72,
+        "carbs": 253.44000000000003,
+        "fat": 98.64
       }
     ],
     "totalGrams": 720,
     "totals": {
       "kcal": 1951.2,
-      "protein": 37.440000000000005,
-      "carbs": 257.76,
-      "fat": 100.08
+      "protein": 36.72,
+      "carbs": 253.44000000000003,
+      "fat": 98.64
     }
   },
   {
@@ -2877,8 +2877,8 @@
       {
         "name": "pepperoni pizza",
         "count": 3,
-        "unit_grams": 224,
-        "grams": 672,
+        "unit_grams": 111,
+        "grams": 333,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
@@ -2896,8 +2896,8 @@
       {
         "name": "pepperoni pizza",
         "rawCount": 3,
-        "rawUnitGrams": 224,
-        "rawGrams": 672,
+        "rawUnitGrams": 111,
+        "rawGrams": 333,
         "resolvedGrams": 333,
         "matched": "Pizza with pepperoni, stuffed crust",
         "dataType": "survey",
@@ -2931,18 +2931,18 @@
       {
         "name": "whopper",
         "count": 2,
-        "unit_grams": 137,
-        "grams": 274,
+        "unit_grams": 117,
+        "grams": 234,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
-          "fast foods whoppers"
+          "dairy queen whopper"
         ],
         "est_per100": {
-          "kcal": 229,
-          "protein": 10.1,
-          "carbs": 24.4,
-          "fat": 10.4
+          "kcal": 235,
+          "protein": 11.8,
+          "carbs": 19.3,
+          "fat": 10.8
         }
       }
     ],
@@ -2950,8 +2950,8 @@
       {
         "name": "whopper",
         "rawCount": 2,
-        "rawUnitGrams": 137,
-        "rawGrams": 274,
+        "rawUnitGrams": 117,
+        "rawGrams": 234,
         "resolvedGrams": 540,
         "matched": "Whopper (Burger King)",
         "dataType": "branded",
@@ -3062,8 +3062,8 @@
         ],
         "est_per100": {
           "kcal": 60,
-          "protein": 0.7,
-          "carbs": 15.1,
+          "protein": 7.6,
+          "carbs": 15.8,
           "fat": 0.2
         }
       }
@@ -3254,13 +3254,13 @@
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
-          "burrito breakfast"
+          "breakfast burrito"
         ],
         "est_per100": {
           "kcal": 145,
-          "protein": 13,
-          "carbs": 10,
-          "fat": 5
+          "protein": 8.9,
+          "carbs": 13.5,
+          "fat": 5.3
         }
       }
     ],
@@ -3340,7 +3340,7 @@
         "name": "greek yogurt",
         "count": null,
         "unit_grams": null,
-        "grams": 259,
+        "grams": 258,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -3393,14 +3393,14 @@
         "name": "greek yogurt",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 259,
-        "resolvedGrams": 259,
+        "rawGrams": 258,
+        "resolvedGrams": 258,
         "matched": "Yogurt, Greek, plain, nonfat",
         "dataType": "foundation",
-        "kcal": 157.98999999999998,
-        "protein": 26.677,
-        "carbs": 9.4276,
-        "fat": 0.9582999999999999
+        "kcal": 157.38,
+        "protein": 26.574,
+        "carbs": 9.391200000000001,
+        "fat": 0.9546
       },
       {
         "name": "granola",
@@ -3429,12 +3429,12 @@
         "fat": 0.196032
       }
     ],
-    "totalGrams": 351,
+    "totalGrams": 350,
     "totals": {
-      "kcal": 335.77803199999994,
-      "protein": 30.9546,
-      "carbs": 33.839936,
-      "fat": 7.961132
+      "kcal": 335.16803200000004,
+      "protein": 30.8516,
+      "carbs": 33.803536,
+      "fat": 7.957432
     }
   },
   {
@@ -3449,43 +3449,43 @@
     "rawItems": [
       {
         "name": "avocado toast",
-        "count": 1,
-        "unit_grams": 130,
-        "grams": 130,
+        "count": null,
+        "unit_grams": null,
+        "grams": 22,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "avocados whole cooked toasted with breaded cheese"
+          "avocados whole cooked toasted with butter"
         ],
         "est_per100": {
-          "kcal": 233,
-          "protein": 15.2,
-          "carbs": 20.1,
-          "fat": 15.3
+          "kcal": 160,
+          "protein": 2.3,
+          "carbs": 13.7,
+          "fat": 14.4
         }
       }
     ],
     "resolved": [
       {
         "name": "avocado toast",
-        "rawCount": 1,
-        "rawUnitGrams": 130,
-        "rawGrams": 130,
-        "resolvedGrams": 130,
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 22,
+        "resolvedGrams": 22,
         "matched": null,
         "dataType": null,
-        "kcal": 302.90000000000003,
-        "protein": 19.759999999999998,
-        "carbs": 26.130000000000003,
-        "fat": 19.89
+        "kcal": 35.2,
+        "protein": 0.506,
+        "carbs": 3.014,
+        "fat": 3.168
       }
     ],
-    "totalGrams": 130,
+    "totalGrams": 22,
     "totals": {
-      "kcal": 302.90000000000003,
-      "protein": 19.759999999999998,
-      "carbs": 26.130000000000003,
-      "fat": 19.89
+      "kcal": 35.2,
+      "protein": 0.506,
+      "carbs": 3.014,
+      "fat": 3.168
     }
   },
   {
@@ -3519,7 +3519,7 @@
         "name": "lox",
         "count": null,
         "unit_grams": null,
-        "grams": 60,
+        "grams": 57,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -3551,22 +3551,22 @@
         "name": "lox",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 60,
-        "resolvedGrams": 60,
+        "rawGrams": 57,
+        "resolvedGrams": 57,
         "matched": "Fish, salmon, chinook, smoked, (lox), regular",
         "dataType": "sr_legacy",
-        "kcal": 70.2,
-        "protein": 10.968,
+        "kcal": 66.69,
+        "protein": 10.419599999999999,
         "carbs": 0,
-        "fat": 2.592
+        "fat": 2.4624
       }
     ],
-    "totalGrams": 161,
+    "totalGrams": 158,
     "totals": {
-      "kcal": 336.84,
-      "protein": 21.6336,
+      "kcal": 333.33,
+      "protein": 21.0852,
       "carbs": 52.903800000000004,
-      "fat": 3.9252000000000002
+      "fat": 3.7956000000000003
     }
   },
   {
@@ -3778,6 +3778,23 @@
           "carbs": 0,
           "fat": 3.6
         }
+      },
+      {
+        "name": "american cheese",
+        "count": null,
+        "unit_grams": null,
+        "grams": 21,
+        "prep": null,
+        "confidence": 0.7,
+        "db_search_terms": [
+          "cheese american"
+        ],
+        "est_per100": {
+          "kcal": 340,
+          "protein": 16.8,
+          "carbs": 7.8,
+          "fat": 27.2
+        }
       }
     ],
     "resolved": [
@@ -3832,14 +3849,27 @@
         "protein": 21.093600000000002,
         "carbs": 0,
         "fat": 2.4276
+      },
+      {
+        "name": "american cheese",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 21,
+        "resolvedGrams": 21,
+        "matched": "Cheese, American",
+        "dataType": "survey",
+        "kcal": 71.39999999999999,
+        "protein": 3.5258999999999996,
+        "carbs": 1.5036,
+        "fat": 5.7036
       }
     ],
-    "totalGrams": 210,
+    "totalGrams": 231,
     "totals": {
-      "kcal": 435.37,
-      "protein": 43.3437,
-      "carbs": 28.7225,
-      "fat": 15.628200000000001
+      "kcal": 506.77,
+      "protein": 46.8696,
+      "carbs": 30.2261,
+      "fat": 21.3318
     }
   },
   {
@@ -3853,29 +3883,29 @@
     "questions": [],
     "rawItems": [
       {
-        "name": "blue meatball sandwich",
+        "name": "blue cheese sandwich",
         "count": 1,
-        "unit_grams": 120,
-        "grams": 120,
+        "unit_grams": 110,
+        "grams": 110,
         "prep": null,
-        "confidence": 0.9,
+        "confidence": 0.95,
         "db_search_terms": [
           "BLT sandwich"
         ],
         "est_per100": {
-          "kcal": 164,
-          "protein": 12.5,
-          "carbs": 13.5,
-          "fat": 6
+          "kcal": 160,
+          "protein": 14.8,
+          "carbs": 63.8,
+          "fat": 4.1
         }
       }
     ],
     "resolved": [
       {
-        "name": "blue meatball sandwich",
+        "name": "blue cheese sandwich",
         "rawCount": 1,
-        "rawUnitGrams": 120,
-        "rawGrams": 120,
+        "rawUnitGrams": 110,
+        "rawGrams": 110,
         "resolvedGrams": 306,
         "matched": "Zaxby's BLT Sandwich",
         "dataType": "branded",
@@ -3906,8 +3936,8 @@
       {
         "name": "grilled cheese sandwich",
         "count": 1,
-        "unit_grams": 220,
-        "grams": 220,
+        "unit_grams": 140,
+        "grams": 140,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -3915,8 +3945,8 @@
         ],
         "est_per100": {
           "kcal": 220,
-          "protein": 13,
-          "carbs": 19.5,
+          "protein": 13.7,
+          "carbs": 24.1,
           "fat": 11
         }
       }
@@ -3925,23 +3955,23 @@
       {
         "name": "grilled cheese sandwich",
         "rawCount": 1,
-        "rawUnitGrams": 220,
-        "rawGrams": 220,
-        "resolvedGrams": 220,
+        "rawUnitGrams": 140,
+        "rawGrams": 140,
+        "resolvedGrams": 140,
         "matched": "Grilled cheese sandwich, NFS",
         "dataType": "survey",
-        "kcal": 754.6,
-        "protein": 24.266000000000002,
-        "carbs": 61.798,
-        "fat": 45.71600000000001
+        "kcal": 480.2,
+        "protein": 15.441999999999998,
+        "carbs": 39.326,
+        "fat": 29.092
       }
     ],
-    "totalGrams": 220,
+    "totalGrams": 140,
     "totals": {
-      "kcal": 754.6,
-      "protein": 24.266000000000002,
-      "carbs": 61.798,
-      "fat": 45.71600000000001
+      "kcal": 480.2,
+      "protein": 15.441999999999998,
+      "carbs": 39.326,
+      "fat": 29.092
     }
   },
   {
@@ -3965,9 +3995,9 @@
           "bread whole wheat commercially prepared"
         ],
         "est_per100": {
-          "kcal": 254,
+          "kcal": 270,
           "protein": 9.4,
-          "carbs": 43.4,
+          "carbs": 49.2,
           "fat": 3.6
         }
       },
@@ -3985,24 +4015,7 @@
           "kcal": 165,
           "protein": 31,
           "carbs": 0,
-          "fat": 3.6
-        }
-      },
-      {
-        "name": "tomato sauce",
-        "count": null,
-        "unit_grams": null,
-        "grams": 33,
-        "prep": null,
-        "confidence": 0.7,
-        "db_search_terms": [
-          "sauce tomato"
-        ],
-        "est_per100": {
-          "kcal": 18,
-          "protein": 0.8,
-          "carbs": 4.9,
-          "fat": 0.3
+          "fat": 3.4
         }
       },
       {
@@ -4020,6 +4033,23 @@
           "protein": 2,
           "carbs": 8.5,
           "fat": 14.7
+        }
+      },
+      {
+        "name": "cherry tomatoes",
+        "count": null,
+        "unit_grams": null,
+        "grams": 54,
+        "prep": null,
+        "confidence": 0.7,
+        "db_search_terms": [
+          "tomatoes red ripe raw"
+        ],
+        "est_per100": {
+          "kcal": 18,
+          "protein": 0.9,
+          "carbs": 3.9,
+          "fat": 0.2
         }
       }
     ],
@@ -4051,19 +4081,6 @@
         "fat": 2.7489
       },
       {
-        "name": "tomato sauce",
-        "rawCount": null,
-        "rawUnitGrams": null,
-        "rawGrams": 33,
-        "resolvedGrams": 33,
-        "matched": "Sauce, steak, tomato based",
-        "dataType": "sr_legacy",
-        "kcal": 31.35,
-        "protein": 0.41250000000000003,
-        "carbs": 7.2732,
-        "fat": 0.07590000000000001
-      },
-      {
         "name": "avocado",
         "rawCount": null,
         "rawUnitGrams": null,
@@ -4075,14 +4092,27 @@
         "protein": 1.22,
         "carbs": 5.2033,
         "fat": 8.9426
+      },
+      {
+        "name": "cherry tomatoes",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 54,
+        "resolvedGrams": 54,
+        "matched": "Tomatoes, red, ripe, raw, year round average",
+        "dataType": "sr_legacy",
+        "kcal": 9.72,
+        "protein": 0.4752,
+        "carbs": 2.1006,
+        "fat": 0.10800000000000001
       }
     ],
-    "totalGrams": 232,
+    "totalGrams": 253,
     "totals": {
-      "kcal": 410.94000000000005,
-      "protein": 33.020900000000005,
-      "carbs": 38.7675,
-      "fat": 13.9329
+      "kcal": 389.31000000000006,
+      "protein": 33.083600000000004,
+      "carbs": 33.594899999999996,
+      "fat": 13.965
     }
   },
   {
@@ -4098,8 +4128,8 @@
       {
         "name": "tuna melt",
         "count": 1,
-        "unit_grams": 215,
-        "grams": 215,
+        "unit_grams": 210,
+        "grams": 210,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -4107,9 +4137,9 @@
         ],
         "est_per100": {
           "kcal": 198,
-          "protein": 12,
-          "carbs": 11.9,
-          "fat": 10.4
+          "protein": 100,
+          "carbs": 10,
+          "fat": 6.5
         }
       }
     ],
@@ -4117,23 +4147,23 @@
       {
         "name": "tuna melt",
         "rawCount": 1,
-        "rawUnitGrams": 215,
-        "rawGrams": 215,
-        "resolvedGrams": 215,
+        "rawUnitGrams": 210,
+        "rawGrams": 210,
+        "resolvedGrams": 210,
         "matched": "Dunkin' Tuna Melt on a Croissant",
         "dataType": "branded",
-        "kcal": 505.25,
-        "protein": 15.91,
-        "carbs": 30.96,
-        "fat": 36.12
+        "kcal": 493.5,
+        "protein": 15.540000000000001,
+        "carbs": 30.240000000000002,
+        "fat": 35.28
       }
     ],
-    "totalGrams": 215,
+    "totalGrams": 210,
     "totals": {
-      "kcal": 505.25,
-      "protein": 15.91,
-      "carbs": 30.96,
-      "fat": 36.12
+      "kcal": 493.5,
+      "protein": 15.540000000000001,
+      "carbs": 30.240000000000002,
+      "fat": 35.28
     }
   },
   {
@@ -4211,7 +4241,7 @@
           "kcal": 220,
           "protein": 13,
           "carbs": 19.5,
-          "fat": 7
+          "fat": 11
         }
       }
     ],
@@ -4269,7 +4299,7 @@
         "name": "white rice",
         "count": null,
         "unit_grams": null,
-        "grams": 71,
+        "grams": 69,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -4352,14 +4382,14 @@
         "name": "white rice",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 71,
-        "resolvedGrams": 71,
+        "rawGrams": 69,
+        "resolvedGrams": 69,
         "matched": "Rice, white, long-grain, regular, enriched, cooked",
         "dataType": "sr_legacy",
-        "kcal": 92.3,
-        "protein": 1.9099,
-        "carbs": 20.000700000000002,
-        "fat": 0.1988
+        "kcal": 89.69999999999999,
+        "protein": 1.8560999999999999,
+        "carbs": 19.4373,
+        "fat": 0.1932
       },
       {
         "name": "black beans",
@@ -4401,12 +4431,12 @@
         "fat": 8.16
       }
     ],
-    "totalGrams": 300,
+    "totalGrams": 298,
     "totals": {
-      "kcal": 602.7199999999999,
-      "protein": 41.6814,
-      "carbs": 69.5569,
-      "fat": 16.7367
+      "kcal": 600.1199999999999,
+      "protein": 41.6276,
+      "carbs": 68.9935,
+      "fat": 16.731099999999998
     }
   },
   {
@@ -4542,7 +4572,7 @@
         "name": "grilled chicken breast",
         "count": null,
         "unit_grams": null,
-        "grams": 108,
+        "grams": 109,
         "prep": "grilled",
         "confidence": 0.7,
         "db_search_terms": [
@@ -4559,16 +4589,16 @@
         "name": "caesar dressing",
         "count": null,
         "unit_grams": null,
-        "grams": 31,
+        "grams": 27,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
           "salad dressing caesar"
         ],
         "est_per100": {
-          "kcal": 48,
+          "kcal": 131,
           "protein": 1.5,
-          "carbs": 6.5,
+          "carbs": 20.9,
           "fat": 0.2
         }
       },
@@ -4608,27 +4638,27 @@
         "name": "grilled chicken breast",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 108,
-        "resolvedGrams": 108,
+        "rawGrams": 109,
+        "resolvedGrams": 109,
         "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
         "dataType": "sr_legacy",
-        "kcal": 178.20000000000002,
-        "protein": 33.5016,
+        "kcal": 179.85000000000002,
+        "protein": 33.811800000000005,
         "carbs": 0,
-        "fat": 3.8556
+        "fat": 3.8913
       },
       {
         "name": "caesar dressing",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 31,
-        "resolvedGrams": 31,
+        "rawGrams": 27,
+        "resolvedGrams": 27,
         "matched": "Salad dressing, caesar, fat-free",
         "dataType": "sr_legacy",
-        "kcal": 40.61,
-        "protein": 0.4557,
-        "carbs": 9.5263,
-        "fat": 0.0713
+        "kcal": 35.370000000000005,
+        "protein": 0.39690000000000003,
+        "carbs": 8.2971,
+        "fat": 0.06210000000000001
       },
       {
         "name": "parmesan",
@@ -4644,12 +4674,12 @@
         "fat": 3.08
       }
     ],
-    "totalGrams": 261,
+    "totalGrams": 258,
     "totals": {
-      "kcal": 283.99,
-      "protein": 38.5897,
-      "carbs": 14.486700000000003,
-      "fat": 7.2955
+      "kcal": 280.40000000000003,
+      "protein": 38.841100000000004,
+      "carbs": 13.257500000000002,
+      "fat": 7.322
     }
   },
   {
@@ -4680,23 +4710,6 @@
         }
       },
       {
-        "name": "ranch dressing",
-        "count": null,
-        "unit_grams": null,
-        "grams": 32,
-        "prep": null,
-        "confidence": 0.7,
-        "db_search_terms": [
-          "salad dressing ranch regular"
-        ],
-        "est_per100": {
-          "kcal": 46,
-          "protein": 1.3,
-          "carbs": 6.3,
-          "fat": 2.8
-        }
-      },
-      {
         "name": "grilled chicken",
         "count": null,
         "unit_grams": null,
@@ -4711,6 +4724,40 @@
           "protein": 31,
           "carbs": 0,
           "fat": 3.6
+        }
+      },
+      {
+        "name": "ranch dressing",
+        "count": null,
+        "unit_grams": null,
+        "grams": 32,
+        "prep": null,
+        "confidence": 0.7,
+        "db_search_terms": [
+          "salad dressing ranch regular"
+        ],
+        "est_per100": {
+          "kcal": 461,
+          "protein": 1.3,
+          "carbs": 65.1,
+          "fat": 2.9
+        }
+      },
+      {
+        "name": "cherry tomatoes",
+        "count": null,
+        "unit_grams": null,
+        "grams": 65,
+        "prep": null,
+        "confidence": 0.7,
+        "db_search_terms": [
+          "tomatoes red ripe raw"
+        ],
+        "est_per100": {
+          "kcal": 18,
+          "protein": 0.9,
+          "carbs": 3.9,
+          "fat": 0.2
         }
       }
     ],
@@ -4729,6 +4776,19 @@
         "fat": 0.28600000000000003
       },
       {
+        "name": "grilled chicken",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 107,
+        "resolvedGrams": 107,
+        "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+        "dataType": "sr_legacy",
+        "kcal": 176.55,
+        "protein": 33.1914,
+        "carbs": 0,
+        "fat": 3.8199
+      },
+      {
         "name": "ranch dressing",
         "rawCount": null,
         "rawUnitGrams": null,
@@ -4742,25 +4802,25 @@
         "fat": 14.2528
       },
       {
-        "name": "grilled chicken",
+        "name": "cherry tomatoes",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 107,
-        "resolvedGrams": 107,
-        "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+        "rawGrams": 65,
+        "resolvedGrams": 65,
+        "matched": "Tomatoes, red, ripe, raw, year round average",
         "dataType": "sr_legacy",
-        "kcal": 176.55,
-        "protein": 33.1914,
-        "carbs": 0,
-        "fat": 3.8199
+        "kcal": 11.700000000000001,
+        "protein": 0.5720000000000001,
+        "carbs": 2.5285,
+        "fat": 0.13
       }
     ],
-    "totalGrams": 249,
+    "totalGrams": 314,
     "totals": {
-      "kcal": 332.85,
-      "protein": 34.9778,
-      "carbs": 5.452000000000001,
-      "fat": 18.3587
+      "kcal": 344.55,
+      "protein": 35.549800000000005,
+      "carbs": 7.980500000000001,
+      "fat": 18.488699999999998
     }
   },
   {
@@ -4780,8 +4840,8 @@
       {
         "name": "salad",
         "count": 1,
-        "unit_grams": 115,
-        "grams": 115,
+        "unit_grams": 119,
+        "grams": 119,
         "prep": null,
         "confidence": 0.85,
         "db_search_terms": [
@@ -4789,8 +4849,8 @@
         ],
         "est_per100": {
           "kcal": 35,
-          "protein": 1.2,
-          "carbs": 7.1,
+          "protein": 1.5,
+          "carbs": 7.5,
           "fat": 0.4
         }
       }
@@ -4799,23 +4859,23 @@
       {
         "name": "salad",
         "rawCount": 1,
-        "rawUnitGrams": 115,
-        "rawGrams": 115,
-        "resolvedGrams": 115,
+        "rawUnitGrams": 119,
+        "rawGrams": 119,
+        "resolvedGrams": 119,
         "matched": "Lettuce, cos or romaine, raw",
         "dataType": "foundation",
-        "kcal": 19.549999999999997,
-        "protein": 1.426,
-        "carbs": 3.726,
-        "fat": 0.299
+        "kcal": 20.23,
+        "protein": 1.4756,
+        "carbs": 3.8556,
+        "fat": 0.3094
       }
     ],
-    "totalGrams": 115,
+    "totalGrams": 119,
     "totals": {
-      "kcal": 19.549999999999997,
-      "protein": 1.426,
-      "carbs": 3.726,
-      "fat": 0.299
+      "kcal": 20.23,
+      "protein": 1.4756,
+      "carbs": 3.8556,
+      "fat": 0.3094
     }
   },
   {
@@ -4841,8 +4901,25 @@
         "est_per100": {
           "kcal": 226,
           "protein": 7.7,
-          "carbs": 24.1,
-          "fat": 11.3
+          "carbs": 16.7,
+          "fat": 12.3
+        }
+      },
+      {
+        "name": "cherry tomatoes",
+        "count": null,
+        "unit_grams": null,
+        "grams": 61,
+        "prep": null,
+        "confidence": 0.7,
+        "db_search_terms": [
+          "tomatoes red ripe raw"
+        ],
+        "est_per100": {
+          "kcal": 18,
+          "protein": 0.9,
+          "carbs": 3.9,
+          "fat": 0.2
         }
       }
     ],
@@ -4859,14 +4936,27 @@
         "protein": 15.31,
         "carbs": 15.62,
         "fat": 13.56
+      },
+      {
+        "name": "cherry tomatoes",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 61,
+        "resolvedGrams": 61,
+        "matched": "Tomatoes, red, ripe, raw, year round average",
+        "dataType": "sr_legacy",
+        "kcal": 10.98,
+        "protein": 0.5367999999999999,
+        "carbs": 2.3729,
+        "fat": 0.122
       }
     ],
-    "totalGrams": 100,
+    "totalGrams": 161,
     "totals": {
-      "kcal": 246,
-      "protein": 15.31,
-      "carbs": 15.62,
-      "fat": 13.56
+      "kcal": 256.98,
+      "protein": 15.8468,
+      "carbs": 17.9929,
+      "fat": 13.682
     }
   },
   {
@@ -4893,7 +4983,7 @@
           "kcal": 110,
           "protein": 11.2,
           "carbs": 10.8,
-          "fat": 4.8
+          "fat": 4.5
         }
       }
     ],
@@ -4909,7 +4999,7 @@
         "kcal": 269.5,
         "protein": 27.44,
         "carbs": 26.460000000000004,
-        "fat": 11.76
+        "fat": 11.025
       }
     ],
     "totalGrams": 245,
@@ -4917,7 +5007,7 @@
       "kcal": 269.5,
       "protein": 27.44,
       "carbs": 26.460000000000004,
-      "fat": 11.76
+      "fat": 11.025
     }
   },
   {
@@ -4995,7 +5085,7 @@
           "kcal": 110,
           "protein": 8.1,
           "carbs": 13.8,
-          "fat": 1.5
+          "fat": 3.5
         }
       }
     ],
@@ -5011,7 +5101,7 @@
         "kcal": 242.00000000000003,
         "protein": 17.82,
         "carbs": 30.360000000000003,
-        "fat": 3.3000000000000003
+        "fat": 7.700000000000001
       }
     ],
     "totalGrams": 220,
@@ -5019,7 +5109,7 @@
       "kcal": 242.00000000000003,
       "protein": 17.82,
       "carbs": 30.360000000000003,
-      "fat": 3.3000000000000003
+      "fat": 7.700000000000001
     }
   },
   {
@@ -5036,7 +5126,7 @@
         "name": "teriyaki chicken",
         "count": null,
         "unit_grams": null,
-        "grams": 117,
+        "grams": 137,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -5046,14 +5136,14 @@
           "kcal": 179,
           "protein": 30.3,
           "carbs": 0,
-          "fat": 0.8
+          "fat": 0.9
         }
       },
       {
         "name": "white rice",
         "count": null,
         "unit_grams": null,
-        "grams": 157,
+        "grams": 151,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -5072,35 +5162,35 @@
         "name": "teriyaki chicken",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 117,
-        "resolvedGrams": 117,
+        "rawGrams": 137,
+        "resolvedGrams": 137,
         "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
         "dataType": "sr_legacy",
-        "kcal": 193.04999999999998,
-        "protein": 36.2934,
+        "kcal": 226.05,
+        "protein": 42.497400000000006,
         "carbs": 0,
-        "fat": 4.1769
+        "fat": 4.8909
       },
       {
         "name": "white rice",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 157,
-        "resolvedGrams": 157,
+        "rawGrams": 151,
+        "resolvedGrams": 151,
         "matched": "Rice, white, long-grain, regular, enriched, cooked",
         "dataType": "sr_legacy",
-        "kcal": 204.1,
-        "protein": 4.2233,
-        "carbs": 44.22690000000001,
-        "fat": 0.43960000000000005
+        "kcal": 196.3,
+        "protein": 4.0619,
+        "carbs": 42.5367,
+        "fat": 0.42280000000000006
       }
     ],
-    "totalGrams": 274,
+    "totalGrams": 288,
     "totals": {
-      "kcal": 397.15,
-      "protein": 40.5167,
-      "carbs": 44.22690000000001,
-      "fat": 4.6165
+      "kcal": 422.35,
+      "protein": 46.55930000000001,
+      "carbs": 42.5367,
+      "fat": 5.313700000000001
     }
   },
   {
@@ -5117,7 +5207,7 @@
         "name": "aaca",
         "count": null,
         "unit_grams": null,
-        "grams": 164,
+        "grams": 131,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -5136,22 +5226,22 @@
         "name": "aaca",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 164,
-        "resolvedGrams": 164,
+        "rawGrams": 131,
+        "resolvedGrams": 131,
         "matched": null,
         "dataType": null,
-        "kcal": 226.32,
-        "protein": 16.564,
-        "carbs": 41.327999999999996,
-        "fat": 1.64
+        "kcal": 180.78,
+        "protein": 13.231,
+        "carbs": 33.012,
+        "fat": 1.31
       }
     ],
-    "totalGrams": 164,
+    "totalGrams": 131,
     "totals": {
-      "kcal": 226.32,
-      "protein": 16.564,
-      "carbs": 41.327999999999996,
-      "fat": 1.64
+      "kcal": 180.78,
+      "protein": 13.231,
+      "carbs": 33.012,
+      "fat": 1.31
     }
   },
   {
@@ -5188,7 +5278,7 @@
         "name": "black beans",
         "count": null,
         "unit_grams": null,
-        "grams": 64,
+        "grams": 65,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -5271,14 +5361,14 @@
         "name": "black beans",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 64,
-        "resolvedGrams": 64,
+        "rawGrams": 65,
+        "resolvedGrams": 65,
         "matched": "Beans, black, mature seeds, cooked, boiled, with salt",
         "dataType": "sr_legacy",
-        "kcal": 84.48,
-        "protein": 5.6704,
-        "carbs": 15.1744,
-        "fat": 0.3456
+        "kcal": 85.8,
+        "protein": 5.7589999999999995,
+        "carbs": 15.4115,
+        "fat": 0.35100000000000003
       },
       {
         "name": "grilled chicken",
@@ -5320,12 +5410,12 @@
         "fat": 0.056999999999999995
       }
     ],
-    "totalGrams": 270,
+    "totalGrams": 271,
     "totals": {
-      "kcal": 537.12,
-      "protein": 42.5077,
-      "carbs": 52.7637,
-      "fat": 16.8361
+      "kcal": 538.4399999999999,
+      "protein": 42.5963,
+      "carbs": 53.000800000000005,
+      "fat": 16.8415
     }
   },
   {
@@ -5346,13 +5436,13 @@
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
-          "fettuccine alfredo"
+          "alfredo pasta"
         ],
         "est_per100": {
           "kcal": 123,
-          "protein": 8.8,
+          "protein": 8.6,
           "carbs": 13.5,
-          "fat": 3.2
+          "fat": 3.8
         }
       }
     ],
@@ -5400,10 +5490,10 @@
           "spaghetti carbonara"
         ],
         "est_per100": {
-          "kcal": 151,
+          "kcal": 223,
           "protein": 8.1,
-          "carbs": 13.5,
-          "fat": 8.5
+          "carbs": 16,
+          "fat": 15.5
         }
       }
     ],
@@ -5416,18 +5506,18 @@
         "resolvedGrams": 227,
         "matched": null,
         "dataType": null,
-        "kcal": 342.77,
+        "kcal": 506.21,
         "protein": 18.387,
-        "carbs": 30.645,
-        "fat": 19.295
+        "carbs": 36.32,
+        "fat": 35.185
       }
     ],
     "totalGrams": 227,
     "totals": {
-      "kcal": 342.77,
+      "kcal": 506.21,
       "protein": 18.387,
-      "carbs": 30.645,
-      "fat": 19.295
+      "carbs": 36.32,
+      "fat": 35.185
     }
   },
   {
@@ -5553,9 +5643,9 @@
           "pasta pesto"
         ],
         "est_per100": {
-          "kcal": 121,
+          "kcal": 151,
           "protein": 8.1,
-          "carbs": 13.5,
+          "carbs": 24,
           "fat": 3.8
         }
       }
@@ -5569,17 +5659,17 @@
         "resolvedGrams": 125,
         "matched": null,
         "dataType": null,
-        "kcal": 151.25,
+        "kcal": 188.75,
         "protein": 10.125,
-        "carbs": 16.875,
+        "carbs": 30,
         "fat": 4.75
       }
     ],
     "totalGrams": 125,
     "totals": {
-      "kcal": 151.25,
+      "kcal": 188.75,
       "protein": 10.125,
-      "carbs": 16.875,
+      "carbs": 30,
       "fat": 4.75
     }
   },
@@ -5607,7 +5697,7 @@
           "kcal": 462,
           "protein": 13.8,
           "carbs": 44.9,
-          "fat": 29.8
+          "fat": 29.3
         }
       }
     ],
@@ -5697,43 +5787,43 @@
     "rawItems": [
       {
         "name": "string cheese",
-        "count": 1,
-        "unit_grams": 90,
-        "grams": 90,
+        "count": null,
+        "unit_grams": null,
+        "grams": 27,
         "prep": null,
-        "confidence": 0.95,
+        "confidence": 0.7,
         "db_search_terms": [
           "cheese string"
         ],
         "est_per100": {
-          "kcal": 223,
-          "protein": 11.7,
-          "carbs": 11.4,
-          "fat": 15
+          "kcal": 221,
+          "protein": 23.7,
+          "carbs": 4.4,
+          "fat": 13.3
         }
       }
     ],
     "resolved": [
       {
         "name": "string cheese",
-        "rawCount": 1,
-        "rawUnitGrams": 90,
-        "rawGrams": 90,
-        "resolvedGrams": 90,
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 27,
+        "resolvedGrams": 27,
         "matched": null,
         "dataType": null,
-        "kcal": 200.70000000000002,
-        "protein": 10.53,
-        "carbs": 10.26,
-        "fat": 13.5
+        "kcal": 59.67,
+        "protein": 6.399,
+        "carbs": 1.1880000000000002,
+        "fat": 3.5910000000000006
       }
     ],
-    "totalGrams": 90,
+    "totalGrams": 27,
     "totals": {
-      "kcal": 200.70000000000002,
-      "protein": 10.53,
-      "carbs": 10.26,
-      "fat": 13.5
+      "kcal": 59.67,
+      "protein": 6.399,
+      "carbs": 1.1880000000000002,
+      "fat": 3.5910000000000006
     }
   },
   {
@@ -5839,9 +5929,9 @@
         ],
         "est_per100": {
           "kcal": 386,
-          "protein": 8.1,
-          "carbs": 78.5,
-          "fat": 1.9
+          "protein": 8.8,
+          "carbs": 78.1,
+          "fat": 2.9
         }
       }
     ],
@@ -6044,8 +6134,8 @@
         "est_per100": {
           "kcal": 0,
           "protein": 0,
-          "carbs": 18.5,
-          "fat": 0.1
+          "carbs": 14.4,
+          "fat": 0.3
         }
       }
     ],
@@ -6130,10 +6220,8 @@
     "text": "a fruit smoothie",
     "expectItems": null,
     "meal_guess": "snack",
-    "needs_clarification": true,
-    "questions": [
-      "Roughly how much fruit smoothie was there — in grams or a typical serving?"
-    ],
+    "needs_clarification": false,
+    "questions": [],
     "rawItems": [
       {
         "name": "fruit smoothie",
@@ -6141,7 +6229,7 @@
         "unit_grams": 400,
         "grams": 400,
         "prep": null,
-        "confidence": 0.45,
+        "confidence": 0.7,
         "db_search_terms": [
           "smoothie fruit"
         ],
@@ -6252,8 +6340,8 @@
         "est_per100": {
           "kcal": 481,
           "protein": 7.1,
-          "carbs": 53.4,
-          "fat": 24.4
+          "carbs": 50.8,
+          "fat": 24.9
         }
       }
     ],
@@ -6296,15 +6384,15 @@
         "unit_grams": 172,
         "grams": 172,
         "prep": null,
-        "confidence": 0.95,
+        "confidence": 0.7,
         "db_search_terms": [
           "cheesecake"
         ],
         "est_per100": {
           "kcal": 264,
           "protein": 1.3,
-          "carbs": 50.4,
-          "fat": 13.1
+          "carbs": 45.1,
+          "fat": 18.3
         }
       }
     ],
@@ -6352,10 +6440,10 @@
           "sundae ice cream"
         ],
         "est_per100": {
-          "kcal": 145,
-          "protein": 1.4,
-          "carbs": 23.7,
-          "fat": 3.5
+          "kcal": 148,
+          "protein": 5.1,
+          "carbs": 16.9,
+          "fat": 8.8
         }
       }
     ],
@@ -6508,9 +6596,9 @@
         ],
         "est_per100": {
           "kcal": 178,
-          "protein": 1.5,
+          "protein": 4.4,
           "carbs": 13.1,
-          "fat": 7
+          "fat": 7.6
         }
       }
     ],
@@ -6582,7 +6670,7 @@
           "kcal": 286,
           "protein": 25.8,
           "carbs": 0,
-          "fat": 15.3
+          "fat": 20.4
         }
       },
       {
@@ -6598,7 +6686,7 @@
         "est_per100": {
           "kcal": 101,
           "protein": 1,
-          "carbs": 24.8,
+          "carbs": 24.4,
           "fat": 0.1
         }
       },
@@ -6699,7 +6787,7 @@
         "name": "french fries",
         "count": null,
         "unit_grams": null,
-        "grams": 108,
+        "grams": 111,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -6711,23 +6799,6 @@
           "carbs": 41.4,
           "fat": 14.7
         }
-      },
-      {
-        "name": "ranch",
-        "count": null,
-        "unit_grams": null,
-        "grams": 27,
-        "prep": null,
-        "confidence": 0.7,
-        "db_search_terms": [
-          "salad dressing ranch regular"
-        ],
-        "est_per100": {
-          "kcal": 430,
-          "protein": 1.3,
-          "carbs": 5.9,
-          "fat": 44.5
-        }
       }
     ],
     "resolved": [
@@ -6735,35 +6806,22 @@
         "name": "french fries",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 108,
-        "resolvedGrams": 108,
+        "rawGrams": 111,
+        "resolvedGrams": 111,
         "matched": "Fast foods, potato, french fried in vegetable oil",
         "dataType": "sr_legacy",
-        "kcal": 336.96000000000004,
-        "protein": 3.7044000000000006,
-        "carbs": 44.7552,
-        "fat": 15.908400000000002
-      },
-      {
-        "name": "ranch",
-        "rawCount": null,
-        "rawUnitGrams": null,
-        "rawGrams": 27,
-        "resolvedGrams": 27,
-        "matched": "Salad dressing, ranch dressing, regular",
-        "dataType": "sr_legacy",
-        "kcal": 116.10000000000001,
-        "protein": 0.35640000000000005,
-        "carbs": 1.5930000000000002,
-        "fat": 12.0258
+        "kcal": 346.32000000000005,
+        "protein": 3.8073000000000006,
+        "carbs": 45.998400000000004,
+        "fat": 16.3503
       }
     ],
-    "totalGrams": 135,
+    "totalGrams": 111,
     "totals": {
-      "kcal": 453.06000000000006,
-      "protein": 4.0608,
-      "carbs": 46.348200000000006,
-      "fat": 27.934200000000004
+      "kcal": 346.32000000000005,
+      "protein": 3.8073000000000006,
+      "carbs": 45.998400000000004,
+      "fat": 16.3503
     }
   },
   {
@@ -6801,7 +6859,7 @@
         "name": "mustard",
         "count": null,
         "unit_grams": null,
-        "grams": 14,
+        "grams": 13,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -6810,7 +6868,7 @@
         "est_per100": {
           "kcal": 41,
           "protein": 4.3,
-          "carbs": 5.6,
+          "carbs": 6.6,
           "fat": 3.4
         }
       },
@@ -6827,7 +6885,7 @@
         "est_per100": {
           "kcal": 38,
           "protein": 5.3,
-          "carbs": 6.3,
+          "carbs": 6.9,
           "fat": 2.7
         }
       }
@@ -6850,14 +6908,14 @@
         "name": "mustard",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 14,
-        "resolvedGrams": 14,
+        "rawGrams": 13,
+        "resolvedGrams": 13,
         "matched": "Mustard, prepared, yellow",
         "dataType": "foundation",
-        "kcal": 8.540000000000001,
-        "protein": 0.5950000000000001,
-        "carbs": 0.742,
-        "fat": 0.4732
+        "kcal": 7.930000000000001,
+        "protein": 0.5525,
+        "carbs": 0.689,
+        "fat": 0.4394
       },
       {
         "name": "relish",
@@ -6873,12 +6931,12 @@
         "fat": 0.1547
       }
     ],
-    "totalGrams": 75,
+    "totalGrams": 74,
     "totals": {
-      "kcal": 169.09,
-      "protein": 6.0276,
-      "carbs": 6.2814,
-      "fat": 13.5463
+      "kcal": 168.48000000000002,
+      "protein": 5.9851,
+      "carbs": 6.2284,
+      "fat": 13.512500000000001
     }
   },
   {
@@ -6915,7 +6973,7 @@
         "name": "deli turkey breast",
         "count": null,
         "unit_grams": null,
-        "grams": 61,
+        "grams": 67,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -6964,14 +7022,14 @@
         "name": "deli turkey breast",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 61,
-        "resolvedGrams": 61,
+        "rawGrams": 67,
+        "resolvedGrams": 67,
         "matched": "Turkey breast, low salt, prepackaged or deli, luncheon meat",
         "dataType": "sr_legacy",
-        "kcal": 66.49,
-        "protein": 13.304099999999998,
-        "carbs": 2.1411,
-        "fat": 0.5063
+        "kcal": 73.03,
+        "protein": 14.6127,
+        "carbs": 2.3517,
+        "fat": 0.5561
       },
       {
         "name": "mayo",
@@ -6987,12 +7045,12 @@
         "fat": 15.718499999999999
       }
     ],
-    "totalGrams": 143,
+    "totalGrams": 149,
     "totals": {
-      "kcal": 364.23,
-      "protein": 21.008699999999997,
-      "carbs": 28.5518,
-      "fat": 18.3903
+      "kcal": 370.77,
+      "protein": 22.3173,
+      "carbs": 28.762400000000003,
+      "fat": 18.440099999999997
     }
   },
   {
@@ -7030,17 +7088,17 @@
         "name": "ranch dressing",
         "count": null,
         "unit_grams": null,
-        "grams": 30,
+        "grams": 31,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
           "salad dressing ranch regular"
         ],
         "est_per100": {
-          "kcal": 46,
+          "kcal": 461,
           "protein": 1.3,
-          "carbs": 6.3,
-          "fat": 2.5
+          "carbs": 65.4,
+          "fat": 2.9
         }
       }
     ],
@@ -7062,22 +7120,22 @@
         "name": "ranch dressing",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 30,
-        "resolvedGrams": 30,
+        "rawGrams": 31,
+        "resolvedGrams": 31,
         "matched": "Salad dressing, ranch dressing, regular",
         "dataType": "sr_legacy",
-        "kcal": 129,
-        "protein": 0.396,
-        "carbs": 1.77,
-        "fat": 13.362
+        "kcal": 133.3,
+        "protein": 0.4092,
+        "carbs": 1.8290000000000002,
+        "fat": 13.8074
       }
     ],
-    "totalGrams": 145,
+    "totalGrams": 146,
     "totals": {
-      "kcal": 155.45,
-      "protein": 1.7645,
-      "carbs": 6.4735,
-      "fat": 13.5805
+      "kcal": 159.75,
+      "protein": 1.7776999999999998,
+      "carbs": 6.532499999999999,
+      "fat": 14.0259
     }
   },
   {
@@ -7108,9 +7166,9 @@
         ],
         "est_per100": {
           "kcal": 227,
-          "protein": 11,
-          "carbs": 20.7,
-          "fat": 10.3
+          "protein": 13,
+          "carbs": 11.4,
+          "fat": 14.3
         }
       }
     ],
@@ -7212,7 +7270,7 @@
         "name": "grilled chicken breast",
         "count": null,
         "unit_grams": null,
-        "grams": 109,
+        "grams": 117,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -7231,22 +7289,22 @@
         "name": "grilled chicken breast",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 109,
-        "resolvedGrams": 109,
+        "rawGrams": 117,
+        "resolvedGrams": 117,
         "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
         "dataType": "sr_legacy",
-        "kcal": 179.85000000000002,
-        "protein": 33.811800000000005,
+        "kcal": 193.04999999999998,
+        "protein": 36.2934,
         "carbs": 0,
-        "fat": 3.8913
+        "fat": 4.1769
       }
     ],
-    "totalGrams": 109,
+    "totalGrams": 117,
     "totals": {
-      "kcal": 179.85000000000002,
-      "protein": 33.811800000000005,
+      "kcal": 193.04999999999998,
+      "protein": 36.2934,
       "carbs": 0,
-      "fat": 3.8913
+      "fat": 4.1769
     }
   },
   {
@@ -7384,8 +7442,8 @@
         ],
         "est_per100": {
           "kcal": 374,
-          "protein": 14.8,
-          "carbs": 25.9,
+          "protein": 14.9,
+          "carbs": 25.5,
           "fat": 19.8
         }
       }
@@ -7489,8 +7547,8 @@
         "est_per100": {
           "kcal": 190,
           "protein": 11.9,
-          "carbs": 11.9,
-          "fat": 10.9
+          "carbs": 11.4,
+          "fat": 10.7
         }
       }
     ],
@@ -7576,49 +7634,49 @@
     "text": "a chick-fil-a chicken sandwich",
     "expectItems": 1,
     "expectBranded": true,
-    "meal_guess": "dinner",
+    "meal_guess": "lunch",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
       {
-        "name": "chicken sandwich",
+        "name": "chick-fil-a chicken sandwich",
         "count": 1,
-        "unit_grams": 145,
-        "grams": 145,
+        "unit_grams": 170,
+        "grams": 170,
         "prep": null,
-        "confidence": 0.9,
+        "confidence": 0.95,
         "db_search_terms": [
           "Chick-fil-A Chicken Sandwich"
         ],
         "est_per100": {
-          "kcal": 190,
-          "protein": 11.9,
-          "carbs": 14.4,
-          "fat": 8.8
+          "kcal": 193,
+          "protein": 11.6,
+          "carbs": 14.6,
+          "fat": 8.5
         }
       }
     ],
     "resolved": [
       {
-        "name": "chicken sandwich",
+        "name": "chick-fil-a chicken sandwich",
         "rawCount": 1,
-        "rawUnitGrams": 145,
-        "rawGrams": 145,
-        "resolvedGrams": 145,
+        "rawUnitGrams": 170,
+        "rawGrams": 170,
+        "resolvedGrams": 170,
         "matched": "CHICK-FIL-A, chicken sandwich",
         "dataType": "sr_legacy",
-        "kcal": 361.05,
-        "protein": 23.606,
-        "carbs": 30.2905,
-        "fat": 16.2255
+        "kcal": 423.3,
+        "protein": 27.676000000000002,
+        "carbs": 35.513,
+        "fat": 19.023
       }
     ],
-    "totalGrams": 145,
+    "totalGrams": 170,
     "totals": {
-      "kcal": 361.05,
-      "protein": 23.606,
-      "carbs": 30.2905,
-      "fat": 16.2255
+      "kcal": 423.3,
+      "protein": 27.676000000000002,
+      "carbs": 35.513,
+      "fat": 19.023
     }
   },
   {
@@ -7643,10 +7701,10 @@
           "Starbucks Venti Latte"
         ],
         "est_per100": {
-          "kcal": 254,
-          "protein": 5.7,
-          "carbs": 35.5,
-          "fat": 9.8
+          "kcal": 235,
+          "protein": 6.7,
+          "carbs": 31.5,
+          "fat": 9
         }
       }
     ],
@@ -7659,18 +7717,18 @@
         "resolvedGrams": 360,
         "matched": null,
         "dataType": null,
-        "kcal": 914.4,
-        "protein": 20.52,
-        "carbs": 127.8,
-        "fat": 35.28
+        "kcal": 846,
+        "protein": 24.12,
+        "carbs": 113.4,
+        "fat": 32.4
       }
     ],
     "totalGrams": 360,
     "totals": {
-      "kcal": 914.4,
-      "protein": 20.52,
-      "carbs": 127.8,
-      "fat": 35.28
+      "kcal": 846,
+      "protein": 24.12,
+      "carbs": 113.4,
+      "fat": 32.4
     }
   },
   {
@@ -7797,8 +7855,8 @@
       {
         "name": "fish and chips",
         "count": 1,
-        "unit_grams": 125,
-        "grams": 125,
+        "unit_grams": 117,
+        "grams": 117,
         "prep": null,
         "confidence": 0.9,
         "db_search_terms": [
@@ -7808,7 +7866,7 @@
           "kcal": 386,
           "protein": 8.8,
           "carbs": 25.5,
-          "fat": 24.5
+          "fat": 28.8
         }
       }
     ],
@@ -7816,23 +7874,23 @@
       {
         "name": "fish and chips",
         "rawCount": 1,
-        "rawUnitGrams": 125,
-        "rawGrams": 125,
-        "resolvedGrams": 125,
+        "rawUnitGrams": 117,
+        "rawGrams": 117,
+        "resolvedGrams": 117,
         "matched": null,
         "dataType": null,
-        "kcal": 482.5,
-        "protein": 11,
-        "carbs": 31.875,
-        "fat": 30.625
+        "kcal": 451.61999999999995,
+        "protein": 10.296,
+        "carbs": 29.834999999999997,
+        "fat": 33.696
       }
     ],
-    "totalGrams": 125,
+    "totalGrams": 117,
     "totals": {
-      "kcal": 482.5,
-      "protein": 11,
-      "carbs": 31.875,
-      "fat": 30.625
+      "kcal": 451.61999999999995,
+      "protein": 10.296,
+      "carbs": 29.834999999999997,
+      "fat": 33.696
     }
   },
   {
@@ -7900,7 +7958,7 @@
         "name": "american beans",
         "count": null,
         "unit_grams": null,
-        "grams": 65,
+        "grams": 66,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -7921,13 +7979,13 @@
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "egg whole cooked english"
+          "egg whole cooked plain"
         ],
         "est_per100": {
           "kcal": 131,
           "protein": 13.6,
           "carbs": 1.1,
-          "fat": 11.3
+          "fat": 11.4
         }
       }
     ],
@@ -7975,14 +8033,14 @@
         "name": "american beans",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 65,
-        "resolvedGrams": 65,
+        "rawGrams": 66,
+        "resolvedGrams": 66,
         "matched": null,
         "dataType": null,
-        "kcal": 90.35000000000001,
-        "protein": 5.785,
-        "carbs": 8.775,
-        "fat": 0.325
+        "kcal": 91.74000000000001,
+        "protein": 5.8740000000000006,
+        "carbs": 8.91,
+        "fat": 0.33
       },
       {
         "name": "english eggs",
@@ -7995,15 +8053,15 @@
         "kcal": 144.10000000000002,
         "protein": 14.96,
         "carbs": 1.2100000000000002,
-        "fat": 12.430000000000001
+        "fat": 12.540000000000001
       }
     ],
-    "totalGrams": 375,
+    "totalGrams": 376,
     "totals": {
-      "kcal": 673.21,
-      "protein": 47.1804,
-      "carbs": 26.9745,
-      "fat": 41.7287
+      "kcal": 674.6,
+      "protein": 47.269400000000005,
+      "carbs": 27.1095,
+      "fat": 41.8437
     }
   },
   {
@@ -8037,24 +8095,24 @@
         "name": "baked mashed potatoes",
         "count": null,
         "unit_grams": null,
-        "grams": 136,
+        "grams": 138,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "potatoes baked mashed plain"
+          "potatoes baked mashed cooked"
         ],
         "est_per100": {
-          "kcal": 123,
-          "protein": 1.5,
-          "carbs": 23.7,
-          "fat": 0.3
+          "kcal": 121,
+          "protein": 1.4,
+          "carbs": 24.9,
+          "fat": 0.2
         }
       },
       {
         "name": "gravy",
         "count": null,
         "unit_grams": null,
-        "grams": 80,
+        "grams": 71,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -8064,24 +8122,24 @@
           "kcal": 53,
           "protein": 3.8,
           "carbs": 60.8,
-          "fat": 0.9
+          "fat": 0.6
         }
       },
       {
-        "name": "stuffing",
+        "name": "flour stuffing",
         "count": null,
         "unit_grams": null,
-        "grams": 68,
+        "grams": 61,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "stuffing"
+          " stuffing flour based"
         ],
         "est_per100": {
-          "kcal": 233,
-          "protein": 7.7,
-          "carbs": 16.8,
-          "fat": 15.5
+          "kcal": 119,
+          "protein": 8.8,
+          "carbs": 13.8,
+          "fat": 5.2
         }
       }
     ],
@@ -8103,48 +8161,48 @@
         "name": "baked mashed potatoes",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 136,
-        "resolvedGrams": 136,
+        "rawGrams": 138,
+        "resolvedGrams": 138,
         "matched": null,
         "dataType": null,
-        "kcal": 167.28,
-        "protein": 2.04,
-        "carbs": 32.232,
-        "fat": 0.40800000000000003
+        "kcal": 166.98,
+        "protein": 1.9319999999999997,
+        "carbs": 34.361999999999995,
+        "fat": 0.27599999999999997
       },
       {
         "name": "gravy",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 80,
-        "resolvedGrams": 80,
+        "rawGrams": 71,
+        "resolvedGrams": 71,
         "matched": "Gravy, NFS",
         "dataType": "survey",
-        "kcal": 42.400000000000006,
-        "protein": 3,
-        "carbs": 3.848,
-        "fat": 1.888
+        "kcal": 37.629999999999995,
+        "protein": 2.6624999999999996,
+        "carbs": 3.4150999999999994,
+        "fat": 1.6755999999999998
       },
       {
-        "name": "stuffing",
+        "name": "flour stuffing",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 68,
-        "resolvedGrams": 68,
-        "matched": "Bread stuffing",
-        "dataType": "survey",
-        "kcal": 120.36000000000001,
-        "protein": 2.1352,
-        "carbs": 14.762800000000002,
-        "fat": 5.7868
+        "rawGrams": 61,
+        "resolvedGrams": 61,
+        "matched": null,
+        "dataType": null,
+        "kcal": 72.59,
+        "protein": 5.368,
+        "carbs": 8.418000000000001,
+        "fat": 3.172
       }
     ],
-    "totalGrams": 395,
+    "totalGrams": 381,
     "totals": {
-      "kcal": 493.21000000000004,
-      "protein": 40.619499999999995,
-      "carbs": 50.8428,
-      "fat": 10.3916
+      "kcal": 440.37,
+      "protein": 43.406800000000004,
+      "carbs": 46.1951,
+      "fat": 7.4323999999999995
     }
   },
   {
@@ -8153,32 +8211,32 @@
     "sub": "compound",
     "text": "two tacos, rice, and beans",
     "expectItems": 3,
-    "meal_guess": "dinner",
+    "meal_guess": "lunch",
     "needs_clarification": false,
     "questions": [],
     "rawItems": [
       {
-        "name": "taco",
-        "count": 2,
-        "unit_grams": 100,
-        "grams": 200,
+        "name": "flour tortilla",
+        "count": 1,
+        "unit_grams": 77,
+        "grams": 77,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "taco"
+          "tortillas ready to bake or fry flour tortillas"
         ],
         "est_per100": {
-          "kcal": 226,
-          "protein": 8.9,
-          "carbs": 19.9,
-          "fat": 12.7
+          "kcal": 297,
+          "protein": 8,
+          "carbs": 49.4,
+          "fat": 7.3
         }
       },
       {
         "name": "white rice",
         "count": null,
         "unit_grams": null,
-        "grams": 160,
+        "grams": 137,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -8192,70 +8250,70 @@
         }
       },
       {
-        "name": "bean soup",
+        "name": "black beans",
         "count": null,
         "unit_grams": null,
-        "grams": 185,
+        "grams": 85,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
-          "bean soup"
+          "beans black mature seeds cooked boiled"
         ],
         "est_per100": {
-          "kcal": 53,
-          "protein": 5.2,
-          "carbs": 100,
+          "kcal": 132,
+          "protein": 8.9,
+          "carbs": 23.7,
           "fat": 0.5
         }
       }
     ],
     "resolved": [
       {
-        "name": "taco",
-        "rawCount": 2,
-        "rawUnitGrams": 100,
-        "rawGrams": 200,
-        "resolvedGrams": 200,
-        "matched": "Taco, NFS",
-        "dataType": "survey",
-        "kcal": 492,
-        "protein": 30.62,
-        "carbs": 31.24,
-        "fat": 27.12
+        "name": "flour tortilla",
+        "rawCount": 1,
+        "rawUnitGrams": 77,
+        "rawGrams": 77,
+        "resolvedGrams": 77,
+        "matched": "Tortillas, ready-to-bake or -fry, flour, shelf stable",
+        "dataType": "sr_legacy",
+        "kcal": 228.69,
+        "protein": 6.1677,
+        "carbs": 37.937900000000006,
+        "fat": 5.8366
       },
       {
         "name": "white rice",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 160,
-        "resolvedGrams": 160,
+        "rawGrams": 137,
+        "resolvedGrams": 137,
         "matched": "Rice, white, long-grain, regular, enriched, cooked",
         "dataType": "sr_legacy",
-        "kcal": 208,
-        "protein": 4.304,
-        "carbs": 45.072,
-        "fat": 0.44800000000000006
+        "kcal": 178.10000000000002,
+        "protein": 3.6853000000000002,
+        "carbs": 38.59290000000001,
+        "fat": 0.38360000000000005
       },
       {
-        "name": "bean soup",
+        "name": "black beans",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 185,
-        "resolvedGrams": 185,
-        "matched": "Soup, bean",
-        "dataType": "survey",
-        "kcal": 123.95,
-        "protein": 6.9559999999999995,
-        "carbs": 21.497,
-        "fat": 1.4060000000000001
+        "rawGrams": 85,
+        "resolvedGrams": 85,
+        "matched": "Beans, black, mature seeds, cooked, boiled, with salt",
+        "dataType": "sr_legacy",
+        "kcal": 112.2,
+        "protein": 7.531,
+        "carbs": 20.1535,
+        "fat": 0.459
       }
     ],
-    "totalGrams": 545,
+    "totalGrams": 299,
     "totals": {
-      "kcal": 823.95,
-      "protein": 41.879999999999995,
-      "carbs": 97.809,
-      "fat": 28.974
+      "kcal": 518.99,
+      "protein": 17.384,
+      "carbs": 96.68430000000001,
+      "fat": 6.6792
     }
   },
   {
@@ -8281,8 +8339,8 @@
         "est_per100": {
           "kcal": 0,
           "protein": 0,
-          "carbs": 14.4,
-          "fat": 0.3
+          "carbs": 0.1,
+          "fat": 0
         }
       }
     ],
@@ -8334,8 +8392,8 @@
         "est_per100": {
           "kcal": 310,
           "protein": 17.3,
-          "carbs": 16.9,
-          "fat": 18
+          "carbs": 24.1,
+          "fat": 16
         }
       }
     ],
@@ -8424,7 +8482,7 @@
     "meal_guess": "snack",
     "needs_clarification": true,
     "questions": [
-      "What is in it?"
+      "What is on this sandwich?"
     ],
     "rawItems": [
       {
@@ -8520,6 +8578,330 @@
     }
   },
   {
+    "id": "q-oz-cokecan-lower",
+    "cat": "quantity",
+    "sub": "oz-lb",
+    "text": "a 12 oz can of coke",
+    "expect": {
+      "lo": 300,
+      "hi": 400
+    },
+    "meal_guess": "snack",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "coke",
+        "count": 1,
+        "unit_grams": 368,
+        "grams": 368,
+        "prep": null,
+        "confidence": 0.95,
+        "db_search_terms": [
+          "beverages cola regular tone dark"
+        ],
+        "est_per100": {
+          "kcal": 42,
+          "protein": 0,
+          "carbs": 10.4,
+          "fat": 0.3
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "coke",
+        "rawCount": 1,
+        "rawUnitGrams": 368,
+        "rawGrams": 368,
+        "resolvedGrams": 368,
+        "matched": null,
+        "dataType": null,
+        "kcal": 154.56,
+        "protein": 0,
+        "carbs": 38.272000000000006,
+        "fat": 1.104
+      }
+    ],
+    "totalGrams": 368,
+    "totals": {
+      "kcal": 154.56,
+      "protein": 0,
+      "carbs": 38.272000000000006,
+      "fat": 1.104
+    }
+  },
+  {
+    "id": "q-oz-cokecan-caps",
+    "cat": "quantity",
+    "sub": "oz-lb",
+    "text": "A 12 oz can of coke",
+    "expect": {
+      "lo": 300,
+      "hi": 400
+    },
+    "meal_guess": "snack",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "coke",
+        "count": 1,
+        "unit_grams": 368,
+        "grams": 368,
+        "prep": null,
+        "confidence": 0.95,
+        "db_search_terms": [
+          "beverages cola regular tone dark"
+        ],
+        "est_per100": {
+          "kcal": 42,
+          "protein": 0,
+          "carbs": 10.4,
+          "fat": 0.3
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "coke",
+        "rawCount": 1,
+        "rawUnitGrams": 368,
+        "rawGrams": 368,
+        "resolvedGrams": 368,
+        "matched": null,
+        "dataType": null,
+        "kcal": 154.56,
+        "protein": 0,
+        "carbs": 38.272000000000006,
+        "fat": 1.104
+      }
+    ],
+    "totalGrams": 368,
+    "totals": {
+      "kcal": 154.56,
+      "protein": 0,
+      "carbs": 38.272000000000006,
+      "fat": 1.104
+    }
+  },
+  {
+    "id": "q-oz-colacan",
+    "cat": "quantity",
+    "sub": "oz-lb",
+    "text": "a 12 oz can of regular cola",
+    "expect": {
+      "lo": 300,
+      "hi": 400
+    },
+    "meal_guess": "snack",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "regular cola",
+        "count": null,
+        "unit_grams": null,
+        "grams": 356,
+        "prep": null,
+        "confidence": 0.95,
+        "db_search_terms": [
+          "beverages cola regular"
+        ],
+        "est_per100": {
+          "kcal": 22,
+          "protein": 0,
+          "carbs": 11.4,
+          "fat": 0.3
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "regular cola",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 356,
+        "resolvedGrams": 355,
+        "matched": "Beverages, carbonated, cola, regular",
+        "dataType": "sr_legacy",
+        "kcal": 149.1,
+        "protein": 0,
+        "carbs": 36.778,
+        "fat": 0.8875
+      }
+    ],
+    "totalGrams": 355,
+    "totals": {
+      "kcal": 149.1,
+      "protein": 0,
+      "carbs": 36.778,
+      "fat": 0.8875
+    }
+  },
+  {
+    "id": "q-caps-groundbeeflb",
+    "cat": "quantity",
+    "sub": "oz-lb",
+    "text": "A pound of ground beef",
+    "expect": {
+      "lo": 400,
+      "hi": 500
+    },
+    "meal_guess": "snack",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "ground beef",
+        "count": null,
+        "unit_grams": null,
+        "grams": 150,
+        "prep": null,
+        "confidence": 0.95,
+        "db_search_terms": [
+          "beef ground 85 lean meat 15 fat patty"
+        ],
+        "est_per100": {
+          "kcal": 250,
+          "protein": 25.9,
+          "carbs": 0,
+          "fat": 15.4
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "ground beef",
+        "rawCount": null,
+        "rawUnitGrams": null,
+        "rawGrams": 150,
+        "resolvedGrams": 454,
+        "matched": "Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled",
+        "dataType": "sr_legacy",
+        "kcal": 1135,
+        "protein": 117.7222,
+        "carbs": 0,
+        "fat": 69.9614
+      }
+    ],
+    "totalGrams": 454,
+    "totals": {
+      "kcal": 1135,
+      "protein": 117.7222,
+      "carbs": 0,
+      "fat": 69.9614
+    }
+  },
+  {
+    "id": "q-caps-bagelshalf",
+    "cat": "quantity",
+    "sub": "dozen",
+    "text": "Half a dozen bagels",
+    "expect": {
+      "lo": 450,
+      "hi": 700
+    },
+    "meal_guess": "lunch",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "bagel",
+        "count": 6,
+        "unit_grams": 99,
+        "grams": 594,
+        "prep": null,
+        "confidence": 0.85,
+        "db_search_terms": [
+          "bagels plain enriched"
+        ],
+        "est_per100": {
+          "kcal": 264,
+          "protein": 10.6,
+          "carbs": 53.2,
+          "fat": 1.3
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "bagel",
+        "rawCount": 6,
+        "rawUnitGrams": 99,
+        "rawGrams": 594,
+        "resolvedGrams": 594,
+        "matched": "Bagels, plain, enriched, with calcium propionate (includes onion, poppy, sesame)",
+        "dataType": "sr_legacy",
+        "kcal": 1568.16,
+        "protein": 62.726400000000005,
+        "carbs": 311.13720000000006,
+        "fat": 7.840800000000001
+      }
+    ],
+    "totalGrams": 594,
+    "totals": {
+      "kcal": 1568.16,
+      "protein": 62.726400000000005,
+      "carbs": 311.13720000000006,
+      "fat": 7.840800000000001
+    }
+  },
+  {
+    "id": "q-trail-nuggets20",
+    "cat": "quantity",
+    "sub": "numeric",
+    "text": "20 chicken nuggets ",
+    "expect": {
+      "lo": 260,
+      "hi": 450
+    },
+    "meal_guess": "lunch",
+    "needs_clarification": false,
+    "questions": [],
+    "rawItems": [
+      {
+        "name": "chicken nuggets",
+        "count": 20,
+        "unit_grams": 16,
+        "grams": 320,
+        "prep": null,
+        "confidence": 0.95,
+        "db_search_terms": [
+          "chicken nuggets"
+        ],
+        "est_per100": {
+          "kcal": 307,
+          "protein": 15.9,
+          "carbs": 14.9,
+          "fat": 18.9
+        }
+      }
+    ],
+    "resolved": [
+      {
+        "name": "chicken nuggets",
+        "rawCount": 20,
+        "rawUnitGrams": 16,
+        "rawGrams": 320,
+        "resolvedGrams": 320,
+        "matched": "Chicken nuggets, NFS",
+        "dataType": "survey",
+        "kcal": 982.4000000000001,
+        "protein": 50.944,
+        "carbs": 47.776,
+        "fat": 65.152
+      }
+    ],
+    "totalGrams": 320,
+    "totals": {
+      "kcal": 982.4000000000001,
+      "protein": 50.944,
+      "carbs": 47.776,
+      "fat": 65.152
+    }
+  },
+  {
     "id": "r-clar-mcds-cheeseburger",
     "cat": "regression",
     "sub": "clar-explicit",
@@ -8532,8 +8914,8 @@
       {
         "name": "cheeseburger",
         "count": 1,
-        "unit_grams": 182,
-        "grams": 182,
+        "unit_grams": 170,
+        "grams": 170,
         "prep": null,
         "confidence": 0.9,
         "db_search_terms": [
@@ -8551,23 +8933,23 @@
       {
         "name": "cheeseburger",
         "rawCount": 1,
-        "rawUnitGrams": 182,
-        "rawGrams": 182,
-        "resolvedGrams": 182,
+        "rawUnitGrams": 170,
+        "rawGrams": 170,
+        "resolvedGrams": 170,
         "matched": "Cheeseburger, NFS",
         "dataType": "survey",
-        "kcal": 538.72,
-        "protein": 32.5234,
-        "carbs": 34.052200000000006,
-        "fat": 29.392999999999997
+        "kcal": 503.2,
+        "protein": 30.379,
+        "carbs": 31.807000000000002,
+        "fat": 27.455
       }
     ],
-    "totalGrams": 182,
+    "totalGrams": 170,
     "totals": {
-      "kcal": 538.72,
-      "protein": 32.5234,
-      "carbs": 34.052200000000006,
-      "fat": 29.392999999999997
+      "kcal": 503.2,
+      "protein": 30.379,
+      "carbs": 31.807000000000002,
+      "fat": 27.455
     }
   },
   {
@@ -8601,7 +8983,7 @@
         "name": "grilled chicken breast",
         "count": null,
         "unit_grams": null,
-        "grams": 109,
+        "grams": 108,
         "prep": "grilled",
         "confidence": 0.7,
         "db_search_terms": [
@@ -8667,14 +9049,14 @@
         "name": "grilled chicken breast",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 109,
-        "resolvedGrams": 109,
+        "rawGrams": 108,
+        "resolvedGrams": 108,
         "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
         "dataType": "sr_legacy",
-        "kcal": 179.85000000000002,
-        "protein": 33.811800000000005,
+        "kcal": 178.20000000000002,
+        "protein": 33.5016,
         "carbs": 0,
-        "fat": 3.8913
+        "fat": 3.8556
       },
       {
         "name": "caesar dressing",
@@ -8703,12 +9085,12 @@
         "fat": 3.08
       }
     ],
-    "totalGrams": 268,
+    "totalGrams": 267,
     "totals": {
-      "kcal": 286.66,
-      "protein": 38.97430000000001,
+      "kcal": 285.01000000000005,
+      "protein": 38.664100000000005,
       "carbs": 14.6811,
-      "fat": 7.3468
+      "fat": 7.3111
     }
   },
   {
@@ -8732,10 +9114,10 @@
           "beef ribeye meat only"
         ],
         "est_per100": {
-          "kcal": 274,
-          "protein": 24.8,
+          "kcal": 188,
+          "protein": 25.8,
           "carbs": 0,
-          "fat": 18.8
+          "fat": 10.4
         }
       }
     ],
@@ -8826,18 +9208,18 @@
       {
         "name": "beef pho",
         "count": 1,
-        "unit_grams": 300,
-        "grams": 300,
+        "unit_grams": 350,
+        "grams": 350,
         "prep": null,
         "confidence": 0.95,
         "db_search_terms": [
-          "beef hot chicken pho"
+          "beef noodle soup"
         ],
         "est_per100": {
-          "kcal": 123,
-          "protein": 8.9,
-          "carbs": 13.9,
-          "fat": 5.5
+          "kcal": 89,
+          "protein": 10,
+          "carbs": 5.5,
+          "fat": 1.5
         }
       }
     ],
@@ -8845,23 +9227,23 @@
       {
         "name": "beef pho",
         "rawCount": 1,
-        "rawUnitGrams": 300,
-        "rawGrams": 300,
-        "resolvedGrams": 300,
-        "matched": null,
-        "dataType": null,
-        "kcal": 369,
-        "protein": 26.700000000000003,
-        "carbs": 41.7,
-        "fat": 16.5
+        "rawUnitGrams": 350,
+        "rawGrams": 350,
+        "resolvedGrams": 350,
+        "matched": "Soup, beef noodle, canned, condensed",
+        "dataType": "sr_legacy",
+        "kcal": 234.5,
+        "protein": 13.475,
+        "carbs": 25.060000000000002,
+        "fat": 8.61
       }
     ],
-    "totalGrams": 300,
+    "totalGrams": 350,
     "totals": {
-      "kcal": 369,
-      "protein": 26.700000000000003,
-      "carbs": 41.7,
-      "fat": 16.5
+      "kcal": 234.5,
+      "protein": 13.475,
+      "carbs": 25.060000000000002,
+      "fat": 8.61
     }
   },
   {
@@ -8880,14 +9262,14 @@
         "unit_grams": 250,
         "grams": 250,
         "prep": null,
-        "confidence": 0.95,
+        "confidence": 0.7,
         "db_search_terms": [
           "chicken biryani"
         ],
         "est_per100": {
-          "kcal": 226,
+          "kcal": 223,
           "protein": 16.9,
-          "carbs": 16.7,
+          "carbs": 16.9,
           "fat": 11
         }
       }
@@ -8939,10 +9321,10 @@
           "fish salmon maturen tuna cooked dry heat"
         ],
         "est_per100": {
-          "kcal": 119,
+          "kcal": 149,
           "protein": 23.8,
-          "carbs": 0,
-          "fat": 1.4
+          "carbs": 1.5,
+          "fat": 8.6
         }
       }
     ],
@@ -9033,8 +9415,8 @@
       {
         "name": "chicken sanwich",
         "count": 1,
-        "unit_grams": 130,
-        "grams": 130,
+        "unit_grams": 140,
+        "grams": 140,
         "prep": null,
         "confidence": 0.7,
         "db_search_terms": [
@@ -9043,7 +9425,7 @@
         "est_per100": {
           "kcal": 249,
           "protein": 19.2,
-          "carbs": 17.3,
+          "carbs": 19.3,
           "fat": 11
         }
       }
@@ -9052,23 +9434,23 @@
       {
         "name": "chicken sanwich",
         "rawCount": 1,
-        "rawUnitGrams": 130,
-        "rawGrams": 130,
-        "resolvedGrams": 130,
+        "rawUnitGrams": 140,
+        "rawGrams": 140,
+        "resolvedGrams": 140,
         "matched": null,
         "dataType": null,
-        "kcal": 323.7,
-        "protein": 24.96,
-        "carbs": 22.490000000000002,
-        "fat": 14.3
+        "kcal": 348.59999999999997,
+        "protein": 26.88,
+        "carbs": 27.02,
+        "fat": 15.399999999999999
       }
     ],
-    "totalGrams": 130,
+    "totalGrams": 140,
     "totals": {
-      "kcal": 323.7,
-      "protein": 24.96,
-      "carbs": 22.490000000000002,
-      "fat": 14.3
+      "kcal": 348.59999999999997,
+      "protein": 26.88,
+      "carbs": 27.02,
+      "fat": 15.399999999999999
     }
   },
   {
@@ -9133,20 +9515,20 @@
         }
       },
       {
-        "name": "shredded cheese",
+        "name": "grilled chicken",
         "count": null,
         "unit_grams": null,
-        "grams": 24,
-        "prep": null,
+        "grams": 77,
+        "prep": "grilled",
         "confidence": 0.7,
         "db_search_terms": [
-          "cheese cheddar"
+          "chicken breast meat only roasted"
         ],
         "est_per100": {
-          "kcal": 408,
-          "protein": 23.3,
-          "carbs": 2.4,
-          "fat": 33
+          "kcal": 165,
+          "protein": 31,
+          "carbs": 0,
+          "fat": 3.6
         }
       }
     ],
@@ -9191,25 +9573,25 @@
         "fat": 0.35100000000000003
       },
       {
-        "name": "shredded cheese",
+        "name": "grilled chicken",
         "rawCount": null,
         "rawUnitGrams": null,
-        "rawGrams": 24,
-        "resolvedGrams": 24,
-        "matched": "Cheese, cheddar",
-        "dataType": "foundation",
-        "kcal": 97.92,
-        "protein": 5.592,
-        "carbs": 0.5856,
-        "fat": 8.16
+        "rawGrams": 77,
+        "resolvedGrams": 77,
+        "matched": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+        "dataType": "sr_legacy",
+        "kcal": 127.05,
+        "protein": 23.8854,
+        "carbs": 0,
+        "fat": 2.7489
       }
     ],
-    "totalGrams": 228,
+    "totalGrams": 281,
     "totals": {
-      "kcal": 477.98,
-      "protein": 18.7077,
-      "carbs": 69.5014,
-      "fat": 13.8642
+      "kcal": 507.11,
+      "protein": 37.0011,
+      "carbs": 68.9158,
+      "fat": 8.453100000000001
     }
   },
   {
@@ -9238,8 +9620,8 @@
         "est_per100": {
           "kcal": 274,
           "protein": 11.3,
-          "carbs": 28,
-          "fat": 13.4
+          "carbs": 24.9,
+          "fat": 13.1
         }
       }
     ],
@@ -9443,9 +9825,9 @@
         ],
         "est_per100": {
           "kcal": 310,
-          "protein": 14.8,
-          "carbs": 25.1,
-          "fat": 18.3
+          "protein": 17.3,
+          "carbs": 24.1,
+          "fat": 12.1
         }
       }
     ],

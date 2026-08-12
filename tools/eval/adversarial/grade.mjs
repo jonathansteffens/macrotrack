@@ -68,6 +68,17 @@ function gradePredicate(row) {
       return { pass: false, why: `expected ${row.expectItems} items, got ${n}` };
     }
   }
+  // expectMatchContains checks the RESOLVED DB row, not the model's words. The
+  // other predicates all inspect rawItems, which cannot see a claim that named
+  // a food sensibly and then resolved to the wrong row (or to nothing at all) —
+  // exactly the "coke" failure the first on-hardware run surfaced: correct
+  // grams, but matched "tonic water" on v8 and nothing on v10.
+  if ('expectMatchContains' in row) {
+    const matched = (row.resolved || []).map((r) => String(r.matched ?? '').toLowerCase());
+    const want = String(row.expectMatchContains).toLowerCase();
+    if (!matched.some((m) => m.includes(want)))
+      return { pass: false, why: `expected a match containing "${row.expectMatchContains}", got ${matched.length ? matched.map((m) => m || '(none)').join(' / ') : '(no items)'}` };
+  }
   if ('expectAsk' in row) {
     const asked = row.needs_clarification === true;
     if (row.expectAsk === true && !asked) return { pass: false, why: 'expected a clarifying question, none asked' };

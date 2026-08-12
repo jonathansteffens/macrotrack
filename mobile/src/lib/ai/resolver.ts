@@ -2,7 +2,7 @@ import { getFoodsDb } from '../db';
 import { normName, searchFoods } from '../foods';
 import { scaleMacros } from '../macros';
 import type { FoodItem, Macros } from '../types';
-import { lookupDish, lookupPiece } from './portion-lookup';
+import { FL_OZ_G, WEIGHT_OZ_G, isLiquidFood, lookupDish, lookupPiece } from './portion-lookup';
 import { parseQuantity } from './quantity';
 import type { ClaimItem, FoodClaim } from './types';
 
@@ -126,7 +126,7 @@ async function resolveItem(item: ClaimItem, userText?: string): Promise<Resolved
     claim: item,
     match,
     alternatives: candidates.slice(0, 5),
-    grams: applyQuantityOverride(item, userText, seedGrams(item, match)),
+    grams: applyQuantityOverride(item, userText, seedGrams(item, match), match),
   };
 }
 
@@ -151,13 +151,25 @@ async function resolveItem(item: ClaimItem, userText?: string): Promise<Resolved
  * serving snap — so recovering the per-unit weight as baseline/count preserves
  * that snapping instead of falling back to the model's raw unit_grams.
  */
-function applyQuantityOverride(item: ClaimItem, userText: string | undefined, baseline: number): number {
+function applyQuantityOverride(
+  item: ClaimItem, userText: string | undefined, baseline: number, match: FoodItem | null
+): number {
   if (!userText) return baseline;
   const parsed = parseQuantity(userText);
   if (!parsed) return baseline;
 
   // An explicit weight is exact — no lookup, no estimate.
   if (parsed.kind === 'weight') return parsed.grams;
+
+  // "a 12 oz can of X": fluid or weight ounces depends on whether the CONTENTS
+  // are liquid, which the matched row knows (its unit, category, or fl-oz
+  // portion labels) and the grammar does not. Unmatched → keep the model's
+  // answer, since there is nothing to decide with.
+  if (parsed.kind === 'ambiguousOz') {
+    const liquid = isLiquidFood(match);
+    if (liquid === null) return baseline;
+    return Math.round(parsed.ounces * (liquid ? FL_OZ_G : WEIGHT_OZ_G));
+  }
 
   // Fractions apply to the WHOLE dish, not to one serving of it ("a quarter of
   // the lasagna" is a quarter of the pan). Whole-dish weights live in the

@@ -56,6 +56,25 @@ function lookup(group, name, unitNoun) {
   return best;
 }
 
+// A US fluid ounce of a water-like drink. Weight ounces are 28.3495 g; the
+// difference is only ~4%, but which one applies is a 12x question when the
+// model is left to guess (see the "12 oz can of coke" note in quantity.mjs).
+const FL_OZ_G = 29.5735;
+const WEIGHT_OZ_G = 28.3495;
+
+// foods.db knows what a drink is: an explicit ml unit, a drink-ish category
+// (Beverages / Soft drinks / Beer / Wine / Sport and energy drinks / ...), or
+// portions labelled in fl oz (1207 of 14558 rows carry those).
+const DRINK_CATEGORY_RE = /beverage|drink|beer|wine|smoothie|soda|juice/i;
+export function isLiquidFood(match) {
+  if (!match) return null;               // no match -> caller keeps the model's answer
+  if (match.unit === 'ml') return true;
+  if (DRINK_CATEGORY_RE.test(match.category ?? '')) return true;
+  const portions = match.portions_json ?? match.portions;
+  const labels = typeof portions === 'string' ? portions : JSON.stringify(portions ?? '');
+  return /fl\s*oz/i.test(labels);
+}
+
 export const lookupPiece = (name, unitNoun) => lookup('pieces', name, unitNoun);
 export const lookupDish = (name) => lookup('dishes', name, null);
 
@@ -67,14 +86,24 @@ export const lookupDish = (name) => lookup('dishes', name, null);
  * @param baseline the resolver's own grams — already includes the branded
  *                 serving snap, so recovering per-unit as baseline/count
  *                 preserves that snapping rather than reverting to unit_grams
+ * @param match    the resolved foods.db row, used only to settle whether a bare
+ *                 "oz" beside a container is fluid or weight
  * @returns grams
  */
-export function applyQuantityOverride(item, userText, baseline) {
+export function applyQuantityOverride(item, userText, baseline, match) {
   if (!userText) return baseline;
   const parsed = parseQuantity(userText);
   if (!parsed) return baseline;
 
   if (parsed.kind === 'weight') return parsed.grams;
+
+  // "12 oz can of X": the DB row settles fluid vs weight. Unmatched -> the model
+  // keeps the call, since we have nothing to decide with.
+  if (parsed.kind === 'ambiguousOz') {
+    const liquid = isLiquidFood(match);
+    if (liquid == null) return baseline;
+    return Math.round(parsed.ounces * (liquid ? FL_OZ_G : WEIGHT_OZ_G));
+  }
 
   if (parsed.kind === 'fraction') {
     const dish = lookupDish(parsed.food) ?? lookupDish(item.name);

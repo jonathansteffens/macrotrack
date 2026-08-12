@@ -116,10 +116,17 @@ export function parseQuantity(input) {
 
   // A bare "oz" beside a container is AMBIGUOUS: "a 12 oz can of cola" means 12
   // FLUID ounces (~355 g), but "a 12 oz can of tuna" means 12 weight ounces
-  // (340 g). Which one depends on whether the contents are liquid — food
-  // knowledge, not arithmetic. An earlier version read both as weight and
-  // turned a 355 g cola into 340 g, so decline and let the model decide.
-  if (/\b\d+\s*(?:oz|ounces?)\b/i.test(text) && CONTAINER_RE.test(text)) return null;
+  // (340 g). Which one depends on whether the CONTENTS are liquid — knowledge
+  // the grammar does not have, but the matched foods.db row does (its category
+  // and its fl-oz portion labels). So report the ambiguity instead of guessing
+  // or declining, and let the resolver settle it against the match.
+  //
+  // Declining was the earlier behaviour and it left a real hole: on "a 12 oz
+  // can of coke" the v10 model returns 4572 g deterministically, while the
+  // capitalised "A 12 oz can of coke" returns 368 g — a 12x swing on one letter,
+  // in the single most common thing people log.
+  const ozm = text.match(/\b(\d+(?:\.\d+)?)\s*(?:oz|ounces?)\b/i);
+  if (ozm && CONTAINER_RE.test(text)) return { kind: 'ambiguousOz', ounces: Number(ozm[1]) };
 
   // --- 1. absolute weight: "a pound of ground beef", "8 oz steak", "150 g of X"
   // Checked FIRST so "a half pound patty" reads as a weight, never as count 0.5.

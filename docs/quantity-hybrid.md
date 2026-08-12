@@ -99,15 +99,18 @@ therefore declines:
   firing would multiply the *toast* by two;
 - **volume** (`"three cups of air-popped popcorn"`) — grams per cup depends on
   the food (popcorn ≈ 24 g, rice ≈ 480 g), which is knowledge;
-- **a bare "oz" beside a container** (`"a 12 oz can of cola"`) — that is 12 fluid
-  ounces (~355 g), while `"a 12 oz can of tuna"` is 12 weight ounces (340 g);
-  which one depends on whether the contents are liquid;
 - **hedged or vague amounts** (`"like 3-4 tacos ish"`, `"some chicken"`).
 
-The last two declines exist because earlier versions got them wrong. Both were
-caught by auditing the grammar against the 55 real in-dist sentences — the
-adversarial gate's terse single-food inputs never exposed either. On the in-dist
-set the grammar now fires on 3/55 cases and changes **0** of them.
+The volume decline exists because an earlier version got it wrong, caught by
+auditing the grammar against the 55 real in-dist sentences — the adversarial
+gate's terse single-food inputs never exposed it. On the in-dist set the grammar
+fires on 3/55 cases and changes **0** of them.
+
+A bare **"oz" beside a container** is the one ambiguity the grammar neither
+resolves nor declines: `"a 12 oz can of cola"` is 12 fluid ounces (~355 g) while
+`"a 12 oz can of tuna"` is 12 weight ounces (340 g). It reports `ambiguousOz` and
+the resolver settles it against the matched row (see the on-hardware section
+below). Declining was the earlier behaviour and it hid a 12x error.
 
 The resolver applies the override only to **single-item claims**: with several
 foods in play there is no way to know which one a lone stated quantity governs.
@@ -156,6 +159,51 @@ node tools/parse/parity-check.mjs         # TS and mjs grammars agree
 node tools/eval/quantity-sim.mjs v10      # architecture comparison
 cd mobile && npx tsc --noEmit && npx expo lint
 ```
+
+## First on-hardware run (2026-08-12) and what it changed
+
+Built with EAS, installed on a physical Android phone, running text-v2 (= the
+**v8** GGUF). Decode measured **25–26 tok/s** on device — roughly half the 54
+tok/s the 4-thread CPU proxy predicted, so ~4 s per single-item estimate.
+
+The headline result is that the offline gate predicts hardware faithfully: on
+"20 chicken nuggets" and "a pound of ground beef" the model's raw values on the
+phone were 107 g and 181 g, within a gram or two of the failure values recorded
+here (~105 g, ~182 g), and the override corrected both to 320 g and 454 g.
+
+The run also found a real bug the gate could not have caught, because every gate
+input was lowercase and trimmed while phone keyboards auto-capitalise:
+
+**"a 12 oz can of coke" returns 4572 g on v10, deterministically (4/4 runs at
+temperature 0). Capitalised, "A 12 oz can of coke" returns 368 g, also 4/4.**
+A 12x swing on one letter, in the single most common thing people log. On v8 the
+same input yields "carbonated water" — 0 kcal for a ~140 kcal drink.
+
+The grammar had been *declining* on container+oz, so nothing caught it. That
+decline is now replaced by an `ambiguousOz` reading which the **resolver**
+settles against the matched row: foods.db knows what a drink is (an `ml` unit, a
+category like Beverages / Soft drinks / Beer / Wine, or fl-oz portion labels on
+1,207 of 14,558 rows). Fluid ounces where the match is a liquid, weight ounces
+otherwise, and the model keeps the call when nothing matched. Knowledge from the
+DB, arithmetic from code — the same split as the rest of this design.
+
+Six device-realistic cases were added to the gate (capitalised inputs, a
+trailing space, and the coke phrasings). All six pass on v8 and v10.
+
+### Still broken: "coke" cannot resolve at all
+
+The fix above corrects the *grams*. The *identity* half remains, and it is a
+data gap rather than a model failure: **the token "coke" appears in 0 of the
+14,558 foods.db rows**, in neither `name_norm` nor `display_name_norm`. It can
+only resolve if the model translates "coke" → "cola" in its own search terms,
+which it does not do reliably — v8 matched "Beverages, carbonated, tonic water",
+v10 matched nothing and fell back to its own macros.
+
+`r-ident-coke` and `r-ident-cokeoz` track this and are **expected to fail** until
+an alias exists. Fixing it means either an alias overlay onto the DB
+(`tools/db/overlays.mjs`) or synonym expansion in the shared search path — a
+decision that touches either the DB build or all four resolver mirrors, so it is
+deliberately left open rather than guessed at.
 
 ## What is still open
 

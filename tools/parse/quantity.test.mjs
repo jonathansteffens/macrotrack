@@ -55,6 +55,18 @@ expectParse('5 chicken mcnuggets from mcdonalds', { kind: 'count', count: 5 });
 expectParse('eight meatballs', { kind: 'count', count: 8, unitNoun: 'meatball' });
 expectParse('5 slices of pepperoni pizza', { kind: 'count', count: 5, unitNoun: 'slice', portionOf: 'pepperoni pizza' });
 
+// ---- container + oz: reported as ambiguous, resolved against the DB match ---
+// The grammar cannot know if the contents are liquid, so it reports the number
+// and lets the resolver settle it. Declining here was the earlier behaviour and
+// left a real hole: on "a 12 oz can of coke" the v10 model returns 4572 g
+// deterministically, while capitalised it returns 368 g.
+console.log('container + oz:');
+expectParse('a 12 oz can of coke', { kind: 'ambiguousOz', ounces: 12 });
+expectParse('A 12 oz can of coke', { kind: 'ambiguousOz', ounces: 12 });
+expectParse('a 12 oz can of regular cola', { kind: 'ambiguousOz', ounces: 12 });
+expectParse('a 16 oz bottle of water', { kind: 'ambiguousOz', ounces: 16 });
+expectParse('a 12 oz can of tuna', { kind: 'ambiguousOz', ounces: 12 });
+
 // ---- fractions and wholes --------------------------------------------------
 console.log('fractions / wholes:');
 expectParse('a quarter of the lasagna', { kind: 'fraction', fraction: 0.25, ofWhole: true });
@@ -82,11 +94,7 @@ expectDecline('three cups of air-popped popcorn');
 expectDecline('two cups of diced watermelon');
 expectDecline('a cup and a half of cooked pasta');
 expectDecline('12 fl oz of orange juice');   // never read "oz" here as 28.35 g
-// A bare "oz" beside a container is weight-or-fluid depending on the contents:
-// "12 oz can of cola" is ~355 g (fluid), "12 oz can of tuna" is 340 g (weight).
-expectDecline('a 12 oz can of regular cola');
-expectDecline('a 12 oz can of regular beer');
-expectDecline('a 16 oz bottle of water');
+// (container + oz is reported as ambiguousOz, not declined — see below)
 // Vague or article-only: nothing the model does not already know.
 expectDecline('some chicken');
 expectDecline('a burger');

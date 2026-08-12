@@ -187,6 +187,29 @@ export const CASES = [
 
   // -- clarification: explicit (should NOT ask) --
   { id: 'r-clar-cokecan', cat: 'regression', sub: 'clar-explicit', text: 'a can of coke', expectAsk: false },
+
+  // -- device-realistic input shapes (added after the first on-hardware run) --
+  // Phone keyboards auto-capitalise the first letter and users leave trailing
+  // spaces; every case above is lowercase and trimmed, so neither was ever
+  // exercised. Capitalisation is not cosmetic here: the v10 model returns
+  // 4572 g for 'a 12 oz can of coke' and 368 g for 'A 12 oz can of coke',
+  // deterministically. A canned drink is ~355 g (12 fl oz), which the resolver
+  // now derives from the matched row rather than the model.
+  { id: 'q-oz-cokecan-lower', cat: 'quantity', sub: 'oz-lb', text: 'a 12 oz can of coke', expect: { lo: 300, hi: 400 } },
+  { id: 'q-oz-cokecan-caps', cat: 'quantity', sub: 'oz-lb', text: 'A 12 oz can of coke', expect: { lo: 300, hi: 400 } },
+  { id: 'q-oz-colacan', cat: 'quantity', sub: 'oz-lb', text: 'a 12 oz can of regular cola', expect: { lo: 300, hi: 400 } },
+  { id: 'q-caps-groundbeeflb', cat: 'quantity', sub: 'oz-lb', text: 'A pound of ground beef', expect: { lo: 400, hi: 500 } },
+  { id: 'q-caps-bagelshalf', cat: 'quantity', sub: 'dozen', text: 'Half a dozen bagels', expect: { lo: 450, hi: 700 } },
+  { id: 'q-trail-nuggets20', cat: 'quantity', sub: 'numeric', text: '20 chicken nuggets ', expect: { lo: 260, hi: 450 } },
+
+  // The IDENTITY half of the coke failure, separate from the grams. The token
+  // "coke" appears in 0 of the 14,558 foods.db rows (neither name_norm nor
+  // display_name_norm), so it can only resolve if the model translates it to
+  // "cola" itself — which it does not do reliably: v8 matched "tonic water",
+  // v10 matched nothing and fell back to its own macros. Expected to FAIL until
+  // an alias reaches the DB or the search layer.
+  { id: 'r-ident-coke', cat: 'regression', sub: 'identity', text: 'a can of coke', expectMatchContains: 'cola' },
+  { id: 'r-ident-cokeoz', cat: 'regression', sub: 'identity', text: 'a 12 oz can of coke', expectMatchContains: 'cola' },
   { id: 'r-clar-mcds-cheeseburger', cat: 'regression', sub: 'clar-explicit', text: "a mcdonald's cheeseburger", expectAsk: false },
   { id: 'r-clar-caesarchicken', cat: 'regression', sub: 'clar-explicit', text: 'a caesar salad with grilled chicken', expectAsk: false },
   { id: 'r-clar-ribeye8oz', cat: 'regression', sub: 'clar-explicit', text: 'an 8oz ribeye steak, grilled', expectAsk: false },

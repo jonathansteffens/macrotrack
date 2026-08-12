@@ -203,7 +203,7 @@ function resolveClaim(claim, userText) {
       }
     }
     const per100 = food ?? item.est_per100;
-    const grams = applyQuantityOverride(item, overrideText, seedGrams(item, food));
+    const grams = applyQuantityOverride(item, overrideText, seedGrams(item, food), food);
     const f = grams / 100;
     return {
       name: item.name,

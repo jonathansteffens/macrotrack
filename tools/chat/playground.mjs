@@ -152,7 +152,7 @@ function resolveItem(item, userText) {
   }
   // Deterministic quantity override, last so it sees the resolver's own answer
   // (branded snap included) as its baseline — same module resolver.ts calls.
-  grams = applyQuantityOverride(item, userText, grams);
+  grams = applyQuantityOverride(item, userText, grams, food);
   const f = grams / 100;
   return {
     name: item.name, grams, prep: item.prep, confidence: item.confidence,

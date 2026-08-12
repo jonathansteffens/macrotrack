@@ -16,12 +16,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseQuantity as parseTools } from './quantity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
-const TSC = join(ROOT, 'mobile/node_modules/.bin/tsc');
+// .bin shims are tsc (sh) on posix and tsc.cmd on Windows; execFileSync will
+// not find the extensionless name there.
+const TSC = join(ROOT, 'mobile/node_modules/.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
 
 // Transpile the shipping grammar to ESM in a temp dir (no type-checking: that
 // is `expo lint` / tsc's job, and quantity.ts has no imports to resolve).
@@ -40,7 +42,9 @@ try {
 }
 const emitted = join(out, 'quantity.js');
 writeFileSync(join(out, 'package.json'), '{"type":"module"}');
-const { parseQuantity: parseApp } = await import(`file://${emitted}`);
+// pathToFileURL, not a `file://` template: a Windows path (C:\...) is not a
+// valid URL after naive concatenation.
+const { parseQuantity: parseApp } = await import(pathToFileURL(emitted).href);
 
 // ---- corpus: every real input available, plus the unit-test vectors --------
 const texts = new Set();
