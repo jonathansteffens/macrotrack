@@ -166,7 +166,12 @@ function applyQuantityOverride(
   // portion labels) and the grammar does not. Unmatched → keep the model's
   // answer, since there is nothing to decide with.
   if (parsed.kind === 'ambiguousOz') {
-    const liquid = isLiquidFood(match);
+    // The user's own words win when they name a drink in a drink container —
+    // that reading holds whatever the claim resolved to, and it survives a
+    // garbled claim that matches nothing (observed on device, where "A 12 oz
+    // can of coke" decoded to an unmatchable name and the grams fix was
+    // silently gated on a match existing). Otherwise the matched row decides.
+    const liquid = parsed.likelyLiquid ? true : isLiquidFood(match);
     if (liquid === null) return baseline;
     return Math.round(parsed.ounces * (liquid ? FL_OZ_G : WEIGHT_OZ_G));
   }

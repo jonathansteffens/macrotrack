@@ -100,7 +100,12 @@ export function applyQuantityOverride(item, userText, baseline, match) {
   // "12 oz can of X": the DB row settles fluid vs weight. Unmatched -> the model
   // keeps the call, since we have nothing to decide with.
   if (parsed.kind === 'ambiguousOz') {
-    const liquid = isLiquidFood(match);
+    // The user's own words win when they name a drink in a drink container:
+    // that reading holds regardless of what the claim resolved to, and it
+    // survives a garbled model claim that matches nothing (as observed on
+    // device). Otherwise the matched row decides; with neither signal there is
+    // nothing to decide with, so the model keeps the call.
+    const liquid = parsed.likelyLiquid ? true : isLiquidFood(match);
     if (liquid == null) return baseline;
     return Math.round(parsed.ounces * (liquid ? FL_OZ_G : WEIGHT_OZ_G));
   }

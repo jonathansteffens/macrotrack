@@ -67,6 +67,17 @@ expectParse('a 12 oz can of regular cola', { kind: 'ambiguousOz', ounces: 12 });
 expectParse('a 16 oz bottle of water', { kind: 'ambiguousOz', ounces: 16 });
 expectParse('a 12 oz can of tuna', { kind: 'ambiguousOz', ounces: 12 });
 
+// likelyLiquid is the fallback signal for when the claim matches no DB row —
+// read from the user's words, so a garbled model claim cannot poison it.
+// Both a drink noun AND a drink container are required: "12 oz bag of coffee"
+// is beans, and 'bag'/'pack'/'box' are not drink containers.
+expectParse('A 12 oz can of coke', { likelyLiquid: true });
+expectParse('a 16 oz bottle of water', { likelyLiquid: true });
+expectParse('a 12 oz glass of milk', { likelyLiquid: true });
+expectParse('a 12 oz can of tuna', { likelyLiquid: false });
+expectParse('a 12 oz can of black beans', { likelyLiquid: false });
+expectParse('a 12 oz pack of coffee', { likelyLiquid: false });
+
 // ---- fractions and wholes --------------------------------------------------
 console.log('fractions / wholes:');
 expectParse('a quarter of the lasagna', { kind: 'fraction', fraction: 0.25, ofWhole: true });

@@ -19,11 +19,19 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
-const TSC = join(ROOT, 'mobile/node_modules/.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+// Invoke the TypeScript entrypoint through node itself rather than the
+// node_modules/.bin shim. On Windows the shim is tsc.cmd, and Node's
+// CVE-2024-27980 hardening makes execFileSync of a .cmd/.bat throw EINVAL
+// unless `shell: true` — so naming the .cmd only trades ENOENT for EINVAL.
+// Running `process.execPath <pkg>/bin/tsc` sidesteps shims entirely and is the
+// only form portable across platforms. Use this pattern for any tool that
+// shells out to a node_modules binary.
+const TSC = join(ROOT, 'mobile/node_modules/typescript/bin/tsc');
 
 const out = mkdtempSync(join(tmpdir(), 'mt-units-'));
 try {
-  execFileSync(TSC, [
+  execFileSync(process.execPath, [
+    TSC,
     join(ROOT, 'mobile/src/lib/units.ts'),
     '--outDir', out, '--module', 'esnext', '--target', 'es2022',
     '--moduleResolution', 'bundler', '--skipLibCheck',

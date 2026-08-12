@@ -190,6 +190,50 @@ DB, arithmetic from code — the same split as the rest of this design.
 Six device-realistic cases were added to the gate (capitalised inputs, a
 trailing space, and the coke phrasings). All six pass on v8 and v10.
 
+### Second on-hardware run: the same GGUF decodes differently per backend
+
+The fix above was gated on a DB match existing, and the second device run showed
+why that is not safe. On the phone, "A 12 oz can of coke" decodes to a garbled
+claim name (`coca-col k-coke`) that matches nothing — byte-identical across both
+device sessions, so it is stable on-device, and nothing like what llama-server
+produces for the same input. With no match there was no liquid signal, so a
+wrong IDENTITY also cost the GRAMS: 267 g instead of ~355 g.
+
+Reproduced on the workstation, and the divergence is real. Same v8 GGUF,
+temperature 0, only the backend differs:
+
+| Input | CPU (`-ngl 0`) | GPU (CUDA) | device (llama.rn) |
+|---|---|---|---|
+| `A 12 oz can of coke` | "carbonated water" 284 g | "carbonated water" 284 g | garbled, 267 g |
+| `a 12 oz can of coke` | **"coca-cola" 368 g** | "carbonated water" 284 g | — |
+
+This input sits on a near-tie the backends break differently. Two consequences
+worth carrying:
+
+1. **A gate run on one backend does not predict another.** Most cases are stable
+   (the rest of the suite reproduced byte-identically on hardware), but where a
+   claim is near-tied, the workstation number is not evidence about the phone.
+2. **Only the deterministic path is backend-invariant.** So the fluid-vs-weight
+   decision no longer depends on the model resolving anything: `parseQuantity`
+   now also reports `likelyLiquid`, read from the USER'S words — a drink noun in
+   a drink container ("12 oz can of coke"). The user's wording cannot be poisoned
+   by a garbled claim. The matched row still decides when the text is silent, and
+   with neither signal the model keeps the call.
+
+   Both a drink noun and a drink CONTAINER are required: "12 oz bag of coffee" is
+   beans, so 'bag'/'pack'/'box' are not drink containers.
+
+   The result is that all three backends above now resolve to **355 g** from
+   three different claims.
+
+### Also open: "a can of coke" matches "Vodka and soda"
+
+The model names the item "soda" and the shared search ranks the cocktail row
+above the soft-drink rows, so the macros come back alcoholic. Grams are fine
+(368 g). Same root as the "coke" alias gap below and should be fixed with it —
+whatever alias mechanism lands needs to cover search RANKING for "soda", not
+just add the missing token.
+
 ### Still broken: "coke" cannot resolve at all
 
 The fix above corrects the *grams*. The *identity* half remains, and it is a

@@ -44,6 +44,18 @@ const WEIGHT_RE = Object.keys(WEIGHT_G).join('|');
 
 const FRACTIONS: Record<string, number> = { half: 0.5, quarter: 0.25, third: 0.33 };
 
+// Drink nouns and drink CONTAINERS, both read from the user's own words. This
+// is the fallback liquid signal when the claim did not resolve to a DB row: an
+// on-device decode of "A 12 oz can of coke" produced a garbled claim name that
+// matched nothing, and with no match the fluid-vs-weight question had no
+// answer, so a wrong identity also cost the grams. The user's wording cannot be
+// poisoned by the model's output, which makes it the right place to look.
+//
+// Both are required. "12 oz bag of coffee" is coffee BEANS (weight) — 'bag' is
+// not a drink container, and 'pack'/'box' are excluded for the same reason.
+const DRINK_NOUN_RE = /\b(?:coke|cola|soda|pop|sprite|pepsi|dr\.?\s*pepper|mountain\s*dew|root\s*beer|beer|ale|lager|cider|wine|juice|water|milk|coffee|tea|lemonade|gatorade|powerade|energy\s*drink|kombucha|seltzer|tonic|smoothie|shake|latte)\b/i;
+const DRINK_CONTAINER_RE = /\b(?:cans?|bottles?|glass(?:es)?|mugs?|jugs?|cartons?|pints?)\b/i;
+
 /** Container words that make a bare "oz" ambiguous between weight and fluid. */
 const CONTAINER_RE = /\b(?:cans?|bottles?|glass(?:es)?|mugs?|pints?|cartons?|jugs?|boxes?|packs?)\b/i;
 
@@ -61,7 +73,7 @@ const PORTION_NOUNS = ['slice', 'slices', 'piece', 'pieces', 'strip', 'strips',
 export type ParsedQuantity =
   | { kind: 'weight'; grams: number }
   /** "N oz" beside a container: fluid or weight ounces depends on the match. */
-  | { kind: 'ambiguousOz'; ounces: number }
+  | { kind: 'ambiguousOz'; ounces: number; likelyLiquid: boolean }
   | { kind: 'count'; count: number; unitNoun: string | null; portionOf: string | null; idiom?: string }
   | { kind: 'fraction'; fraction: number; ofWhole: true; food: string }
   | { kind: 'whole'; count: 1 };
@@ -141,7 +153,13 @@ export function parseQuantity(input: string | null | undefined): ParsedQuantity 
   // capitalised "A 12 oz can of coke" returns 368 g — a 12x swing on one letter,
   // in the single most common thing people log.
   const ozm = text.match(/\b(\d+(?:\.\d+)?)\s*(?:oz|ounces?)\b/i);
-  if (ozm && CONTAINER_RE.test(text)) return { kind: 'ambiguousOz', ounces: Number(ozm[1]) };
+  if (ozm && CONTAINER_RE.test(text)) {
+    return {
+      kind: 'ambiguousOz',
+      ounces: Number(ozm[1]),
+      likelyLiquid: DRINK_NOUN_RE.test(text) && DRINK_CONTAINER_RE.test(text),
+    };
+  }
 
   // --- 1. absolute weight, FIRST so "a half pound patty" is never count 0.5
   const wm = text.match(new RegExp(

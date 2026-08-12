@@ -21,15 +21,21 @@ import { parseQuantity as parseTools } from './quantity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
-// .bin shims are tsc (sh) on posix and tsc.cmd on Windows; execFileSync will
-// not find the extensionless name there.
-const TSC = join(ROOT, 'mobile/node_modules/.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+// Invoke the TypeScript entrypoint through node itself rather than the
+// node_modules/.bin shim. On Windows the shim is tsc.cmd, and Node's
+// CVE-2024-27980 hardening makes execFileSync of a .cmd/.bat throw EINVAL
+// unless `shell: true` — so naming the .cmd only trades ENOENT for EINVAL.
+// Running `process.execPath <pkg>/bin/tsc` sidesteps shims entirely and is the
+// only form portable across platforms. Use this pattern for any tool that
+// shells out to a node_modules binary.
+const TSC = join(ROOT, 'mobile/node_modules/typescript/bin/tsc');
 
 // Transpile the shipping grammar to ESM in a temp dir (no type-checking: that
 // is `expo lint` / tsc's job, and quantity.ts has no imports to resolve).
 const out = mkdtempSync(join(tmpdir(), 'mt-parity-'));
 try {
-  execFileSync(TSC, [
+  execFileSync(process.execPath, [
+    TSC,
     join(ROOT, 'mobile/src/lib/ai/quantity.ts'),
     '--outDir', out, '--module', 'esnext', '--target', 'es2022', '--moduleResolution', 'bundler',
     '--skipLibCheck',
