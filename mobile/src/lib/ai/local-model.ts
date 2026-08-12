@@ -19,13 +19,13 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
  */
 
 // ---- Model artifacts (hosted on a public GitHub release) ----
-// The GGUF lives on the `text-v2` release. sizeBytes is byte-exact and checked
-// after download as a cheap integrity guard (sha256 a72a201e…059f, in
+// The GGUF lives on the `text-v3` release. sizeBytes is byte-exact and checked
+// after download as a cheap integrity guard (sha256 eb8a2104…6378, in
 // models/README.md).
 
 /** Release tag of the bundled fine-tune — recorded on every saved estimator
  *  interaction so exported ai_events say which model made each claim. */
-export const LOCAL_MODEL_RELEASE_TAG = 'text-v2';
+export const LOCAL_MODEL_RELEASE_TAG = 'text-v3';
 
 const MODEL_BASE_URL = `https://github.com/jonathansteffens/macrotrack/releases/download/${LOCAL_MODEL_RELEASE_TAG}`;
 

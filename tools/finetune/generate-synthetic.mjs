@@ -165,6 +165,18 @@ const POOLS = {
         { phrase: 'a whole {name}', gMin: 1000, gMax: 1400 },
         { phrase: 'half a {name}', gMin: 500, gMax: 700 },
       ] },
+    // A whole hot dog means the SANDWICH — frank plus bun. DB row "Hot dog
+    // sandwich, NFS, on white bun" lists "1 sandwich" = 102 g, so 102 g is
+    // DB-authoritative. The frank alone (48 g, used by the ADDON/DISHES
+    // components) is not what "two hot dogs" means, and the model had been
+    // answering ~45-52 g each against a 180-300 g band.
+    { q: 'hot dog sandwich nfs on white bun', name: 'hot dogs', units: [{ kind: 'count', unit: 'hot dog', g: 102, min: 1, max: 4 }] },
+    // A whole burger, bun included. Bracketed by the DB rather than taken from
+    // one row: "Fast foods, hamburger, large, single patty, with condiments" is
+    // 171 g, while sit-down chain burgers in the same DB run 248-276 g
+    // (IHOP Hamburger 248, Sonic Cheeseburger 272). 200 g sits between and
+    // matches the "two burgers" band (350-550 g). The model had been using 170.
+    { q: 'fast foods hamburger large single patty with condiments', name: 'burgers', units: [{ kind: 'count', unit: 'burger', g: 200, min: 1, max: 3 }] },
     // Bulk-count coverage for common small fast-food items ("20 nuggets",
     // "a dozen wings") — previously these only existed as fixed-gram ADDON
     // bases with no quantity variation at all.
@@ -183,6 +195,11 @@ const POOLS = {
     { q: 'croissants butter', name: 'butter croissant', units: [{ kind: 'count', unit: 'butter croissant', g: 57, min: 1, max: 2 }] },
     { q: 'muffins blueberry commercially prepared', name: 'blueberry muffin', units: [{ kind: 'count', unit: 'blueberry muffin', g: 113, min: 1, max: 1 }] },
     { q: 'pancakes plain frozen ready to heat', name: 'pancakes', units: [{ kind: 'count', unit: 'pancake', g: 41, min: 2, max: 4 }] },
+    // Silver-dollar pancakes. DERIVED, not DB-sourced: foods.db has no mini
+    // pancake row, so this is the DB's regular pancake (41 g, the row above)
+    // halved — cross-checked against the adversarial band for "8 mini pancakes"
+    // (100-220 g, i.e. 12.5-27.5 g each). The model had been guessing 60 g.
+    { q: 'pancakes plain frozen ready to heat', name: 'mini pancakes', units: [{ kind: 'count', unit: 'mini pancake', g: 20, min: 4, max: 10 }] },
     { q: 'french toast prepared recipe', name: 'french toast', units: [{ kind: 'count', unit: 'slice', g: 65, min: 1, max: 3 }] },
     { q: 'potatoes baked flesh and skin', name: 'baked potato', units: [{ kind: 'count', unit: 'medium baked potato', g: 173, min: 1, max: 1 }] },
     { q: 'sweet potato cooked baked skin', name: 'baked sweet potato', units: [{ kind: 'count', unit: 'medium sweet potato', g: 114, min: 1, max: 1 }] },
@@ -1218,6 +1235,8 @@ const BARE_COUNT_ITEMS = [
   // v9: bare small-piece counts the adversarial gate feeds terse ("16 tater
   // tots", "4 oreos", "12 dumplings", "9 shrimp tempura pieces").
   'dumplings', 'oreos', 'tater tots', 'shrimp tempura',
+  // Post-hardware round: the four band cases still missing a per-piece weight.
+  'mini pancakes', 'hot dogs', 'burgers',
 ].map(poolByName).filter(Boolean);
 if (BARE_COUNT_ITEMS.length < 10) {
   console.warn(`WARNING: only ${BARE_COUNT_ITEMS.length} bare-count items resolved — a pool name may have changed.`);
@@ -1346,6 +1365,12 @@ const FRACTION_DISHES = [
   { q: 'tuna noodle casserole', name: 'tuna casserole', wholeMin: 1300, wholeMax: 1600, meal: 'dinner' },
   { q: 'pizza pepperoni regular crust frozen cooked', name: 'pizza', wholeMin: 850, wholeMax: 1000, meal: 'dinner' },
   { q: 'chicken broilers rotisserie original seasoning breast meat and skin cooked', name: 'rotisserie chicken', wholeMin: 850, wholeMax: 950, meal: 'dinner' },
+  // "half a burrito". The DB's "Burrito, NFS" tops out at "1 large" = 330 g,
+  // which is a frozen/NFS generic; the burrito someone eats half of is a
+  // counter-service one, and the adversarial band for "half a burrito"
+  // (180-320 g) implies a 360-640 g whole. 380-480 sits just above the DB's
+  // large and well below a Chipotle-class ~600 g. Curated, not DB-sourced.
+  { q: 'burrito nfs', name: 'burrito', wholeMin: 380, wholeMax: 480, meal: 'lunch' },
 ];
 for (const d of FRACTION_DISHES) {
   d.food = search(d.q);

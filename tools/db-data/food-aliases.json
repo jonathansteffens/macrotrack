@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "Curated aliases: everyday words people type that foods.db has no token for,",
+    "mapped to a search phrase that resolves to the right canonical row.",
+    "",
+    "WHY. The database is USDA-derived and uses technical names. The word 'coke'",
+    "appears in 0 of its 14,558 rows, so it could only ever resolve if the model",
+    "translated it to 'cola' itself — and on-device it did not: v8 matched",
+    "'tonic water', v10 matched nothing. Worse, the generic words that DO exist",
+    "rank badly: 'cola' resolves to 'Rum and cola' and 'soda' to 'Vodka and soda',",
+    "because cocktail rows have shorter names and the resolver's last tiebreak is",
+    "name length. Grams were right and the macros came back alcoholic.",
+    "",
+    "Longest alias wins, so 'diet coke' beats 'coke'. Each target is validated",
+    "against the shipped DB by tools/db/build-aliases.mjs, which fails the build",
+    "if a phrase stops resolving to the intended row.",
+    "",
+    "Keep this SMALL and high-frequency. It is a last-resort override for words",
+    "the DB genuinely cannot express, not a general synonym dictionary."
+  ],
+  "aliases": {
+    "coke": "beverages carbonated cola regular",
+    "coca cola": "beverages carbonated cola regular",
+    "cola": "beverages carbonated cola regular",
+    "pepsi": "beverages carbonated cola regular",
+    "soda": "beverages carbonated cola regular",
+    "pop": "beverages carbonated cola regular",
+    "soft drink": "beverages carbonated cola regular",
+    "diet coke": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
+    "diet cola": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
+    "diet soda": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
+    "diet pepsi": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine"
+  },
+  "expect": {
+    "coke": "Beverages, carbonated, cola, regular",
+    "cola": "Beverages, carbonated, cola, regular",
+    "soda": "Beverages, carbonated, cola, regular",
+    "diet coke": "Beverages, carbonated, low calorie, cola or pepper-types, with sodium saccharin, contains caffeine"
+  }
+}

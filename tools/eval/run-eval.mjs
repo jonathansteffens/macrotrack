@@ -73,10 +73,33 @@ const db = new DatabaseSync(join(HERE, '..', '..', 'mobile', 'assets', 'foods.db
   readOnly: true,
 });
 
+// ---- alias + alcohol de-ranking — keep IN SYNC with mobile/src/lib/foods.ts,
+//   tools/eval/run-eval.mjs, tools/chat/playground.mjs,
+//   tools/eval/adversarial/run.mjs ----
+// foods.db has no token for "coke" at all, and "cola"/"soda" rank onto cocktail
+// rows ("Rum and cola") because those names are shorter and the last tiebreak is
+// name length — so a plain soft drink came back with alcoholic macros.
+const FOOD_ALIASES = JSON.parse(
+  readFileSync(join(ROOT, 'tools/db-data/food-aliases.json'), 'utf8')
+).aliases;
+const ALIASES_BY_LENGTH = Object.keys(FOOD_ALIASES).sort((a, b) => b.length - a.length);
+function aliasFor(query) {
+  const q = String(query ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!q) return null;
+  for (const alias of ALIASES_BY_LENGTH) {
+    if (q === alias) return FOOD_ALIASES[alias];
+    if (new RegExp(`^(?:a |an |the )?${alias}(?: [0-9].*)?$`).test(q)) return FOOD_ALIASES[alias];
+  }
+  return null;
+}
+const ALCOHOL_CATEGORIES = ['Liquor and cocktails', 'Beer', 'Wine'];
+const ALCOHOL_WORD_RE = /\b(?:beer|wine|liquor|vodka|rum|whiskey|whisky|gin|tequila|bourbon|cocktail|spiked|hard)\b/i;
+
 const STOPWORDS = new Set(['a', 'an', 'the', 'of', 'with', 'and', 'in', 'on', 'or', 'for', 'to']);
 
 function search(query, col = 'name_norm') {
-  const all = query
+  // Curated alias first — mirrors mobile/src/lib/foods.ts searchFoods.
+  const all = (aliasFor(query) ?? query)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .split(' ')
@@ -93,13 +116,23 @@ function search(query, col = 'name_norm') {
   // is name_norm for the primary pass and display_name_norm for the strict-
   // superset fallback (which guards to rows that actually have a display name).
   const guard = col === 'display_name_norm' ? 'AND display_name_norm IS NOT NULL' : '';
+  // Sink alcoholic rows when the query names no alcohol (a bare "cola" was
+  // resolving to "Rum and cola" on the length tiebreak).
+  const wantsAlcohol = ALCOHOL_WORD_RE.test(query);
+  const alcoholPenalty = wantsAlcohol
+    // A constant integer in ORDER BY is read as a COLUMN ORDINAL by SQLite —
+    // and parentheses do not change that — so the no-op sort key must be NULL.
+    ? 'NULL'
+    : `CASE WHEN category IN (${ALCOHOL_CATEGORIES.map(() => '?').join(',')}) THEN 1 ELSE 0 END`;
+  const alcoholParams = wantsAlcohol ? [] : ALCOHOL_CATEGORIES;
   return db
     .prepare(
       `SELECT name, name_norm, kcal, protein, carbs, fat, data_type, portions_json FROM foods WHERE ${where} ${guard}
        ORDER BY CASE WHEN (' ' || ${col} || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
-                CASE WHEN ${col} LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, LENGTH(${col}) LIMIT 1`
+                CASE WHEN ${col} LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+                ${alcoholPenalty}, LENGTH(${col}) LIMIT 1`
     )
-    .get(...params, wholeWord, prefix);
+    .get(...params, wholeWord, prefix, ...alcoholParams);
 }
 
 // ---- Branded corroboration guard — keep IN SYNC across resolver.ts,

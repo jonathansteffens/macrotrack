@@ -1,6 +1,6 @@
 # MacroTrack local estimator — model artifacts
 
-## ★ Text-only model (ships now) — `text-v2`
+## ★ Text-only model (ships now) — `text-v3`
 
 The app is text-only, so the on-device estimator is now a small **text** model:
 fine-tuned **Qwen3.5-0.8B** (LoRA), text → FoodClaim JSON. 3.6× smaller and
@@ -9,16 +9,29 @@ See `docs/finetune-text-report.md`; pipeline in `tools/finetune/*text*`.
 
 | File | Size (bytes) | Purpose |
 |---|---|---|
-| `macrotrack-text-0.8b-q4_k_m.gguf` | 529,296,704 | **deployment** text model (llama.rn) |
+| `macrotrack-text-0.8b-q4_k_m.gguf` | 529,296,704 | **deployment** text model (llama.rn) — the v10 build |
 | `mt-0.8b-q5_k_m.gguf` | 577,998,080 | quality-max alternative (+49 MB, −7% speed) |
 | `mt-2b-q4_k_m.gguf` | 1,274,395,904 | higher-quality fallback (2× slower/bigger) |
 
 ```
-a72a201ed8bb673058a55113afc2f1c26d46c324233e0b6668146b85215b059f  macrotrack-text-0.8b-q4_k_m.gguf
+eb8a2104440f9dff14f7301b916d648f7598b0f8690f0e2b95d3d5f5beae6378  macrotrack-text-0.8b-q4_k_m.gguf
 ```
 
 No mmproj (text only). No thinking/reasoning config needed — non-thinking is
-baked into the GGUF chat template. Host on release tag `text-v2`.
+baked into the GGUF chat template. Host on release tag `text-v3`.
+
+`text-v3` is the **v10** build: trained on data generated with the paraphrase
+fidelity guard, which removed a 27.4% quantity-label corruption rate from the
+teacher rewrites. Against the 159-case adversarial gate, with the quantity
+hybrid in the resolver:
+
+| | quantity | catastrophic | regression |
+|---|---|---|---|
+| v8 (`text-v2`) alone | 71.4% | 3.6% | 87.5% |
+| v10 + hybrid (`text-v3`) | **98.4%** | **0.0%** | **92.7%** |
+
+Superseded tags: `text-v2` = the v8 build (sha a72a201e…059f), kept so older
+installs keep resolving.
 
 ---
 

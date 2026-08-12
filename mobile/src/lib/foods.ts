@@ -1,4 +1,5 @@
 import { getFoodsDb, getUserDb } from './db';
+import { aliasFor } from './food-aliases';
 import { normName } from './norm';
 import { getRecipe, recipeToFood } from './recipes';
 import type { FoodItem, Macros, Portion } from './types';
@@ -125,6 +126,11 @@ async function foodsHasDisplayNorm(): Promise<boolean> {
  */
 export type SearchScope = 'common' | 'all' | 'display';
 
+/** foods.db categories that are alcoholic drinks. */
+const ALCOHOL_CATEGORIES = ['Liquor and cocktails', 'Beer', 'Wine'];
+/** A query that names alcohol should still reach those rows. */
+const ALCOHOL_WORD_RE = /\b(?:beer|wine|liquor|vodka|rum|whiskey|whisky|gin|tequila|bourbon|cocktail|spiked|hard)\b/i;
+
 /**
  * Tokenized search over custom foods (first) and the bundled USDA table.
  * Stopwords are dropped, and every remaining token must start a word in the
@@ -139,7 +145,14 @@ export async function searchFoods(
   limit = 50,
   scope: SearchScope = 'common'
 ): Promise<FoodItem[]> {
-  const all = normName(query).split(' ').filter(Boolean);
+  // Curated alias first: foods.db is USDA-derived and has no token for "coke"
+  // at all, while "cola"/"soda" DO exist but rank onto cocktail rows. See
+  // tools/db-data/food-aliases.json. Applies to every scope, so manual search
+  // and the AI resolver agree on what "a coke" is.
+  const aliased = aliasFor(query);
+  const effectiveQuery = aliased ?? query;
+
+  const all = normName(effectiveQuery).split(' ').filter(Boolean);
   const meaningful = all.filter((t) => !STOPWORDS.has(t));
   const tokens = meaningful.length > 0 ? meaningful : all;
   if (tokens.length === 0) return [];
@@ -155,6 +168,18 @@ export async function searchFoods(
   // ("Rice, cooked") outranks a wordier variant before falling back to raw
   // string length. (No placeholder; it references name_norm directly.)
   const wordCount = `(LENGTH(name_norm) - LENGTH(REPLACE(name_norm, ' ', '')) + 1)`;
+  // A cocktail row outranking a plain food is a length artifact: "rum and cola"
+  // is shorter than "beverages carbonated cola regular", so a bare "cola" came
+  // back alcoholic. When the query names no alcohol, sink alcoholic rows below
+  // everything else before the length tiebreak. Ordered AFTER whole-word and
+  // word-start so a genuine "vodka" search is untouched.
+  const wantsAlcohol = ALCOHOL_WORD_RE.test(effectiveQuery);
+  const alcoholPenalty = wantsAlcohol
+    // A constant integer in ORDER BY is read as a COLUMN ORDINAL by SQLite —
+    // and parentheses do not change that — so the no-op sort key must be NULL.
+    ? 'NULL'
+    : `CASE WHEN category IN (${ALCOHOL_CATEGORIES.map(() => '?').join(',')}) THEN 1 ELSE 0 END`;
+  const alcoholParams = wantsAlcohol ? [] : ALCOHOL_CATEGORIES;
 
   // ---- 'display' scope: the AI resolver's strict-superset second stage ----
   // Identical WHERE/ranking shape to 'all', but every name_norm reference is
@@ -205,10 +230,11 @@ export async function searchFoods(
       // CANONICAL — kept exactly as-is; the display bridge never touches this.
       return getFoodsDb().getAllAsync<FoodRow>(
         `SELECT * FROM foods WHERE ${where}
-         ORDER BY ${wholeWord}, ${wordStart}, LENGTH(name_norm) LIMIT ?`,
+         ORDER BY ${wholeWord}, ${wordStart}, ${alcoholPenalty}, LENGTH(name_norm) LIMIT ?`,
         ...params,
         wholeWordParam,
         prefix,
+        ...alcoholParams,
         limit
       );
     }

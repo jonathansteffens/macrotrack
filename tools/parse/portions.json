@@ -76,6 +76,16 @@
       "grams": 28,
       "q": "ham sliced regular"
     },
+    "hot dogs": {
+      "unit": "hot dog",
+      "grams": 102,
+      "q": "hot dog sandwich nfs on white bun"
+    },
+    "burgers": {
+      "unit": "burger",
+      "grams": 200,
+      "q": "fast foods hamburger large single patty with condiments"
+    },
     "chicken nuggets": {
       "unit": "nugget",
       "grams": 16,
@@ -114,6 +124,11 @@
     "pancakes": {
       "unit": "pancake",
       "grams": 41,
+      "q": "pancakes plain frozen ready to heat"
+    },
+    "mini pancakes": {
+      "unit": "mini pancake",
+      "grams": 20,
       "q": "pancakes plain frozen ready to heat"
     },
     "french toast": {
@@ -374,6 +389,10 @@
     "rotisserie chicken": {
       "grams": 900,
       "q": "chicken broilers rotisserie original seasoning breast meat and skin cooked"
+    },
+    "burrito": {
+      "grams": 430,
+      "q": "burrito nfs"
     }
   }
 }

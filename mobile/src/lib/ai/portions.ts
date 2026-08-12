@@ -72,6 +72,14 @@ export const PIECE_GRAMS: Record<string, { unit: string; grams: number }> = {
     "unit": "slice",
     "grams": 28
   },
+  "hot dogs": {
+    "unit": "hot dog",
+    "grams": 102
+  },
+  "burgers": {
+    "unit": "burger",
+    "grams": 200
+  },
   "chicken nuggets": {
     "unit": "nugget",
     "grams": 16
@@ -103,6 +111,10 @@ export const PIECE_GRAMS: Record<string, { unit: string; grams: number }> = {
   "pancakes": {
     "unit": "pancake",
     "grams": 41
+  },
+  "mini pancakes": {
+    "unit": "mini pancake",
+    "grams": 20
   },
   "french toast": {
     "unit": "slice",
@@ -311,5 +323,8 @@ export const DISH_GRAMS: Record<string, { grams: number }> = {
   },
   "rotisserie chicken": {
     "grams": 900
+  },
+  "burrito": {
+    "grams": 430
   }
 };
