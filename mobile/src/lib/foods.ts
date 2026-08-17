@@ -151,6 +151,12 @@ export async function searchFoods(
   // and the AI resolver agree on what "a coke" is.
   const aliased = aliasFor(query);
   const effectiveQuery = aliased ?? query;
+  // An alias is an explicit curated statement that this query means that row, so
+  // it must not then be filtered out by the manual-search subset: the cola rows
+  // "coke" points at carry common = 0, which would leave a person typing "coke"
+  // with no results even though the AI path resolves it. Curation beats the
+  // curation flag — search the full table when an alias fired.
+  const effectiveScope: SearchScope = aliased && scope === 'common' ? 'all' : scope;
 
   const all = normName(effectiveQuery).split(' ').filter(Boolean);
   const meaningful = all.filter((t) => !STOPWORDS.has(t));
@@ -187,7 +193,7 @@ export async function searchFoods(
   // Custom foods are intentionally skipped — stage 1 ('all') already searched
   // them and they carry no display name. Read defensively: an older bundled DB
   // may lack the column, in which case return [] rather than throwing.
-  if (scope === 'display') {
+  if (effectiveScope === 'display') {
     if (!(await foodsHasDisplayNorm())) return [];
     const dWhere = tokens
       .map(() => "(' ' || display_name_norm) LIKE ? ESCAPE '\\'")
@@ -218,7 +224,7 @@ export async function searchFoods(
   // Manual search matches the plain-language display_name_norm as well as the
   // technical name_norm — needs the column, so probe once and fall back to the
   // original name-only ranking on an old DB. ('all' never touches this.)
-  const displayReady = scope === 'common' ? await foodsHasDisplayNorm() : false;
+  const displayReady = effectiveScope === 'common' ? await foodsHasDisplayNorm() : false;
 
   const queryUsda = (commonOnly: boolean) => {
     if (!commonOnly) {
@@ -283,10 +289,10 @@ export async function searchFoods(
       limit
     );
   };
-  let usda = await queryUsda(scope === 'common');
+  let usda = await queryUsda(effectiveScope === 'common');
   // Nothing in the curated subset? Fall back to the full table so a manual
   // search for something obscure still finds it.
-  if (usda.length === 0 && scope === 'common') usda = await queryUsda(false);
+  if (usda.length === 0 && effectiveScope === 'common') usda = await queryUsda(false);
 
   return [...custom.map(customRowToFood), ...usda.map(usdaRowToFood)];
 }
