@@ -18,6 +18,8 @@ import { MacroColors, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
+import { defaultAmountUnit, formatAmountValue, gramsToUnit } from '@/lib/units';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
 import { CORE_NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
@@ -57,13 +59,20 @@ export default function FoodScreen() {
   const [amountText, setAmountText] = useState('100');
   // 0 = grams; i+1 = food.portions[i]
   const [unitIdx, setUnitIdx] = useState(0);
+  // A portion the DB does not carry but the units classifier knows about (a
+  // per-piece weight from the curated table). Presented exactly like a real
+  // portion so it flows through the same chip/conversion path.
+  const [syntheticPortion, setSyntheticPortion] = useState<{ label: string; grams: number } | null>(
+    null
+  );
   // No meal in the params (e.g. quick actions) → guess from the time of day.
   const [meal, setMeal] = useState<MealType>(() => (params.meal as MealType) ?? mealForTime());
   const [saving, setSaving] = useState(false);
+  const unitPrefs = useUnitPrefs();
   const [showDetails, setShowDetails] = useState(false);
   // Enter the base amount in grams or ounces (weight foods only). Logs always
   // store grams — this only changes how the number is typed/shown.
-  const [weighUnit, setWeighUnit] = useState<'g' | 'oz'>('g');
+  const [weighUnit, setWeighUnit] = useState<'g' | 'oz' | 'floz'>('g');
 
   useEffect(() => {
     if (!params.ref) return;
@@ -73,12 +82,32 @@ export default function FoodScreen() {
         return;
       }
       setFood(f);
-      // Default to the first household portion when one exists
+      // A stated portion is still the best default — it is the food's own unit.
       if (f.portions.length > 0) {
         setUnitIdx(1);
         setAmountText('1');
+        return;
+      }
+      // Otherwise fall to the units classifier rather than a bare "100 g":
+      // a countable food opens in pieces, a drink in fl oz, a US solid in oz.
+      // 100 g is only right when nothing better is known, or Settings says so.
+      const nat = defaultAmountUnit({ name: f.name, match: f, prefs: unitPrefs });
+      if (nat.choice === 'piece' || nat.choice === 'serving') {
+        // Express it as a synthetic portion so the existing chip machinery
+        // (gramsPerUnit = portion.grams) carries it unchanged.
+        setSyntheticPortion({ label: nat.label.replace(/s$/, ''), grams: nat.perUnit ?? 0 });
+        setUnitIdx(1);
+        setAmountText('1');
+      } else if (nat.choice === 'oz' || nat.choice === 'floz') {
+        setWeighUnit(nat.choice);
+        const v = gramsToUnit(100, nat.choice, null);
+        setAmountText(v == null ? '100' : formatAmountValue(v, nat.choice));
       }
     });
+    // unitPrefs is read to seed the default unit ONCE, as the food loads.
+    // Depending on it would re-run this loader whenever a unit preference
+    // changed, resetting an amount the user had already typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.ref]);
 
   if (missing) {
@@ -90,27 +119,31 @@ export default function FoodScreen() {
   }
   if (!food) return <ThemedView style={styles.center} />;
 
+  // The DB's portions, or the classifier-derived one when the DB has none.
+  const portions = food.portions.length > 0 ? food.portions : syntheticPortion ? [syntheticPortion] : [];
   const amount = parseDecimal(amountText);
   const unitLabel = food.unit ?? 'g';
   // The oz toggle only applies to the base weight unit (grams); it's hidden for
   // ml foods and household portions.
   const showOzToggle = unitIdx === 0 && unitLabel === 'g';
-  const baseGrams = weighUnit === 'oz' ? OZ_TO_G : 1;
-  const gramsPerUnit = unitIdx === 0 ? baseGrams : food.portions[unitIdx - 1].grams;
+  const WEIGH_G: Record<'g' | 'oz' | 'floz', number> = { g: 1, oz: OZ_TO_G, floz: 29.5735 };
+  const baseGrams = WEIGH_G[weighUnit];
+  const gramsPerUnit = unitIdx === 0 ? baseGrams : (portions[unitIdx - 1]?.grams ?? 1);
   const grams = amount != null ? amount * gramsPerUnit : null;
   const preview = grams != null ? scaleMacros(food.per100, grams) : null;
 
   const canLog = grams != null && grams > 0 && !saving;
   const quantityDesc =
     unitIdx === 0
-      ? `${fmtGrams(amount)} ${weighUnit === 'oz' ? 'oz' : unitLabel}`
-      : `${fmtGrams(amount)} × ${food.portions[unitIdx - 1].label}`;
+      ? `${fmtGrams(amount)} ${weighUnit === 'g' ? unitLabel : weighUnit === 'oz' ? 'oz' : 'fl oz'}`
+      : `${fmtGrams(amount)} × ${portions[unitIdx - 1]?.label ?? unitLabel}`;
 
   // Convert the typed value in place when switching g ⇄ oz.
-  const setWeigh = (u: 'g' | 'oz') => {
+  const setWeigh = (u: 'g' | 'oz' | 'floz') => {
     if (u === weighUnit) return;
+    // Convert the typed value in place rather than clearing it.
     const a = parseDecimal(amountText);
-    if (a != null) setAmountText(fmtGrams(u === 'oz' ? a / OZ_TO_G : a * OZ_TO_G));
+    if (a != null) setAmountText(fmtGrams((a * WEIGH_G[weighUnit]) / WEIGH_G[u]));
     setWeighUnit(u);
   };
 
@@ -184,7 +217,7 @@ export default function FoodScreen() {
                     setWeighUnit('g');
                   }}
                 />
-                {food.portions.map((p, i) => (
+                {portions.map((p, i) => (
                   <UnitChip
                     key={i}
                     label={`${p.label} (${fmtGrams(p.grams)} ${unitLabel})`}
@@ -205,6 +238,11 @@ export default function FoodScreen() {
               </ThemedText>
               <UnitChip label="grams" selected={weighUnit === 'g'} onPress={() => setWeigh('g')} />
               <UnitChip label="oz" selected={weighUnit === 'oz'} onPress={() => setWeigh('oz')} />
+              <UnitChip
+                label="fl oz"
+                selected={weighUnit === 'floz'}
+                onPress={() => setWeigh('floz')}
+              />
             </View>
           )}
           <FractionChips value={amount} onValue={(v) => setAmountText(fmtGrams(v))} />

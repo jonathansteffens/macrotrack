@@ -22,6 +22,32 @@ import {
 } from '@/lib/templates';
 import { mealForTime, type FoodItem, type MealType } from '@/lib/types';
 
+/**
+ * Creating a recipe used to be a small "＋ New" link in a section header that
+ * only appeared while the search box was empty — easy to miss, and it never said
+ * what a recipe was for. This is a real row, always present, and it explains
+ * itself when there is nothing to list yet.
+ *
+ * Declared at module scope: defining a component inside another component's
+ * render remounts it on every render.
+ */
+function NewRecipeButton({ empty }: { empty: boolean }) {
+  return (
+    <Pressable style={styles.templateRow} onPress={() => router.push('/recipe')}>
+      <ThemedView type="backgroundElement" style={styles.newRecipeCard}>
+        <ThemedText type="smallBold" themeColor="tint">
+          ＋ Create a recipe
+        </ThemedText>
+        {empty && (
+          <ThemedText type="small" themeColor="textSecondary">
+            Combine ingredients once, then log it by the serving.
+          </ThemedText>
+        )}
+      </ThemedView>
+    </Pressable>
+  );
+}
+
 export default function AddFoodScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ day?: string; meal?: string }>();
@@ -143,6 +169,14 @@ export default function AddFoodScreen() {
         <ThemedText type="small" themeColor="textSecondary">
           {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} kcal ea
         </ThemedText>
+        {/* Editing used to be long-press only, which nothing advertises. */}
+        <Pressable
+          hitSlop={8}
+          onPress={() => router.push({ pathname: '/recipe', params: { id: String(r.id) } })}>
+          <ThemedText type="small" themeColor="tint">
+            Edit
+          </ThemedText>
+        </Pressable>
       </ThemedView>
     </Pressable>
   );
@@ -243,13 +277,9 @@ export default function AddFoodScreen() {
                 <ThemedText type="smallBold" themeColor="textSecondary">
                   Recipes
                 </ThemedText>
-                <Pressable hitSlop={8} onPress={() => router.push('/recipe')}>
-                  <ThemedText type="smallBold" themeColor="tint">
-                    ＋ New
-                  </ThemedText>
-                </Pressable>
               </View>
               {recipes.map(renderRecipeRow)}
+              <NewRecipeButton empty={recipes.length === 0} />
               {templates.length > 0 && (
                 <>
                   <ThemedText type="smallBold" themeColor="textSecondary" style={styles.listHeader}>
@@ -377,6 +407,11 @@ const styles = StyleSheet.create({
   listHeader: {
     marginBottom: Spacing.two,
     marginTop: Spacing.one,
+  },
+  newRecipeCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.one,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

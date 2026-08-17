@@ -246,7 +246,7 @@ export function formatAmount(
 }
 
 /** The noun to count in ("nugget", "egg"), derived from the curated table or the name. */
-function pieceNoun(name: string, match: FoodItem | null): string {
+export function pieceNoun(name: string, match: FoodItem | null): string {
   const curated = lookupPiece(name, null);
   if (curated?.unit) return curated.unit;
   // Singularize the food's last word: "scrambled eggs" -> "egg".
@@ -281,4 +281,120 @@ export function toGrams(value: number, choice: UnitChoice, perUnit: number | nul
     case 'g': return value;
     case 'auto': return null;
   }
+}
+
+
+// ---- Input side -------------------------------------------------------------
+//
+// Display and input have to agree: showing "3 nuggets" and then making the user
+// type 48 grams to change it is the same mismatch the display work removed, just
+// moved one step later. These helpers give an amount FIELD the same
+// classification the labels use, so a field opens denominated in the food's own
+// unit. Grams stay the stored value — conversion happens at the input boundary
+// via toGrams — and grams stay offered as an explicit chip, they just stop being
+// the default.
+
+/** Grams of one unit for the count-based choices; null when it converts by a constant. */
+export function perUnitGramsFor(
+  choice: UnitChoice, name: string, match: FoodItem | null
+): number | null {
+  if (choice === 'serving') return servingGramsFor(match);
+  if (choice === 'piece') return pieceGramsFor(name, match);
+  return null;
+}
+
+/** Inverse of toGrams: how many `choice` units `grams` is. Null when unknowable. */
+export function gramsToUnit(
+  grams: number, choice: UnitChoice, perUnit: number | null
+): number | null {
+  if (!Number.isFinite(grams)) return null;
+  switch (choice) {
+    case 'serving':
+    case 'piece': return perUnit && perUnit > 0 ? grams / perUnit : null;
+    case 'floz': return grams / FL_OZ_G;
+    case 'cup': return grams / CUP_G;
+    case 'oz': return grams / OZ_G;
+    case 'ml':
+    case 'g': return grams;
+    case 'auto': return null;
+  }
+}
+
+/** One selectable unit on an amount field. */
+export type AmountUnit = {
+  choice: UnitChoice;
+  /** Chip text, pluralised for the food: "servings", "nuggets", "fl oz", "g". */
+  label: string;
+  /** Grams of one unit, for the count-based choices. */
+  perUnit: number | null;
+};
+
+/** Chip order per class. Grams is always last and always present. */
+const INPUT_UNITS: Record<FoodClass, Record<UnitSystem, UnitChoice[]>> = {
+  serving: { us: ['serving', 'oz', 'g'], metric: ['serving', 'g'] },
+  drink: { us: ['floz', 'cup', 'ml', 'g'], metric: ['ml', 'floz', 'g'] },
+  countable: { us: ['piece', 'oz', 'g'], metric: ['piece', 'g'] },
+  solid: { us: ['oz', 'g'], metric: ['g'] },
+};
+
+function inputUnitLabel(choice: UnitChoice, name: string, match: FoodItem | null): string {
+  switch (choice) {
+    case 'serving': return 'servings';
+    case 'piece': return `${pieceNoun(name, match)}s`;
+    case 'floz': return 'fl oz';
+    case 'cup': return 'cups';
+    case 'ml': return 'mL';
+    case 'oz': return 'oz';
+    default: return match?.unit === 'ml' ? 'mL' : 'g';
+  }
+}
+
+/**
+ * Units an amount field should offer, natural unit first and grams last.
+ *
+ * A count-based unit is dropped when its per-unit weight is unknown, so a chip
+ * can never be selected that has no way to convert what the user types.
+ */
+export function amountUnitOptions(opts: {
+  name: string;
+  match: FoodItem | null;
+  prefs: UnitPrefs;
+  liquid?: boolean;
+}): AmountUnit[] {
+  const cls = classifyFood(opts.name, opts.match, opts.liquid);
+  const override = opts.prefs.overrides[cls];
+  const ordered = [...INPUT_UNITS[cls][opts.prefs.system]];
+  // An explicit Settings override becomes the field's first chip too.
+  if (override && override !== 'auto') {
+    const i = ordered.indexOf(override);
+    if (i > 0) ordered.splice(i, 1);
+    if (i !== 0) ordered.unshift(override);
+  }
+  const out: AmountUnit[] = [];
+  for (const choice of ordered) {
+    const perUnit = perUnitGramsFor(choice, opts.name, opts.match);
+    if ((choice === 'serving' || choice === 'piece') && (perUnit == null || perUnit <= 0)) continue;
+    if (out.some((o) => o.choice === choice)) continue;
+    out.push({ choice, label: inputUnitLabel(choice, opts.name, opts.match), perUnit });
+  }
+  if (!out.some((o) => o.choice === 'g')) {
+    out.push({ choice: 'g', label: inputUnitLabel('g', opts.name, opts.match), perUnit: null });
+  }
+  return out;
+}
+
+/** The unit an amount field opens in — the first offered option. */
+export function defaultAmountUnit(opts: {
+  name: string;
+  match: FoodItem | null;
+  prefs: UnitPrefs;
+  liquid?: boolean;
+}): AmountUnit {
+  return amountUnitOptions(opts)[0];
+}
+
+/** Format a converted amount for a text field: enough precision, no noise. */
+export function formatAmountValue(value: number, choice: UnitChoice): string {
+  const decimals = choice === 'g' || choice === 'ml' ? 1 : 2;
+  return String(Number(value.toFixed(decimals)));
 }

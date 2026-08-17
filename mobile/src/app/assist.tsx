@@ -7,10 +7,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AmountInput } from '@/components/amount-input';
 import { EstimatingIndicator } from '@/components/estimating-indicator';
 import { FoodSearchModal } from '@/components/food-search-modal';
 import { FractionChips } from '@/components/fraction-chips';
@@ -585,14 +585,6 @@ function ItemCard({
   onRevertUsual: () => void;
   onChangeFood: () => void;
 }) {
-  const unitPrefs = useUnitPrefs();
-  // null when the natural rendering IS grams — no point showing "355 g  355 g".
-  const amount = formatAmount(item.grams, {
-    name: displayName(item),
-    match: item.match,
-    prefs: unitPrefs,
-  });
-  const natural = amount.secondary != null ? amount.primary : null;
 
   const theme = useTheme();
   const macros = resolvedMacros(item);
@@ -614,28 +606,15 @@ function ItemCard({
       </View>
 
       <View style={styles.itemRow}>
-        <TextInput
-          style={[
-            styles.gramsInput,
-            { backgroundColor: theme.background, color: theme.text },
-            lowConfidence && styles.gramsInputUncertain,
-          ]}
-          value={item.gramsText}
-          onChangeText={onGramsChange}
-          keyboardType="decimal-pad"
-          selectTextOnFocus
+        {/* Denominated in the food's own unit. The serving stepper below still
+            drives grams, and AmountInput re-derives its text when it does. */}
+        <AmountInput
+          compact
+          grams={item.grams}
+          onGramsChange={(g) => onGramsChange(g == null ? '' : String(g))}
+          name={displayName(item)}
+          match={item.match}
         />
-        <ThemedText type="small" themeColor="textSecondary">
-          g
-        </ThemedText>
-        {natural != null && (
-          // The editor stays in grams (canonical, and the serving stepper is
-          // derived from it); this is the same amount written the way people
-          // actually say it — "12 fl oz", "3 eggs".
-          <ThemedText type="small" themeColor="tint" numberOfLines={1}>
-            {natural}
-          </ThemedText>
-        )}
         <View style={styles.itemMacros}>
           <ThemedText type="small">
             {fmtKcal(macros.kcal)} kcal · P {fmtGrams(macros.protein)} · C {fmtGrams(macros.carbs)}{' '}

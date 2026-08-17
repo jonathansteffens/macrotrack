@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { AmountInput } from '@/components/amount-input';
 import { amountLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/food-search-modal';
 import { FractionChips } from '@/components/fraction-chips';
@@ -45,20 +46,6 @@ export default function EntryScreen() {
   if (!entry) return <ThemedView style={styles.center} />;
 
   const newGrams = parseDecimal(gramsText);
-  // The typed amount in the user's preferred units. `liquid` comes from the
-  // entry's own unit, since a logged entry keeps no FoodItem to classify from.
-  const naturalAmount =
-    newGrams != null && newGrams > 0
-      ? (() => {
-          const a = formatAmount(newGrams, {
-            name: entry.foodName,
-            match: null,
-            prefs: unitPrefs,
-            liquid: entry.unit === 'ml',
-          });
-          return a.secondary != null ? a.primary : null;
-        })()
-      : null;
   const preview =
     entry.grams != null && newGrams != null && entry.grams > 0
       ? rescaleMacros(entry.macros, newGrams / entry.grams)
@@ -130,27 +117,19 @@ export default function EntryScreen() {
         <>
           <View style={styles.gramsRow}>
             <ThemedText type="small" themeColor="textSecondary">
-              Amount ({entry.unit ?? 'g'})
+              Amount
             </ThemedText>
-            <TextInput
-              style={[
-                styles.gramsInput,
-                { backgroundColor: theme.backgroundElement, color: theme.text },
-              ]}
-              value={gramsText}
-              onChangeText={setGramsText}
-              keyboardType="decimal-pad"
-              selectTextOnFocus
+            {/* Denominated in the entry's own unit rather than grams. A logged
+                entry keeps no FoodItem, so the classification runs off its name
+                plus its own `unit` — enough for "2 servings" or "3 nuggets"
+                instead of making the user do the arithmetic. */}
+            <AmountInput
+              grams={newGrams}
+              onGramsChange={(g) => setGramsText(g == null ? '' : fmtGrams(g))}
+              name={entry.foodName}
+              liquid={entry.unit === 'ml'}
             />
           </View>
-          {naturalAmount != null && (
-            // The same amount in the user's preferred units, updating as they
-            // type. The field itself stays in grams: that is what the stored
-            // entry and its macros are scaled from.
-            <ThemedText type="small" themeColor="tint" style={styles.naturalAmount}>
-              {naturalAmount}
-            </ThemedText>
-          )}
           <FractionChips value={newGrams} onValue={(v) => setGramsText(fmtGrams(v))} />
           <PortionAnchors />
         </>
@@ -223,7 +202,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  naturalAmount: { marginTop: 4 },
   gramsRow: {
     flexDirection: 'row',
     alignItems: 'center',

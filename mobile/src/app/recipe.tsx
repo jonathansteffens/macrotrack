@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { AmountInput } from '@/components/amount-input';
 import { EstimatingIndicator } from '@/components/estimating-indicator';
 import { FoodRow } from '@/components/food-row';
 import { SpeechTextInput } from '@/components/speech-text-input';
@@ -22,8 +23,6 @@ import { localEstimate } from '@/lib/ai/local';
 import { ensureLoaded } from '@/lib/ai/local-model';
 import { displayName, resolveClaim, type ResolvedItem } from '@/lib/ai/resolver';
 import { searchFoods } from '@/lib/foods';
-import { useUnitPrefs } from '@/hooks/use-unit-prefs';
-import { formatAmount } from '@/lib/units';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import {
   deleteRecipe,
@@ -74,7 +73,6 @@ export default function RecipeScreen() {
   // Labels state macros per serving far more often than per 100 g, so let the
   // user say which they are copying instead of making them do the arithmetic.
   const [manualBasis, setManualBasis] = useState<'amount' | 'per100'>('amount');
-  const unitPrefs = useUnitPrefs();
   const searchId = useRef(0);
 
   // Warm the model while the user is still adding ingredients by hand.
@@ -318,32 +316,14 @@ export default function RecipeScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
-              <View style={styles.itemRow}>
-                <TextInput
-                  style={[styles.gramsInput, { backgroundColor: theme.background, color: theme.text }]}
-                  value={it.gramsText}
-                  onChangeText={(t) => setItemGrams(idx, t)}
-                  keyboardType="decimal-pad"
-                  selectTextOnFocus
-                />
-                <ThemedText type="small" themeColor="textSecondary">
-                  g
-                </ThemedText>
-                {(() => {
-                  // Same amount in the user's units. The field stays in grams:
-                  // ingredient weights are what the batch total sums.
-                  const a = formatAmount(it.grams, {
-                    name: it.foodName,
-                    match: null,
-                    prefs: unitPrefs,
-                  });
-                  return a.secondary != null ? (
-                    <ThemedText type="small" themeColor="tint" numberOfLines={1}>
-                      {a.primary}
-                    </ThemedText>
-                  ) : null;
-                })()}
-              </View>
+              {/* Denominated in the ingredient's own unit; the batch total
+                  still sums grams, which is what AmountInput reports back. */}
+              <AmountInput
+                compact
+                grams={it.grams}
+                onGramsChange={(g) => setItemGrams(idx, g == null ? '' : String(g))}
+                name={it.foodName}
+              />
             </ThemedView>
           ))}
 
