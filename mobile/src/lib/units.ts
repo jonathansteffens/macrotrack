@@ -7,11 +7,16 @@
  * to grams because that is what macros scale from, and that is right for
  * storage and wrong for reading.
  *
- * Three display classes, because they want genuinely different units:
+ * Four display classes, because they want genuinely different units:
  *
+ *   serving    servings            — a label says "1 serving (30 g), 140 cal"
  *   drink      fl oz / ml / cups   — a can is 12 fl oz, not 355 g
  *   countable  pieces              — "3 eggs" beats "150 g" or "5.3 oz"
  *   solid      oz / g              — meat and portions people weigh
+ *
+ * `serving` wins when a food states one, which is what makes a scanned barcode
+ * read the way its package does. It applies to recipes too, since a recipe
+ * defines its own serving.
  *
  * Grams are always available as the secondary label, so the number the macros
  * were computed from is never hidden. That matters for trust in a nutrition
@@ -36,9 +41,9 @@ export const FL_OZ_G = 29.5735;
 export const CUP_G = FL_OZ_G * 8;
 
 export type UnitSystem = 'us' | 'metric';
-export type FoodClass = 'drink' | 'countable' | 'solid';
+export type FoodClass = 'serving' | 'drink' | 'countable' | 'solid';
 /** 'auto' defers to the system default for that class. */
-export type UnitChoice = 'auto' | 'piece' | 'floz' | 'ml' | 'cup' | 'oz' | 'g';
+export type UnitChoice = 'auto' | 'serving' | 'piece' | 'floz' | 'ml' | 'cup' | 'oz' | 'g';
 
 export type UnitPrefs = {
   system: UnitSystem;
@@ -50,6 +55,7 @@ export const DEFAULT_UNIT_PREFS: UnitPrefs = { system: 'us', overrides: {} };
 
 /** Choices offered per class in Settings, in display order. */
 export const UNIT_CHOICES: Record<FoodClass, UnitChoice[]> = {
+  serving: ['auto', 'serving', 'floz', 'oz', 'g'],
   drink: ['auto', 'floz', 'ml', 'cup', 'g'],
   countable: ['auto', 'piece', 'oz', 'g'],
   solid: ['auto', 'oz', 'g'],
@@ -57,6 +63,7 @@ export const UNIT_CHOICES: Record<FoodClass, UnitChoice[]> = {
 
 const CHOICE_LABELS: Record<UnitChoice, string> = {
   auto: 'Auto',
+  serving: 'Servings',
   piece: 'Pieces',
   floz: 'fl oz',
   ml: 'mL',
@@ -67,6 +74,7 @@ const CHOICE_LABELS: Record<UnitChoice, string> = {
 export const unitChoiceLabel = (c: UnitChoice): string => CHOICE_LABELS[c];
 
 const CLASS_LABELS: Record<FoodClass, string> = {
+  serving: 'Packaged foods & recipes',
   drink: 'Drinks',
   countable: 'Countable foods',
   solid: 'Everything else',
@@ -95,6 +103,20 @@ export function pieceGramsFor(name: string, match: FoodItem | null): number | nu
 }
 
 /**
+ * Grams of one stated serving, when the food defines one — a barcode product's
+ * label serving (see off.ts) or a recipe's own serving. Null otherwise.
+ *
+ * This is the unit a packaged food is actually written in: a label says "1
+ * serving (30 g), 140 calories", and nobody reads that as 30 grams.
+ */
+export function servingGramsFor(match: FoodItem | null): number | null {
+  for (const p of match?.portions ?? []) {
+    if (p.grams > 0 && /^1 serving\b/i.test(p.label)) return p.grams;
+  }
+  return null;
+}
+
+/**
  * Which display class this food belongs to.
  *
  * `liquid` overrides the DB lookup for callers that have no FoodItem — a logged
@@ -102,6 +124,10 @@ export function pieceGramsFor(name: string, match: FoodItem | null): number | nu
  * it is a drink.
  */
 export function classifyFood(name: string, match: FoodItem | null, liquid?: boolean): FoodClass {
+  // A stated serving wins, including for packaged drinks: when a label defines
+  // the serving, that is the unit the user is reading off the package. The
+  // Settings override exists for anyone who would rather see fl oz.
+  if (servingGramsFor(match) != null) return 'serving';
   if (liquid ?? isLiquidFood(match)) return 'drink';
   if (pieceGramsFor(name, match) != null) return 'countable';
   return 'solid';
@@ -111,6 +137,7 @@ function resolveChoice(cls: FoodClass, prefs: UnitPrefs): UnitChoice {
   const override = prefs.overrides[cls];
   if (override && override !== 'auto') return override;
   const metric = prefs.system === 'metric';
+  if (cls === 'serving') return 'serving';
   if (cls === 'drink') return metric ? 'ml' : 'floz';
   if (cls === 'countable') return 'piece';
   return metric ? 'g' : 'oz';
@@ -179,6 +206,22 @@ export function formatAmount(
   }
 
   switch (choice) {
+    case 'serving': {
+      const per = servingGramsFor(match);
+      // Without a stated serving there is nothing to count; fall through to the
+      // system's weight unit rather than inventing one.
+      if (per != null && per > 0) {
+        const n = grams / per;
+        if (n >= 0.05) {
+          const rounded = Number(n.toFixed(1));
+          return {
+            primary: `${num(rounded, 1)} ${plural('serving', rounded)}`,
+            secondary: gramsLabel,
+          };
+        }
+      }
+      break;
+    }
     case 'floz':
       return { primary: `${num(grams / FL_OZ_G, 1)} fl oz`, secondary: gramsLabel };
     case 'cup':
@@ -191,6 +234,13 @@ export function formatAmount(
     case 'g':
     case 'auto':
       break;
+  }
+  // 'serving' with no stated serving lands here: use the system's weight unit,
+  // not raw grams, for the same reason the piece path does.
+  if (choice === 'serving') {
+    return prefs.system === 'metric'
+      ? { primary: gramsLabel, secondary: null }
+      : { primary: `${num(grams / OZ_G, 1)} oz`, secondary: gramsLabel };
   }
   return { primary: gramsLabel, secondary: null };
 }
@@ -212,16 +262,23 @@ export function amountLabel(a: FormattedAmount): string {
   return a.secondary ? `${a.primary} (${a.secondary})` : a.primary;
 }
 
-/** Convert a user-entered amount in `choice` units back to grams (editors). */
-export function toGrams(value: number, choice: UnitChoice, perPiece: number | null): number | null {
+/**
+ * Convert a user-entered amount in `choice` units back to grams (for editors).
+ *
+ * @param perUnit grams of one piece or one serving, for the count-based choices.
+ *                Null when unknown, in which case those choices return null
+ *                rather than guessing a weight.
+ */
+export function toGrams(value: number, choice: UnitChoice, perUnit: number | null): number | null {
   if (!Number.isFinite(value)) return null;
   switch (choice) {
+    case 'serving':
+    case 'piece': return perUnit && perUnit > 0 ? value * perUnit : null;
     case 'floz': return value * FL_OZ_G;
     case 'cup': return value * CUP_G;
     case 'oz': return value * OZ_G;
     case 'ml':
     case 'g': return value;
-    case 'piece': return perPiece && perPiece > 0 ? value * perPiece : null;
     case 'auto': return null;
   }
 }

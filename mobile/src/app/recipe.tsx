@@ -11,20 +11,31 @@ import {
   View,
 } from 'react-native';
 
+import { EstimatingIndicator } from '@/components/estimating-indicator';
 import { FoodRow } from '@/components/food-row';
+import { SpeechTextInput } from '@/components/speech-text-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { localEstimate } from '@/lib/ai/local';
+import { ensureLoaded } from '@/lib/ai/local-model';
+import { displayName, resolveClaim, type ResolvedItem } from '@/lib/ai/resolver';
 import { searchFoods } from '@/lib/foods';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
+import { formatAmount } from '@/lib/units';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import {
   deleteRecipe,
   getRecipe,
   recipeItemFromFood,
+  recipeItemFromEstimate,
   recipePerServing,
+  recipeServingGrams,
+  recipeTotalGrams,
   recipeTotals,
   saveRecipe,
+  servingsForServingGrams,
   type Recipe,
   type RecipeItem,
 } from '@/lib/recipes';
@@ -43,7 +54,22 @@ export default function RecipeScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [saving, setSaving] = useState(false);
+  // AI ingredient entry: a whole ingredient list at once, parsed by the same
+  // estimator (and the same quantity hybrid) the assist flow uses — so "1 lb
+  // ground beef" becomes 454 g here for the same reason it does there.
+  const [aiText, setAiText] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  // Serving size can be driven from either side: the count the batch makes, or
+  // the weight of one serving. Whichever the user last typed is authoritative.
+  const [servingGramsText, setServingGramsText] = useState('');
+  const unitPrefs = useUnitPrefs();
   const searchId = useRef(0);
+
+  // Warm the model while the user is still adding ingredients by hand.
+  useEffect(() => {
+    ensureLoaded();
+  }, []);
 
   useEffect(() => {
     if (editId == null) return;
@@ -87,7 +113,56 @@ export default function RecipeScreen() {
   const draft: Recipe = { id: editId ?? 0, name, servings, items };
   const total = recipeTotals(draft);
   const perServing = recipePerServing(draft);
+  const totalGrams = recipeTotalGrams(draft);
+  const servingGrams = recipeServingGrams(draft);
   const canSave = name.trim().length > 0 && items.some((it) => it.grams > 0);
+
+  /** Typing a per-serving weight re-derives the servings count from the batch. */
+  const setServingGrams = (text: string) => {
+    setServingGramsText(text);
+    const g = parseDecimal(text);
+    if (g == null) return;
+    const n = servingsForServingGrams(draft, g);
+    if (n != null && n > 0) setServingsText(String(n));
+  };
+
+  /** Parse a free-text ingredient list and append everything it resolves. */
+  const addWithAi = async () => {
+    const text = aiText.trim();
+    if (!text || aiBusy) return;
+    setAiBusy(true);
+    setAiError(null);
+    try {
+      const res = await localEstimate([{ role: 'user', input: { text } }]);
+      if (!res.ok) {
+        setAiError(res.message);
+        return;
+      }
+      // Same resolution path as the assist flow, so ingredients match the DB the
+      // same way and the quantity override applies to the amounts.
+      const resolved: ResolvedItem[] = await resolveClaim(res.claim, text);
+      const added = resolved
+        .filter((r) => r.grams > 0)
+        .map((r) =>
+          recipeItemFromEstimate({
+            name: displayName(r),
+            grams: r.grams,
+            match: r.match,
+            estPer100: r.claim.est_per100,
+          })
+        );
+      if (added.length === 0) {
+        setAiError('Nothing recognisable in that list — try naming amounts.');
+        return;
+      }
+      setItems((prev) => [...prev, ...added.map((it) => ({ ...it, gramsText: fmtGrams(it.grams) }))]);
+      setAiText('');
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Could not read that ingredient list.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const save = async () => {
     if (!canSave || saving) return;
@@ -145,15 +220,45 @@ export default function RecipeScreen() {
 
           <View style={styles.field}>
             <ThemedText type="small" themeColor="textSecondary">
-              Servings the whole recipe makes
+              Serving size
             </ThemedText>
-            <TextInput
-              style={[...inputStyle, styles.servingsInput]}
-              value={servingsText}
-              onChangeText={setServingsText}
-              keyboardType="decimal-pad"
-              selectTextOnFocus
-            />
+            <View style={styles.servingRow}>
+              <View style={styles.servingCol}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Makes
+                </ThemedText>
+                <TextInput
+                  style={[...inputStyle, styles.servingsInput]}
+                  value={servingsText}
+                  onChangeText={setServingsText}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                />
+              </View>
+              <View style={styles.servingCol}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Each serving (g)
+                </ThemedText>
+                {/* The two are the same fact from either end: typing a weight
+                    re-derives the count from the batch, and adding an ingredient
+                    updates the weight. Whichever the user typed last wins. */}
+                <TextInput
+                  style={[...inputStyle, styles.servingsInput]}
+                  value={servingGramsText || (servingGrams > 0 ? fmtGrams(servingGrams) : '')}
+                  onChangeText={setServingGrams}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                  placeholder={servingGrams > 0 ? fmtGrams(servingGrams) : '—'}
+                  placeholderTextColor={theme.textSecondary}
+                />
+              </View>
+            </View>
+            {totalGrams > 0 && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Batch weighs {fmtGrams(totalGrams)} g — one serving is{' '}
+                {fmtGrams(servingGrams)} g.
+              </ThemedText>
+            )}
           </View>
 
           {/* Ingredients */}
@@ -188,16 +293,66 @@ export default function RecipeScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   g
                 </ThemedText>
+                {(() => {
+                  // Same amount in the user's units. The field stays in grams:
+                  // ingredient weights are what the batch total sums.
+                  const a = formatAmount(it.grams, {
+                    name: it.foodName,
+                    match: null,
+                    prefs: unitPrefs,
+                  });
+                  return a.secondary != null ? (
+                    <ThemedText type="small" themeColor="tint" numberOfLines={1}>
+                      {a.primary}
+                    </ThemedText>
+                  ) : null;
+                })()}
               </View>
             </ThemedView>
           ))}
+
+          {/* Add a whole ingredient list at once, via the on-device estimator */}
+          <View style={styles.field}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Or paste the whole ingredient list
+            </ThemedText>
+            {/* SpeechTextInput owns its own styling and mic affordance, so it
+                takes only content props — same usage as the assist screen. */}
+            <SpeechTextInput
+              value={aiText}
+              onChangeText={setAiText}
+              placeholder={'1 lb ground beef, 2 cans black beans, an onion'}
+              multiline
+            />
+            <Pressable
+              style={[
+                styles.aiButton,
+                { backgroundColor: theme.tintSurface, opacity: aiText.trim() && !aiBusy ? 1 : 0.4 },
+              ]}
+              onPress={addWithAi}
+              disabled={!aiText.trim() || aiBusy}>
+              <ThemedText type="smallBold" themeColor="tint">
+                {aiBusy ? 'Reading…' : 'Add ingredients with AI'}
+              </ThemedText>
+            </Pressable>
+            {aiBusy && <EstimatingIndicator />}
+            {aiError != null && (
+              <ThemedText type="small" style={{ color: theme.danger }}>
+                {aiError}
+              </ThemedText>
+            )}
+            <ThemedText type="small" themeColor="textSecondary">
+              Every ingredient it adds stays editable, and anything it can&rsquo;t
+              match keeps the model&rsquo;s own estimate.
+            </ThemedText>
+          </View>
 
           {/* Ingredient search */}
           <TextInput
             style={inputStyle}
             value={query}
             onChangeText={setQuery}
-            placeholder="Add an ingredient"
+            placeholder="Add one ingredient by name"
             placeholderTextColor={theme.textSecondary}
             autoCorrect={false}
           />
@@ -253,6 +408,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   servingsInput: { minWidth: 90, textAlign: 'center', alignSelf: 'flex-start' },
+  servingRow: { flexDirection: 'row', gap: Spacing.three },
+  servingCol: { gap: Spacing.one },
+  aiButton: { borderRadius: Radius.control, paddingVertical: Spacing.two, alignItems: 'center' },
   sectionTitle: { marginTop: Spacing.two },
   itemCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
   itemHeader: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },

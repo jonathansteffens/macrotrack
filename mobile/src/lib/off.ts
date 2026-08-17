@@ -1,4 +1,5 @@
 import { getUserDb } from './db';
+import { parseServingSize } from './serving-size';
 import { getFoodByRef } from './foods';
 import type { FoodItem, Portion } from './types';
 
@@ -114,10 +115,19 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookup> {
   const portions: Portion[] = [];
   const servingQty = num(p.serving_quantity);
   const servingUnit = (p.serving_quantity_unit ?? 'g') as string;
-  if (servingQty != null && servingQty > 0 && (servingUnit === 'g' || servingUnit === 'ml')) {
+  // A packaged food's natural unit is a SERVING — nobody reads a label in
+  // grams. OFF's numeric serving_quantity is the clean source, but plenty of
+  // products carry only the free-text serving_size ("30 g", "2 cookies (30g)",
+  // "1 cup (240ml)"). Parsing that text is the difference between a scan
+  // defaulting to servings and defaulting to grams, so try it as a fallback.
+  const servingGrams =
+    servingQty != null && servingQty > 0 && (servingUnit === 'g' || servingUnit === 'ml')
+      ? servingQty
+      : parseServingSize(p.serving_size);
+  if (servingGrams != null && servingGrams > 0) {
     portions.push({
       label: `1 serving${p.serving_size ? ` (${p.serving_size})` : ''}`,
-      grams: servingQty,
+      grams: servingGrams,
     });
   }
 

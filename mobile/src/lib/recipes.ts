@@ -49,6 +49,69 @@ export function recipeItemFromFood(food: FoodItem, grams: number): RecipeItem {
   return { foodName: food.name, foodRef: food.ref, grams, per100: food.per100 };
 }
 
+/**
+ * Build a recipe item from an AI-resolved estimate. When the claim matched a DB
+ * food we snapshot the canonical per-100g; otherwise we fall back to the model's
+ * own est_per100, exactly as the log does for an unmatched item — so an
+ * ingredient the DB has never heard of ("gochujang") still contributes numbers
+ * instead of being dropped.
+ */
+export function recipeItemFromEstimate(input: {
+  name: string;
+  grams: number;
+  match: FoodItem | null;
+  /** The claim's est_per100 — the four core macros the model estimates. */
+  estPer100: { kcal: number; protein: number; carbs: number; fat: number };
+}): RecipeItem {
+  // The model only estimates the four core macros; the rest are genuinely
+  // unknown without a DB match, so they stay null rather than being reported as
+  // zero. This mirrors resolvedMacros() in ai/resolver.ts — a null reads as "we
+  // don't know", a 0 would read as "this food has none".
+  const estimated: Macros = {
+    ...input.estPer100,
+    fiber: null,
+    sugar: null,
+    sodiumMg: null,
+    satFat: null,
+    cholesterolMg: null,
+    calciumMg: null,
+    ironMg: null,
+    potassiumMg: null,
+  };
+  return {
+    foodName: input.match?.displayName ?? input.match?.name ?? input.name,
+    foodRef: input.match?.ref ?? null,
+    grams: input.grams,
+    per100: input.match?.per100 ?? estimated,
+  };
+}
+
+/**
+ * Grams in one serving = batch weight ÷ servings.
+ *
+ * A recipe's serving is defined by how many the batch makes, but what a user
+ * needs when logging it is the WEIGHT of one, so they can weigh a bowl. Exposed
+ * here so the editor can show it and let the user drive the split from either
+ * side (see servingsForServingGrams).
+ */
+export function recipeServingGrams(recipe: Recipe): number {
+  const total = recipeTotalGrams(recipe);
+  const s = Math.max(recipe.servings, 0.1);
+  return total > 0 ? total / s : 0;
+}
+
+/**
+ * The servings count implied by a desired per-serving weight — the inverse of
+ * recipeServingGrams, so "each serving is 250 g" is an equivalent way to say
+ * "this makes 4". Returns null when the batch has no weight yet or the target is
+ * not a usable number.
+ */
+export function servingsForServingGrams(recipe: Recipe, servingGrams: number): number | null {
+  const total = recipeTotalGrams(recipe);
+  if (!(total > 0) || !Number.isFinite(servingGrams) || servingGrams <= 0) return null;
+  return Math.round((total / servingGrams) * 100) / 100;
+}
+
 /** Create (id omitted) or replace (id given) a recipe and all its items. */
 export async function saveRecipe(input: {
   id?: number;

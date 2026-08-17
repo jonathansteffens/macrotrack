@@ -120,6 +120,28 @@ console.log('countable:');
   eq('  no redundant secondary', a.secondary, null);
 }
 
+console.log('servings (packaged foods and recipes):');
+{
+  // A barcode product's label serving, as off.ts records it.
+  const BAR = { category: null, unit: 'g', portions: [{ label: '1 serving (30 g)', grams: 30 }] };
+  eq('classify', U.classifyFood('granola bar', BAR), 'serving');
+  const a = U.formatAmount(30, { name: 'granola bar', match: BAR, prefs: US });
+  eq('one serving', a.primary, '1 serving');
+  eq('  keeps grams visible', a.secondary, '30 g');
+  eq('two servings', U.formatAmount(60, { name: 'granola bar', match: BAR, prefs: US }).primary, '2 servings');
+  eq('fractional servings', U.formatAmount(45, { name: 'granola bar', match: BAR, prefs: US }).primary, '1.5 servings');
+  // A stated serving beats the drink class: a scanned soda reads as the label does.
+  const SODA = { category: 'Soft drinks', unit: 'g', portions: [{ label: '1 serving (355 ml)', grams: 355 }] };
+  eq('serving beats drink', U.classifyFood('cola', SODA), 'serving');
+  eq('  reads as servings', U.formatAmount(355, { name: 'cola', match: SODA, prefs: US }).primary, '1 serving');
+  // ...unless the user overrides the class back to fl oz.
+  eq('  override to fl oz', U.formatAmount(355, { name: 'cola', match: SODA, prefs: { system: 'us', overrides: { serving: 'floz' } } }).primary, '12 fl oz');
+  // No stated serving -> weight, not raw grams, for a US user.
+  eq('no serving falls back to oz', U.formatAmount(227, { name: 'mystery', match: { category: null, unit: 'g', portions: [] }, prefs: { system: 'us', overrides: { solid: 'auto' } } }).primary, '8 oz');
+  eq('toGrams serving', U.toGrams(2, 'serving', 30), 60);
+  eq('toGrams serving without a weight', U.toGrams(2, 'serving', null), null);
+}
+
 console.log('solids:');
 eq('227 g steak (US)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: US }).primary, '8 oz');
 eq('227 g steak (metric)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: METRIC }).primary, '227 g');
