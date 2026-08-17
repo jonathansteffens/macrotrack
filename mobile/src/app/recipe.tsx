@@ -30,6 +30,7 @@ import {
   getRecipe,
   recipeItemFromFood,
   recipeItemFromEstimate,
+  recipeItemFromManual,
   recipePerServing,
   recipeServingGrams,
   recipeTotalGrams,
@@ -63,6 +64,16 @@ export default function RecipeScreen() {
   // Serving size can be driven from either side: the count the batch makes, or
   // the weight of one serving. Whichever the user last typed is authoritative.
   const [servingGramsText, setServingGramsText] = useState('');
+  // Manual ingredient entry: the escape hatch for anything the database has
+  // never heard of and the model cannot place — a jar of something regional, a
+  // supplement, a friend's sauce. Typed straight in, no library entry required.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manual, setManual] = useState({
+    name: '', grams: '', kcal: '', protein: '', carbs: '', fat: '',
+  });
+  // Labels state macros per serving far more often than per 100 g, so let the
+  // user say which they are copying instead of making them do the arithmetic.
+  const [manualBasis, setManualBasis] = useState<'amount' | 'per100'>('amount');
   const unitPrefs = useUnitPrefs();
   const searchId = useRef(0);
 
@@ -124,6 +135,31 @@ export default function RecipeScreen() {
     if (g == null) return;
     const n = servingsForServingGrams(draft, g);
     if (n != null && n > 0) setServingsText(String(n));
+  };
+
+  const setManualField = (k: keyof typeof manual, v: string) =>
+    setManual((prev) => ({ ...prev, [k]: v }));
+
+  const manualGrams = parseDecimal(manual.grams);
+  const canAddManual = manual.name.trim().length > 0 && manualGrams != null && manualGrams > 0;
+
+  /** Add a typed-in ingredient (conversion lives in recipeItemFromManual). */
+  const addManual = () => {
+    if (!canAddManual || manualGrams == null) return;
+    const n = (v: string) => parseDecimal(v) ?? 0;
+    const item = recipeItemFromManual({
+      name: manual.name,
+      grams: manualGrams,
+      basis: manualBasis,
+      macros: {
+        kcal: n(manual.kcal), protein: n(manual.protein),
+        carbs: n(manual.carbs), fat: n(manual.fat),
+      },
+    });
+    if (!item) return;
+    setItems((prev) => [...prev, { ...item, gramsText: fmtGrams(item.grams) }]);
+    setManual({ name: '', grams: '', kcal: '', protein: '', carbs: '', fat: '' });
+    setManualOpen(false);
   };
 
   /** Parse a free-text ingredient list and append everything it resolves. */
@@ -360,6 +396,111 @@ export default function RecipeScreen() {
             <FoodRow key={f.ref} food={f} onPress={() => addIngredient(f)} />
           ))}
 
+          {/* Manual entry — for ingredients neither the database nor the model
+              can place. Kept collapsed so it does not crowd the two paths that
+              need less typing. */}
+          {!manualOpen ? (
+            <Pressable onPress={() => setManualOpen(true)} style={styles.manualToggle}>
+              <ThemedText type="smallBold" themeColor="tint">
+                + Enter an ingredient manually
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <ThemedView type="backgroundElement" style={styles.manualCard}>
+              <View style={styles.itemHeader}>
+                <ThemedText type="smallBold" style={styles.flex}>
+                  Manual ingredient
+                </ThemedText>
+                <Pressable hitSlop={8} onPress={() => setManualOpen(false)}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    ✕
+                  </ThemedText>
+                </Pressable>
+              </View>
+
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+                value={manual.name}
+                onChangeText={(t) => setManualField('name', t)}
+                placeholder="Ingredient name"
+                placeholderTextColor={theme.textSecondary}
+              />
+              <View style={styles.manualRow}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.manualLabel}>
+                  Amount (g)
+                </ThemedText>
+                <TextInput
+                  style={[styles.gramsInput, { backgroundColor: theme.background, color: theme.text }]}
+                  value={manual.grams}
+                  onChangeText={(t) => setManualField('grams', t)}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                />
+              </View>
+
+              <ThemedText type="small" themeColor="textSecondary">
+                Nutrition as written on the label
+              </ThemedText>
+              <View style={styles.manualChips}>
+                {(['amount', 'per100'] as const).map((b) => (
+                  <Pressable
+                    key={b}
+                    onPress={() => setManualBasis(b)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor:
+                          manualBasis === b ? theme.tintSurface : theme.background,
+                        borderColor: manualBasis === b ? theme.tint : 'transparent',
+                      },
+                    ]}>
+                    <ThemedText
+                      type="small"
+                      themeColor={manualBasis === b ? 'tint' : 'textSecondary'}>
+                      {b === 'amount' ? 'For this amount' : 'Per 100 g'}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.manualRow}>
+                {([
+                  ['kcal', 'kcal'],
+                  ['protein', 'P (g)'],
+                  ['carbs', 'C (g)'],
+                  ['fat', 'F (g)'],
+                ] as const).map(([key, label]) => (
+                  <View key={key} style={styles.manualMacro}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {label}
+                    </ThemedText>
+                    <TextInput
+                      style={[styles.macroInput, { backgroundColor: theme.background, color: theme.text }]}
+                      value={manual[key]}
+                      onChangeText={(t) => setManualField(key, t)}
+                      keyboardType="decimal-pad"
+                      selectTextOnFocus
+                    />
+                  </View>
+                ))}
+              </View>
+
+              <Pressable
+                style={[
+                  styles.aiButton,
+                  { backgroundColor: theme.tintSurface, opacity: canAddManual ? 1 : 0.4 },
+                ]}
+                onPress={addManual}
+                disabled={!canAddManual}>
+                <ThemedText type="smallBold" themeColor="tint">
+                  Add ingredient
+                </ThemedText>
+              </Pressable>
+              <ThemedText type="small" themeColor="textSecondary">
+                Leave a macro blank for zero — useful for water, salt and spices.
+              </ThemedText>
+            </ThemedView>
+          )}
+
           {/* Totals */}
           {items.length > 0 && (
             <ThemedView type="backgroundElement" style={styles.totalsCard}>
@@ -411,6 +552,25 @@ const styles = StyleSheet.create({
   servingRow: { flexDirection: 'row', gap: Spacing.three },
   servingCol: { gap: Spacing.one },
   aiButton: { borderRadius: Radius.control, paddingVertical: Spacing.two, alignItems: 'center' },
+  manualToggle: { paddingVertical: Spacing.two },
+  manualCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
+  manualRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  manualLabel: { minWidth: 84 },
+  manualChips: { flexDirection: 'row', gap: Spacing.two },
+  manualMacro: { flex: 1, gap: Spacing.one },
+  macroInput: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  chip: {
+    borderRadius: Radius.control,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
   sectionTitle: { marginTop: Spacing.two },
   itemCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
   itemHeader: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },

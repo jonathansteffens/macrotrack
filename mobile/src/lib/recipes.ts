@@ -87,6 +87,43 @@ export function recipeItemFromEstimate(input: {
 }
 
 /**
+ * Build a recipe item from hand-typed values — the escape hatch for an
+ * ingredient neither the database nor the model can place.
+ *
+ * Items store per-100g so that changing an amount rescales correctly, but
+ * labels state macros per SERVING far more often than per 100 g. `basis` says
+ * which the user copied: 'amount' means the numbers describe `grams` of it and
+ * get converted; 'per100' means they are already per-100g. Getting this
+ * backwards silently misreports the ingredient, which is why it lives here with
+ * a test rather than inline in the screen.
+ */
+export function recipeItemFromManual(input: {
+  name: string;
+  grams: number;
+  basis: 'amount' | 'per100';
+  macros: { kcal: number; protein: number; carbs: number; fat: number };
+}): RecipeItem | null {
+  const { grams, basis } = input;
+  if (!Number.isFinite(grams) || grams <= 0) return null;
+  const f = basis === 'amount' ? 100 / grams : 1;
+  return {
+    foodName: input.name.trim() || 'Ingredient',
+    foodRef: null,
+    grams,
+    per100: {
+      kcal: input.macros.kcal * f,
+      protein: input.macros.protein * f,
+      carbs: input.macros.carbs * f,
+      fat: input.macros.fat * f,
+      // Only the four core macros are asked for; the rest are unknown rather
+      // than zero, matching how an unmatched AI item is stored.
+      fiber: null, sugar: null, sodiumMg: null, satFat: null,
+      cholesterolMg: null, calciumMg: null, ironMg: null, potassiumMg: null,
+    },
+  };
+}
+
+/**
  * Grams in one serving = batch weight ÷ servings.
  *
  * A recipe's serving is defined by how many the batch makes, but what a user
