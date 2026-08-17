@@ -14,3 +14,6 @@ runs/*/config.resolved.json
 unsloth_compiled_cache/
 tools/finetune/sft-*.jsonl
 tools/finetune/*.jsonl
+
+# icon design scratch — regenerate with tools/design/make-icon.py --variants
+tools/design/out/

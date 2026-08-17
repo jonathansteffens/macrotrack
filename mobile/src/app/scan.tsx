@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +20,23 @@ export default function ScanScreen() {
   const meal = params.meal;
 
   const [permission, requestPermission] = useCameraPermissions();
+  // useCameraPermissions() does NOT request on mount (SDK 57 docs) — it only
+  // reports. Without this the scanner opened straight onto "needs camera
+  // access" and the OS dialog never appeared unless the user found the button,
+  // which reads as the app being broken rather than as a permission prompt.
+  //
+  // Ask automatically the FIRST time only, i.e. while the status is still
+  // undetermined. Once the user has actually said no, re-prompting on every
+  // visit would be nagging; that case falls through to the explainer below,
+  // where asking again is an explicit choice.
+  const askedOnce = useRef(false);
+  useEffect(() => {
+    if (!permission || askedOnce.current) return;
+    if (permission.status === 'undetermined') {
+      askedOnce.current = true;
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
   const [status, setStatus] = useState<'scanning' | 'looking_up'>('scanning');
   const [manualCode, setManualCode] = useState('');
   const busy = useRef(false);
@@ -99,14 +116,19 @@ export default function ScanScreen() {
     }
   };
 
-  if (!permission?.granted) {
+  // Still loading the current status: render a blank surface rather than
+  // flashing the "needs camera access" screen for a frame before the real
+  // status (or the OS dialog) arrives.
+  if (!permission) return <ThemedView style={styles.permissionRoot} />;
+
+  if (!permission.granted) {
     return (
       <ThemedView style={styles.permissionRoot}>
         <SafeAreaView style={styles.permissionContent}>
           <ThemedText type="default" style={styles.permissionText}>
             MacroTrack needs camera access to scan barcodes.
           </ThemedText>
-          {permission?.canAskAgain !== false ? (
+          {permission.canAskAgain ? (
             <Pressable
               style={[styles.primaryButton, { backgroundColor: theme.tintSolid }]}
               onPress={requestPermission}>
@@ -115,9 +137,21 @@ export default function ScanScreen() {
               </ThemedText>
             </Pressable>
           ) : (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.permissionText}>
-              Camera access was denied. Enable it in system settings, or type the barcode below.
-            </ThemedText>
+            // The OS will not show its dialog again, so telling the user to
+            // "enable it in settings" without a way to get there is a dead end:
+            // openSettings() drops them on this app's own settings page.
+            <>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.permissionText}>
+                Camera access is off. Turn it on in Settings, or type the barcode below.
+              </ThemedText>
+              <Pressable
+                style={[styles.primaryButton, { backgroundColor: theme.tintSolid }]}
+                onPress={() => Linking.openSettings()}>
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  Open Settings
+                </ThemedText>
+              </Pressable>
+            </>
           )}
           <ManualEntry
             value={manualCode}

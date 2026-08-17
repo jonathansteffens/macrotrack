@@ -8,12 +8,12 @@
     "scheme": "macrotrack",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.jonathansteffens.macrotrack",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#5B5BD6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -61,7 +61,9 @@
         {
           "microphonePermission": "MacroTrack uses the microphone so you can speak your meal instead of typing it.",
           "speechRecognitionPermission": "MacroTrack turns what you say about your meal into editable text, so you can check it before logging.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ]
     ],
