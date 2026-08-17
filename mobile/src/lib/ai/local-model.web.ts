@@ -8,9 +8,18 @@ import { FOOD_CLAIM_SCHEMA } from './schema';
  * llama.rn out of the web bundle entirely.
  */
 
-/** Mirrors local-model.ts — keep the two in sync. */
-export const LOCAL_MODEL_RELEASE_TAG = 'text-v1';
-export const LOCAL_MODEL_TOTAL_BYTES = 529_296_640;
+/**
+ * Mirrors local-model.ts — keep the two in sync.
+ *
+ * These had drifted to text-v1 / the v1 byte size while the native side moved
+ * to text-v3. events.ts stamps LOCAL_MODEL_RELEASE_TAG onto saved estimator
+ * interactions, so a stale constant here is the same class of provenance bug as
+ * the staleness fix in local-model.ts — mislabelled rows rather than skipped
+ * downloads. The web build cannot run the estimator at all, so nothing was
+ * being mislabelled in practice, but the constant should not be a lie.
+ */
+export const LOCAL_MODEL_RELEASE_TAG = 'text-v3';
+export const LOCAL_MODEL_TOTAL_BYTES = 529_296_704;
 
 export type LocalModelStatus = 'ready' | 'missing' | 'unsupported';
 

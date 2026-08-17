@@ -5,6 +5,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 // loaded lazily via dynamic import below).
 import type { CompletionResponseFormat, LlamaContext } from 'llama.rn';
 
+import { stalePruneTargets, type StorageEntry } from './model-storage';
 import { FOOD_CLAIM_SCHEMA } from './schema';
 
 /**
@@ -51,17 +52,77 @@ export class LocalModelUnavailable extends Error {
 }
 
 // ---- File locations ----
+//
+// Model files are stored PER RELEASE TAG: documents/models/<tag>/<filename>.
+//
+// They used to sit at documents/models/<filename> with no tag, and presence was
+// "the filename exists at the expected byte size". That is a corruption guard,
+// not a version check, and it cannot tell two same-size fine-tunes apart — v8
+// (text-v2) and v10 (text-v3) share the filename AND the exact size
+// (529,296,704 bytes), differing only in sha. On a phone that already had v8,
+// bumping the tag therefore left Settings reporting "installed", skipped the
+// download entirely, kept running v8 weights, and still stamped the new tag
+// into every ai_events row — corrupting the provenance of the training export.
+//
+// Scoping the path by tag makes a bump read as 'missing', which is what makes
+// the download actually run. The size check below is unchanged and still does
+// its real job: catching a truncated or corrupt transfer.
 
-function modelsDir(): Directory {
+/** Container for every tag's directory. */
+function modelsRoot(): Directory {
   return new Directory(Paths.document, 'models');
+}
+/** Directory holding the CURRENT tag's files. */
+function modelsDir(): Directory {
+  return new Directory(modelsRoot(), LOCAL_MODEL_RELEASE_TAG);
 }
 function fileFor(f: ModelFile): File {
   return new File(modelsDir(), f.name);
 }
-/** A file counts as present only if it exists AND is the expected size. */
+/**
+ * A file counts as present only if it exists AND is the expected size.
+ *
+ * Unchanged, deliberately: it is the integrity guard against a partial
+ * download. It is no longer also load-bearing for versioning — the tag in the
+ * path does that — so a same-size different-weights build can no longer pass
+ * for an install.
+ */
 function isComplete(f: ModelFile): boolean {
   const file = fileFor(f);
   return file.exists && file.size === f.sizeBytes;
+}
+
+/**
+ * Delete other tags' directories and any legacy untagged file, reclaiming the
+ * ~529 MB an old build leaves behind.
+ *
+ * Only ever called after the current tag is fully downloaded, so a failed or
+ * interrupted update never destroys the model the user still has. Best-effort:
+ * a failure here costs disk space, not correctness, and must not turn a
+ * successful download into a thrown error.
+ */
+function pruneOtherVersions(): void {
+  const root = modelsRoot();
+  if (!root.exists) return;
+  let entries: StorageEntry[];
+  try {
+    entries = root.list().map((e) => ({ name: e.name, isDirectory: e instanceof Directory }));
+  } catch {
+    return;
+  }
+  for (const name of stalePruneTargets(entries, LOCAL_MODEL_RELEASE_TAG)) {
+    try {
+      const dir = new Directory(root, name);
+      if (dir.exists) {
+        dir.delete(); // removes the directory and its contents
+        continue;
+      }
+      const file = new File(root, name);
+      if (file.exists) file.delete();
+    } catch {
+      // leave it; the next successful download tries again
+    }
+  }
 }
 
 // ---- Status / download / delete ----
@@ -108,14 +169,18 @@ export async function downloadLocalModel(onProgress?: (fraction: number) => void
     onProgress?.(Math.min(1, baselineBytes / LOCAL_MODEL_TOTAL_BYTES));
   }
   await releaseLocalContext(); // force a reload against the new files
+  // Only now that the new tag is complete and nothing holds the old weights
+  // open: reclaim the space the previous release was using.
+  pruneOtherVersions();
 }
 
 export async function deleteLocalModel(): Promise<void> {
+  // Release first: the context holds the weights open.
   await releaseLocalContext();
-  for (const f of MODEL_FILES) {
-    const file = fileFor(f);
-    if (file.exists) file.delete();
-  }
+  // Remove every tag, not just the current one — "delete the model" should
+  // reclaim all of it, including anything an earlier release left behind.
+  const root = modelsRoot();
+  if (root.exists) root.delete();
 }
 
 // ---- llama.rn context: lazy singleton + serialized access ----
