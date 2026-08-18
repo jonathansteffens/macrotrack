@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BarChart } from '@/components/bar-chart';
+import { LineChart } from '@/components/line-chart';
 import { SparkLine } from '@/components/spark-line';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -107,11 +107,11 @@ export default function TrendsScreen() {
             <View style={styles.chartHeader}>
               <ThemedText type="smallBold">{m.label}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {goal != null ? 'goal (dashed) · ' : ''}7-day avg (line)
+                {goal != null ? 'goal (dashed) · ' : ''}7-day avg (dotted)
               </ThemedText>
             </View>
             {trends && trends.loggedDays > 0 ? (
-              <BarChart
+              <LineChart
                 values={values}
                 labels={labels}
                 color={m.color}

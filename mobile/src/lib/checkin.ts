@@ -15,15 +15,35 @@ import { getUserDb } from './db';
  * quiet retention, not nagging.
  */
 
-const HOUR_KEY = 'checkin_hour';
+const HOUR_KEY = 'checkin_hour'; // legacy whole-hour setting, read-only now
+const TIME_KEY = 'checkin_time'; // 'H:MM' 24h, or '-1' for off
 const CHANNEL_ID = 'checkin';
 const HORIZON_DAYS = 7;
 
-/** Selectable check-in hours (chips in settings; 8 PM is the suggested pick). */
-export const CHECKIN_HOURS = [18, 19, 20, 21, 22] as const;
+export type CheckinTime = { hour: number; minute: number };
 
-export function checkinLabel(hour: number): string {
-  return `${hour - 12} PM`;
+/** "8:30 PM" — the normalized display form. */
+export function formatCheckinTime(t: CheckinTime): string {
+  const h12 = t.hour % 12 === 0 ? 12 : t.hour % 12;
+  return `${h12}:${String(t.minute).padStart(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}`;
+}
+
+/** Lenient parse: "8pm", "8:30 PM", "20:30" all work; null = unintelligible. */
+export function parseCheckinTime(text: string): CheckinTime | null {
+  const m = /^\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?\.?\s*$/i.exec(text);
+  if (!m) return null;
+  let hour = parseInt(m[1], 10);
+  const minute = m[2] ? parseInt(m[2], 10) : 0;
+  if (minute > 59) return null;
+  const mer = m[3]?.toLowerCase();
+  if (mer) {
+    if (hour < 1 || hour > 12) return null;
+    if (hour === 12) hour = 0;
+    if (mer.startsWith('p')) hour += 12;
+  } else if (hour > 23) {
+    return null;
+  }
+  return { hour, minute };
 }
 
 /** expo-notifications is iOS/Android only — no web support in SDK 57. */
@@ -45,20 +65,28 @@ async function notifications(): Promise<NotificationsModule | null> {
   }
 }
 
-/** The configured check-in hour, or null when the check-in is off (default). */
-export async function getCheckinHour(): Promise<number | null> {
+/** The configured check-in time, or null when the check-in is off (default).
+ *  Falls back to the legacy whole-hour setting from the old chip UI. */
+export async function getCheckinTime(): Promise<CheckinTime | null> {
   const row = await getUserDb().getFirstAsync<{ value: string }>(
-    "SELECT value FROM settings WHERE key = 'checkin_hour'"
+    `SELECT value FROM settings WHERE key = '${TIME_KEY}'`
   );
-  const hour = row ? parseInt(row.value, 10) : NaN;
-  return Number.isFinite(hour) && hour > 0 ? hour : null;
+  if (row) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(row.value);
+    return m ? { hour: parseInt(m[1], 10), minute: parseInt(m[2], 10) } : null;
+  }
+  const legacy = await getUserDb().getFirstAsync<{ value: string }>(
+    `SELECT value FROM settings WHERE key = '${HOUR_KEY}'`
+  );
+  const hour = legacy ? parseInt(legacy.value, 10) : NaN;
+  return Number.isFinite(hour) && hour > 0 ? { hour, minute: 0 } : null;
 }
 
-/** Persist the hour (null = off) and re-sync the scheduled notifications. */
-export async function setCheckinHour(hour: number | null): Promise<void> {
+/** Persist the time (null = off) and re-sync the scheduled notifications. */
+export async function setCheckinTime(t: CheckinTime | null): Promise<void> {
   await getUserDb().runAsync(
-    `INSERT OR REPLACE INTO settings (key, value) VALUES ('${HOUR_KEY}', ?)`,
-    hour == null ? '-1' : String(hour)
+    `INSERT OR REPLACE INTO settings (key, value) VALUES ('${TIME_KEY}', ?)`,
+    t == null ? '-1' : `${t.hour}:${String(t.minute).padStart(2, '0')}`
   );
   await syncCheckinNotification();
 }
@@ -66,7 +94,7 @@ export async function setCheckinHour(hour: number | null): Promise<void> {
 /** True when the check-in is on but the OS permission is (or became) denied. */
 export async function checkinPermissionMissing(): Promise<boolean> {
   if (!checkinSupported()) return false;
-  if ((await getCheckinHour()) == null) return false;
+  if ((await getCheckinTime()) == null) return false;
   const N = await notifications();
   if (!N) return false;
   return !(await N.getPermissionsAsync()).granted;
@@ -95,8 +123,8 @@ export async function syncCheckinNotification(): Promise<void> {
   if (!N) return;
   await N.cancelAllScheduledNotificationsAsync();
 
-  const hour = await getCheckinHour();
-  if (hour == null) return;
+  const time = await getCheckinTime();
+  if (time == null) return;
   if (!(await N.getPermissionsAsync()).granted) return;
 
   if (Platform.OS === 'android') {
@@ -118,7 +146,7 @@ export async function syncCheckinNotification(): Promise<void> {
   for (let i = 0; i < HORIZON_DAYS; i++) {
     const fireAt = new Date(now);
     fireAt.setDate(fireAt.getDate() + i);
-    fireAt.setHours(hour, 0, 0, 0);
+    fireAt.setHours(time.hour, time.minute, 0, 0);
     if (fireAt <= now) continue; // this evening already passed
     if (loggedDays.has(logicalDayKey(fireAt))) continue; // already logged — stay quiet
     await N.scheduleNotificationAsync({

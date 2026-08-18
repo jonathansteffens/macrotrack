@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -46,13 +47,14 @@ import {
 } from '@/lib/ai/local-model';
 import { exportBackup, getLastBackupAt, parseBackup, restoreBackup } from '@/lib/backup';
 import {
-  CHECKIN_HOURS,
-  checkinLabel,
   checkinPermissionMissing,
   checkinSupported,
-  getCheckinHour,
+  formatCheckinTime,
+  getCheckinTime,
+  parseCheckinTime,
   requestCheckinPermission,
-  setCheckinHour,
+  setCheckinTime,
+  type CheckinTime,
 } from '@/lib/checkin';
 import { DAY_END_OPTIONS, dayEndLabel, getDayEndHour, setDayEndHour } from '@/lib/day-end';
 import { exportFoodLog, exportTrainingData } from '@/lib/export';
@@ -67,7 +69,8 @@ export default function SettingsScreen() {
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [dayEnd, setDayEnd] = useState<number | null>(null);
-  const [checkin, setCheckin] = useState<number | null>(null);
+  const [checkin, setCheckin] = useState<CheckinTime | null>(null);
+  const [checkinText, setCheckinText] = useState('');
   const [checkinPermMissing, setCheckinPermMissing] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -78,7 +81,10 @@ export default function SettingsScreen() {
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
     getDayEndHour().then(setDayEnd);
-    getCheckinHour().then(setCheckin);
+    getCheckinTime().then((t) => {
+      setCheckin(t);
+      setCheckinText(t ? formatCheckinTime(t) : '');
+    });
     checkinPermissionMissing().then(setCheckinPermMissing);
     getLastBackupAt().then(setLastBackup);
   }, []);
@@ -96,16 +102,26 @@ export default function SettingsScreen() {
   };
 
   // Also persisted immediately. Turning it on asks for permission right away;
-  // a denial keeps the hour saved but shows the "permission needed" state.
-  const chooseCheckin = async (hour: number | null) => {
-    setCheckin(hour);
-    if (hour != null) {
+  // a denial keeps the time saved but shows the "permission needed" state.
+  const chooseCheckin = async (t: CheckinTime | null) => {
+    setCheckin(t);
+    if (t == null) setCheckinText('');
+    if (t != null) {
       const granted = await requestCheckinPermission();
       setCheckinPermMissing(!granted);
     } else {
       setCheckinPermMissing(false);
     }
-    await setCheckinHour(hour);
+    await setCheckinTime(t);
+  };
+
+  // The typed time applies on blur/submit; garbage leaves the saved setting
+  // alone (the hint under the field explains the accepted formats).
+  const commitCheckinTime = () => {
+    const t = parseCheckinTime(checkinText);
+    if (!t) return;
+    setCheckinText(formatCheckinTime(t));
+    chooseCheckin(t);
   };
 
   const downloadModel = async () => {
@@ -377,24 +393,25 @@ export default function SettingsScreen() {
                     Off
                   </ThemedText>
                 </Pressable>
-                {CHECKIN_HOURS.map((h) => (
-                  <Pressable
-                    key={h}
-                    onPress={() => chooseCheckin(h)}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor:
-                          checkin === h ? theme.tintSurface : theme.backgroundElement,
-                        borderColor: checkin === h ? theme.tint : 'transparent',
-                      },
-                    ]}>
-                    <ThemedText type="small" themeColor={checkin === h ? 'tint' : 'textSecondary'}>
-                      {checkinLabel(h)}
-                    </ThemedText>
-                  </Pressable>
-                ))}
+                <TextInput
+                  style={[
+                    styles.checkinInput,
+                    { backgroundColor: theme.backgroundElement, color: theme.text },
+                  ]}
+                  value={checkinText}
+                  onChangeText={setCheckinText}
+                  onEndEditing={commitCheckinTime}
+                  onSubmitEditing={commitCheckinTime}
+                  placeholder="8:00 PM"
+                  placeholderTextColor={theme.textSecondary}
+                  autoCapitalize="none"
+                />
               </View>
+              {checkinText.trim() !== '' && parseCheckinTime(checkinText) == null && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  Enter a time like 8:30 PM or 20:30.
+                </ThemedText>
+              )}
               {checkinPermMissing && (
                 <ThemedText type="small" style={{ color: MacroColors.carbs }}>
                   ⚠ Notifications are blocked for MacroTrack. Allow them in your device
@@ -599,6 +616,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderWidth: 1,
+  },
+  checkinInput: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 14,
+    minWidth: 110,
+    textAlign: 'center',
   },
   saveButton: {
     borderRadius: Radius.control,

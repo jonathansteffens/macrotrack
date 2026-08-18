@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 
 /**
- * Small line chart scaled to the data's own min/max (unlike BarChart's
+ * Small line chart scaled to the data's own min/max (unlike LineChart's
  * zero-based scale) — right for slow-moving series like body weight.
  * Zero values are treated as gaps.
  */
