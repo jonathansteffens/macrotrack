@@ -17,3 +17,5 @@ tools/finetune/*.jsonl
 
 # icon design scratch — regenerate with tools/design/make-icon.py --variants
 tools/design/out/
+
+__pycache__/
