@@ -1,5 +1,6 @@
 import { getUserDb } from './db';
 import { fmtGrams, rescaleMacros, scaleMacros, ZERO_MACROS } from './macros';
+import type { NutrientKey } from './nutrients';
 import type { FoodItem, LogEntry, Macros, MealType } from './types';
 
 type EntryRow = {
@@ -349,22 +350,39 @@ export async function updateEntryMeal(id: number, meal: MealType): Promise<void>
   await getUserDb().runAsync('UPDATE log_entries SET meal = ? WHERE id = ?', meal, id);
 }
 
+const MACRO_COLUMNS: Record<NutrientKey, string> = {
+  kcal: 'kcal',
+  protein: 'protein',
+  carbs: 'carbs',
+  fat: 'fat',
+  fiber: 'fiber',
+  sugar: 'sugar',
+  sodiumMg: 'sodium_mg',
+  satFat: 'sat_fat',
+  cholesterolMg: 'cholesterol_mg',
+  calciumMg: 'calcium_mg',
+  ironMg: 'iron_mg',
+  potassiumMg: 'potassium_mg',
+};
+
 /**
  * Hand-corrected nutrition for one logged entry — the universal escape hatch
  * when the source data was wrong (bad OFF entry, off USDA row, AI estimate).
- * Only the big four are edited; stored micros stay as-is rather than being
- * zeroed — slightly stale detail beats destroyed detail for trends.
+ * Only the nutrients passed are written; everything else stays as-is —
+ * slightly stale detail beats destroyed detail for trends.
  */
 export async function updateEntryMacros(
   id: number,
-  m: { kcal: number; protein: number; carbs: number; fat: number }
+  values: Partial<Record<NutrientKey, number>>
 ): Promise<void> {
+  const cols = (Object.entries(values) as [NutrientKey, number][]).filter(([, v]) =>
+    Number.isFinite(v)
+  );
+  if (cols.length === 0) return;
+  const set = cols.map(([k]) => `${MACRO_COLUMNS[k]} = ?`).join(', ');
   await getUserDb().runAsync(
-    'UPDATE log_entries SET kcal = ?, protein = ?, carbs = ?, fat = ? WHERE id = ?',
-    m.kcal,
-    m.protein,
-    m.carbs,
-    m.fat,
+    `UPDATE log_entries SET ${set} WHERE id = ?`,
+    ...cols.map(([, v]) => v),
     id
   );
 }

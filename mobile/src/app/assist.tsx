@@ -38,6 +38,8 @@ import { logFood, logAiEstimate } from '@/lib/log';
 import { amountLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
+import { trackedNutrientLine } from '@/lib/nutrients';
+import { getTracking, type TrackingConfig } from '@/lib/tracking';
 import { MEAL_LABELS, MEALS, mealForTime, type FoodItem, type MealType } from '@/lib/types';
 
 type Phase = 'input' | 'estimating' | 'review';
@@ -584,9 +586,13 @@ function ItemCard({
   onRevertUsual: () => void;
   onChangeFood: () => void;
 }) {
-
   const theme = useTheme();
   const macros = resolvedMacros(item);
+  // The macro summary shows the user's TRACKED set, same as everywhere else.
+  const [trackingCfg, setTrackingCfg] = useState<TrackingConfig | null>(null);
+  useEffect(() => {
+    getTracking().then(setTrackingCfg);
+  }, []);
   // Below the prompt's "real uncertainty" line — invite an edit, don't block.
   const lowConfidence = item.claim.confidence < 0.6;
 
@@ -615,10 +621,7 @@ function ItemCard({
           match={item.match}
         />
         <View style={styles.itemMacros}>
-          <ThemedText type="small">
-            {fmtKcal(macros.kcal)} kcal · P {fmtGrams(macros.protein)} · C {fmtGrams(macros.carbs)}{' '}
-            · F {fmtGrams(macros.fat)}
-          </ThemedText>
+          <ThemedText type="small">{trackedNutrientLine(macros, trackingCfg)}</ThemedText>
         </View>
       </View>
 

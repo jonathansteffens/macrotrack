@@ -11,8 +11,10 @@
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "MacroTrack turns what you say about your meal into editable text, so you can check it before logging.",
-        "NSMicrophoneUsageDescription": "MacroTrack uses the microphone so you can speak your meal instead of typing it."
-      }
+        "NSMicrophoneUsageDescription": "MacroTrack uses the microphone so you can speak your meal instead of typing it.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.jonathansteffens.macrotrack"
     },
     "android": {
       "package": "com.jonathansteffens.macrotrack",
@@ -27,7 +29,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "output": "static",

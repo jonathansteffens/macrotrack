@@ -20,6 +20,13 @@ import {
 } from '@/lib/log';
 import { getFoodByRef } from '@/lib/foods';
 import { fmtGrams, fmtKcal, parseDecimal, rescaleMacros } from '@/lib/macros';
+import {
+  nutrientValue,
+  trackedNutrientLine,
+  trackedNutrients,
+  type NutrientKey,
+} from '@/lib/nutrients';
+import { getTracking, type TrackingConfig } from '@/lib/tracking';
 import { MEAL_LABELS, MEALS, type FoodItem, type LogEntry, type MealType } from '@/lib/types';
 
 export default function EntryScreen() {
@@ -34,13 +41,13 @@ export default function EntryScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   // Direct nutrition editing — the escape hatch when the SOURCE data was wrong
   // (bad OFF entry, off USDA row, AI estimate). null → not editing; fields are
-  // absolute values for the entry at its current amount.
-  const [macroEdit, setMacroEdit] = useState<{
-    kcal: string;
-    protein: string;
-    carbs: string;
-    fat: string;
-  } | null>(null);
+  // absolute values for the entry at its current amount, keyed by the TRACKED
+  // nutrient set (whichever nutrients the user picked are their editable set).
+  const [macroEdit, setMacroEdit] = useState<Partial<Record<NutrientKey, string>> | null>(null);
+  const [trackingCfg, setTrackingCfg] = useState<TrackingConfig | null>(null);
+  useEffect(() => {
+    getTracking().then(setTrackingCfg);
+  }, []);
 
   useEffect(() => {
     getEntry(Number(params.id)).then((e) => {
@@ -81,14 +88,14 @@ export default function EntryScreen() {
     }
     // Typed nutrition wins over any amount rescale above: the user's numbers
     // are absolute for the entry as displayed. Unparseable fields keep the
-    // previewed value rather than silently zeroing a macro.
+    // previewed value rather than silently zeroing a nutrient.
     if (macroEdit) {
-      await updateEntryMacros(entry.id, {
-        kcal: parseDecimal(macroEdit.kcal) ?? preview.kcal,
-        protein: parseDecimal(macroEdit.protein) ?? preview.protein,
-        carbs: parseDecimal(macroEdit.carbs) ?? preview.carbs,
-        fat: parseDecimal(macroEdit.fat) ?? preview.fat,
-      });
+      const values: Partial<Record<NutrientKey, number>> = {};
+      for (const n of trackedNutrients(trackingCfg)) {
+        const typed = macroEdit[n.key];
+        values[n.key] = (typed != null ? parseDecimal(typed) : null) ?? nutrientValue(preview, n.key);
+      }
+      await updateEntryMacros(entry.id, values);
     }
     if (meal !== entry.meal) {
       await updateEntryMeal(entry.id, meal);
@@ -173,18 +180,25 @@ export default function EntryScreen() {
         {macroEdit == null ? (
           <View style={styles.previewRow}>
             <ThemedText type="small" style={styles.flex}>
-              {fmtKcal(preview.kcal)} kcal · P {fmtGrams(preview.protein)} g · C{' '}
-              {fmtGrams(preview.carbs)} g · F {fmtGrams(preview.fat)} g
+              {trackedNutrientLine(preview, trackingCfg)}
             </ThemedText>
             <Pressable
               hitSlop={8}
               onPress={() =>
-                setMacroEdit({
-                  kcal: fmtKcal(preview.kcal),
-                  protein: fmtGrams(preview.protein),
-                  carbs: fmtGrams(preview.carbs),
-                  fat: fmtGrams(preview.fat),
-                })
+                setMacroEdit(
+                  Object.fromEntries(
+                    trackedNutrients(trackingCfg).map((n) => {
+                      const v = nutrientValue(preview, n.key);
+                      const text =
+                        n.key === 'kcal'
+                          ? fmtKcal(v)
+                          : n.unit === 'mg'
+                            ? String(Math.round(v))
+                            : fmtGrams(v);
+                      return [n.key, text];
+                    })
+                  )
+                )
               }>
               <ThemedText type="small" themeColor="tint">
                 Edit
@@ -193,25 +207,18 @@ export default function EntryScreen() {
           </View>
         ) : (
           <View style={styles.macroGrid}>
-            {(
-              [
-                ['Calories', 'kcal'],
-                ['Protein (g)', 'protein'],
-                ['Carbs (g)', 'carbs'],
-                ['Fat (g)', 'fat'],
-              ] as const
-            ).map(([label, key]) => (
-              <View key={key} style={styles.macroField}>
+            {trackedNutrients(trackingCfg).map((n) => (
+              <View key={n.key} style={styles.macroField}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {label}
+                  {n.key === 'kcal' ? 'Calories' : `${n.label}${n.unit ? ` (${n.unit})` : ''}`}
                 </ThemedText>
                 <TextInput
                   style={[
                     styles.macroInput,
                     { backgroundColor: theme.background, color: theme.text },
                   ]}
-                  value={macroEdit[key]}
-                  onChangeText={(v) => setMacroEdit((m) => (m ? { ...m, [key]: v } : m))}
+                  value={macroEdit[n.key] ?? ''}
+                  onChangeText={(v) => setMacroEdit((m) => (m ? { ...m, [n.key]: v } : m))}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
                 />

@@ -1,4 +1,8 @@
 import { MacroColors } from '@/constants/theme';
+import { fmtGrams, fmtKcal } from './macros';
+// Type-only: tracking.ts imports NUTRIENTS at runtime, so a value import here
+// would be a cycle.
+import type { TrackingConfig } from './tracking';
 import type { Macros } from './types';
 
 /**
@@ -56,4 +60,24 @@ export const CORE_NUTRIENT_KEYS: NutrientKey[] = ['kcal', 'protein', 'carbs', 'f
 /** Read a nutrient's amount off a Macros total; missing/unknown reads as 0. */
 export function nutrientValue(m: Macros, key: NutrientKey): number {
   return m[key] ?? 0;
+}
+
+/** The nutrients a summary line should show: the user's tracked set (defaults
+ *  while prefs load), with calories as the never-empty fallback. */
+export function trackedNutrients(tracking: TrackingConfig | null): NutrientDef[] {
+  const defs = NUTRIENTS.filter((n) => tracking?.[n.key].enabled ?? n.defaultEnabled);
+  return defs.length > 0 ? defs : NUTRIENTS.filter((n) => n.key === 'kcal');
+}
+
+/** "245 kcal · Protein 32 g · Fiber 3 g" — tracked nutrients only, so every
+ *  summary line in the app shows the user's chosen set, not the classic four. */
+export function trackedNutrientLine(m: Macros, tracking: TrackingConfig | null): string {
+  return trackedNutrients(tracking)
+    .map((n) => {
+      const v = nutrientValue(m, n.key);
+      if (n.key === 'kcal') return `${fmtKcal(v)} kcal`;
+      const val = n.unit === 'mg' ? String(Math.round(v)) : fmtGrams(v);
+      return `${n.label} ${val} ${n.unit}`;
+    })
+    .join(' · ');
 }
