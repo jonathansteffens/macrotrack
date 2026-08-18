@@ -2,13 +2,17 @@
   "expo": {
     "name": "MacroTrack",
     "slug": "macrotrack",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "macrotrack",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "MacroTrack turns what you say about your meal into editable text, so you can check it before logging.",
+        "NSMicrophoneUsageDescription": "MacroTrack uses the microphone so you can speak your meal instead of typing it."
+      }
     },
     "android": {
       "package": "com.jonathansteffens.macrotrack",
@@ -65,7 +69,10 @@
             "com.google.android.googlequicksearchbox"
           ]
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -77,6 +84,12 @@
         "projectId": "700709bd-1ab6-42e9-b68a-e06bdcfc743e"
       }
     },
-    "owner": "jonathansteffenss-team"
+    "owner": "jonathansteffenss-team",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/700709bd-1ab6-42e9-b68a-e06bdcfc743e"
+    }
   }
 }
