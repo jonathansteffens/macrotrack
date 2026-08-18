@@ -12,7 +12,7 @@ and downsamples with LANCZOS, which is what keeps the arc edges clean; PIL's
 arc() has butt caps, so round caps are drawn as explicit circles at each end.
 
   python3 tools/design/make-icon.py --variants   # candidate previews
-  python3 tools/design/make-icon.py --emit A     # write the real asset set
+  python3 tools/design/make-icon.py --emit E     # write the real asset set
 
 Asset rules (Expo SDK 57 docs):
   icon.png                  1024x1024, fills the square, NO transparency
@@ -28,7 +28,11 @@ Asset rules (Expo SDK 57 docs):
 import argparse
 import math
 import os
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+
+# Variant E's monogram. Windows-only path — this generator runs on Jon's
+# Windows box; swap for a bundled TTF if that ever changes.
+M_FONT = r'C:\Windows\Fonts\seguisb.ttf'  # Segoe UI Semibold
 
 # ---- brand (mirrors mobile/src/constants/theme.ts) ----
 IRIS = (0x5B, 0x5B, 0xD6)
@@ -60,6 +64,14 @@ def _ring(draw, cx, cy, r_out, width, color, start_deg, sweep_deg, round_caps=Tr
         draw.ellipse((px - width / 2, py - width / 2, px + width / 2, py + width / 2), fill=color)
 
 
+def _draw_m(d, s: float, span: float, color) -> None:
+    """Centered M, sized relative to the ring it sits in (variant E)."""
+    font = ImageFont.truetype(M_FONT, int(s * 0.34 * (span / 0.80)))
+    bbox = d.textbbox((0, 0), 'M', font=font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    d.text(((s - w) / 2 - bbox[0], (s - h) / 2 - bbox[1]), 'M', font=font, fill=color)
+
+
 def render(variant: str, size: int, *, transparent=False, safe=False, mono=False) -> Image.Image:
     """
     safe=True shrinks the mark into Android's adaptive-icon safe zone.
@@ -67,7 +79,7 @@ def render(variant: str, size: int, *, transparent=False, safe=False, mono=False
     """
     s = size * SS
     bg_map = {
-        'A': WHITE, 'B': IRIS, 'C': WHITE, 'D': WHITE,
+        'A': WHITE, 'B': IRIS, 'C': WHITE, 'D': WHITE, 'E': IRIS,
     }
     bg = bg_map[variant]
     img = Image.new('RGBA', (s, s), (0, 0, 0, 0) if (transparent or mono) else bg + (255,))
@@ -87,11 +99,19 @@ def render(variant: str, size: int, *, transparent=False, safe=False, mono=False
     sweep = 360 - gap
 
     if mono:
-        _ring(d, c, c, r, stroke, WHITE + (255,), start, sweep)
+        st = r * 0.26 if variant == 'E' else stroke
+        _ring(d, c, c, r, st, WHITE + (255,), start, sweep)
+        if variant == 'E':
+            _draw_m(d, s, span, WHITE + (255,))
     elif variant == 'A':
         _ring(d, c, c, r, stroke, IRIS + (255,), start, sweep)
     elif variant == 'B':
         _ring(d, c, c, r, stroke, WHITE + (255,), start, sweep)
+    elif variant == 'E':
+        # B's ring, slightly lighter (0.26 vs 0.30), with the monogram inside —
+        # the "M3 tight" balance from the icon exploration rounds.
+        _ring(d, c, c, r, r * 0.26, WHITE + (255,), start, sweep)
+        _draw_m(d, s, span, WHITE + (255,))
     elif variant == 'C':
         # Three macro arcs, in the order the app lists them (P/C/F), separated by
         # small gaps. Colourful enough to read as "nutrition" at a glance.
@@ -127,7 +147,7 @@ def main():
     os.makedirs(args.outdir, exist_ok=True)
 
     if args.variants:
-        for v in 'ABCD':
+        for v in 'ABCDE':
             for px in (512, 180, 48):
                 render(v, px).save(f'{args.outdir}/variant-{v}-{px}.png')
         print(f'wrote candidate previews to {args.outdir}/')
@@ -139,7 +159,7 @@ def main():
         render(v, 1024).save(f'{assets}/icon.png')
         # Android adaptive: foreground art inside the safe zone, flat background.
         render(v, 1024, transparent=True, safe=True).save(f'{assets}/android-icon-foreground.png')
-        bg = IRIS if v == 'B' else WHITE
+        bg = IRIS if v in ('B', 'E') else WHITE
         Image.new('RGB', (1024, 1024), bg).save(f'{assets}/android-icon-background.png')
         render(v, 1024, mono=True, safe=True).save(f'{assets}/android-icon-monochrome.png')
         render(v, 48).save(f'{assets}/favicon.png')

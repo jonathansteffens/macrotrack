@@ -21,7 +21,7 @@ import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { defaultAmountUnit, formatAmountValue, gramsToUnit } from '@/lib/units';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
-import { CORE_NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
+import { NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
 import { getTracking, type TrackingConfig } from '@/lib/tracking';
 import {
   MEAL_LABELS,
@@ -30,27 +30,11 @@ import {
   type FoodItem,
   type Macros,
   type MealType,
+  type Portion,
 } from '@/lib/types';
-
-/** The four core macros have their own cells; everything else lists here. */
-const CORE_KEYS = new Set<NutrientKey>(CORE_NUTRIENT_KEYS);
 
 /** Grams per ounce — the amount field can be entered in oz for weight foods. */
 const OZ_TO_G = 28.3495;
-
-/** "Fiber 3 g · Sodium 120 mg · …" for non-core nutrients the user TRACKS and
- *  that have data — a nutrient nobody asked for is noise on this screen. */
-function extraNutrientLine(m: Macros, tracking: TrackingConfig | null): string {
-  return NUTRIENTS.filter(
-    (n) => !CORE_KEYS.has(n.key) && m[n.key] != null && tracking?.[n.key].enabled
-  )
-    .map((n) => {
-      const v = m[n.key] as number;
-      const val = n.unit === 'mg' ? String(Math.round(v)) : fmtGrams(v);
-      return `${n.label} ${val}${n.unit ? ` ${n.unit}` : ''}`;
-    })
-    .join('  ·  ');
-}
 
 /** One preview value in the nutrient's own display format. */
 function previewValue(m: Macros | null, key: NutrientKey, unit: string): string {
@@ -58,6 +42,25 @@ function previewValue(m: Macros | null, key: NutrientKey, unit: string): string 
   const v = m[key] ?? 0;
   if (key === 'kcal') return fmtKcal(v);
   return unit === 'mg' ? `${Math.round(v)} mg` : `${fmtGrams(v)} ${unit}`;
+}
+
+/** Chip text for a portion: the label serving reads simply "servings"; a
+ *  household portion keeps its name. Gram equivalents live in the caption
+ *  line under the amount row, not crammed into every chip. */
+function portionChipLabel(p: Portion): string {
+  return p.label.startsWith('1 serving') ? 'servings' : p.label;
+}
+
+/**
+ * The descriptive half of an OFF serving label, minus the gram restatement:
+ * "1 serving (0.5 package (55g))" → "0.5 package". Null when the label
+ * carries no description beyond the weight ("1 serving (237.0g)").
+ */
+function servingMeaning(p: Portion): string | null {
+  const m = /^1 serving \((.+)\)$/.exec(p.label);
+  if (!m) return null;
+  const text = m[1].replace(/\s*\(?\d+(?:\.\d+)?\s*(?:g|ml)\s*\)?\s*$/i, '').trim();
+  return text || null;
 }
 
 export default function FoodScreen() {
@@ -243,7 +246,9 @@ export default function FoodScreen() {
             </View>
           )}
 
-          {/* Amount + unit */}
+          {/* Amount + unit: "number — unit word", chips switch the unit, and
+              the caption below explains what a serving is. Gram clutter lives
+              in the caption (or the g chip), never beside every chip. */}
           <View style={styles.amountRow}>
             <TextInput
               style={[
@@ -255,6 +260,15 @@ export default function FoodScreen() {
               keyboardType="decimal-pad"
               selectTextOnFocus
             />
+            <ThemedText type="small" themeColor="textSecondary">
+              {unitIdx === 0
+                ? weighUnit === 'g'
+                  ? unitLabel
+                  : weighUnit === 'oz'
+                    ? 'oz'
+                    : 'fl oz'
+                : portionChipLabel(portions[unitIdx - 1])}
+            </ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.unitChips}>
                 <UnitChip
@@ -269,7 +283,7 @@ export default function FoodScreen() {
                 {portions.map((p, i) => (
                   <UnitChip
                     key={i}
-                    label={`${p.label} (${fmtGrams(p.grams)} ${unitLabel})`}
+                    label={portionChipLabel(p)}
                     selected={unitIdx === i + 1}
                     onPress={() => {
                       setUnitIdx(i + 1);
@@ -280,6 +294,18 @@ export default function FoodScreen() {
               </View>
             </ScrollView>
           </View>
+          {unitIdx > 0 &&
+            (() => {
+              const p = portions[unitIdx - 1];
+              const caption = p.label.startsWith('1 serving')
+                ? `1 serving = ${servingMeaning(p) ?? `${fmtGrams(p.grams)} ${unitLabel}`}`
+                : `${p.label} = ${fmtGrams(p.grams)} ${unitLabel}`;
+              return (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {caption}
+                </ThemedText>
+              );
+            })()}
           {showOzToggle && (
             <View style={styles.weighToggle}>
               <ThemedText type="small" themeColor="textSecondary">
@@ -296,13 +322,14 @@ export default function FoodScreen() {
           )}
           <PortionAnchors />
 
-          {/* Nutrition preview — tracked nutrients only. If somehow no core
-              nutrient is tracked, calories still shows: a food preview with no
-              numbers at all would be useless. */}
+          {/* Nutrition preview — every TRACKED nutrient gets the same cell
+              treatment (no big-four/fine-print split: whichever four the user
+              picked ARE their big four). Wraps beyond one row. Calories is the
+              fallback so the card can never be empty. */}
           <ThemedView type="backgroundElement" style={styles.previewCard}>
             {(() => {
               const cells = NUTRIENTS.filter(
-                (n) => CORE_KEYS.has(n.key) && (tracking?.[n.key].enabled ?? true)
+                (n) => tracking?.[n.key].enabled ?? n.defaultEnabled
               );
               const shown = cells.length > 0 ? cells : NUTRIENTS.filter((n) => n.key === 'kcal');
               return shown.map((n) => (
@@ -315,11 +342,6 @@ export default function FoodScreen() {
               ));
             })()}
           </ThemedView>
-          {preview && extraNutrientLine(preview, tracking) !== '' && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {extraNutrientLine(preview, tracking)}
-            </ThemedText>
-          )}
 
           {/* Meal selector */}
           <View style={styles.mealChips}>
@@ -448,11 +470,15 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: Spacing.three,
     borderRadius: Radius.card,
     padding: Spacing.three,
   },
   previewCell: {
-    flex: 1,
+    // Fixed quarter-width (not flex) so a fifth tracked nutrient wraps into a
+    // clean second row instead of squeezing the first.
+    width: '25%',
     alignItems: 'center',
     gap: 2,
   },
