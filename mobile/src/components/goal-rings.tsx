@@ -3,33 +3,25 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from './themed-text';
 
-import { Fonts, MacroColors, Spacing } from '@/constants/theme';
+import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fmtKcal } from '@/lib/macros';
-import { NUTRIENTS_BY_KEY } from '@/lib/nutrients';
 import type { TrackingConfig } from '@/lib/tracking';
 import type { Macros } from '@/lib/types';
 
 /**
  * The Today-screen signature visual: a hero calorie ring (brand iris) with the
- * day's total as a big rounded numeral, flanked by mini-rings for protein,
- * carbs, and fat in their data colors.
+ * day's total as a big rounded numeral. Every other tracked nutrient renders
+ * as a MacroBar below the ring — one consistent secondary treatment (the old
+ * flanking mini-rings read as clutter next to the hero).
  *
  * Over-goal never laps in the same hue: the ring completes, then the overflow
  * fraction is drawn as a danger arc from 12 o'clock on top of it, and the
  * center gains an explicit "+N over" line — color is never the only cue.
- *
- * Respects tracked-nutrient settings: an untracked nutrient's ring is simply
- * absent, and a goal-less nutrient shows a static track with its amount (there
- * is no progress to draw toward nothing).
  */
 
 const HERO_SIZE = 150;
 const HERO_STROKE = 13;
-const MINI_SIZE = 34;
-const MINI_STROKE = 4.5;
-
-const MACRO_RING_KEYS = ['protein', 'carbs', 'fat'] as const;
 
 /** One SVG progress ring: track, progress arc, and danger overflow overlay. */
 function Ring({
@@ -96,26 +88,15 @@ export function GoalRings({ totals, tracking }: { totals: Macros; tracking: Trac
   const theme = useTheme();
 
   const kcalCfg = tracking.kcal;
-  const macroRows = MACRO_RING_KEYS.filter((k) => tracking[k].enabled);
-  if (!kcalCfg.enabled && macroRows.length === 0) return null;
+  if (!kcalCfg.enabled) return null;
 
   const kcalGoal = kcalCfg.goal;
   const over = kcalGoal != null && kcalGoal > 0 && totals.kcal > kcalGoal;
   const left = kcalGoal != null ? kcalGoal - totals.kcal : null;
 
-  const a11y = [
-    kcalCfg.enabled
-      ? `${fmtKcal(totals.kcal)} calories${kcalGoal != null ? ` of a ${fmtKcal(kcalGoal)} goal` : ''}`
-      : null,
-    ...macroRows.map((k) => {
-      const def = NUTRIENTS_BY_KEY[k];
-      const goal = tracking[k].goal;
-      const v = Math.round(totals[k]);
-      return `${def.label} ${v}${goal != null ? ` of ${Math.round(goal)}` : ''} ${def.unit}`;
-    }),
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const a11y = `${fmtKcal(totals.kcal)} calories${
+    kcalGoal != null ? ` of a ${fmtKcal(kcalGoal)} goal` : ''
+  }`;
 
   return (
     <View style={styles.row} accessible accessibilityLabel={a11y}>
@@ -157,50 +138,13 @@ export function GoalRings({ totals, tracking }: { totals: Macros; tracking: Trac
           </View>
         </View>
       )}
-
-      {macroRows.length > 0 && (
-        <View style={styles.miniColumn}>
-          {macroRows.map((k) => {
-            const def = NUTRIENTS_BY_KEY[k];
-            const goal = tracking[k].goal;
-            const v = totals[k];
-            const macroOver = goal != null && goal > 0 && v > goal;
-            return (
-              <View key={k} style={styles.miniRow}>
-                <Ring
-                  size={MINI_SIZE}
-                  stroke={MINI_STROKE}
-                  value={v}
-                  goal={goal}
-                  color={MacroColors[k]}
-                  trackColor={theme.backgroundSelected}
-                  overflowColor={theme.danger}
-                />
-                <View>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {def.label}
-                  </ThemedText>
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.miniValue, macroOver && { color: theme.danger }]}>
-                    {Math.round(v)}
-                    {goal != null ? ` / ${Math.round(goal)}` : ''} {def.unit}
-                  </ThemedText>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
     paddingVertical: Spacing.two,
   },
   hero: {
@@ -228,16 +172,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '700',
-  },
-  miniColumn: {
-    gap: Spacing.three,
-  },
-  miniRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two + 2,
-  },
-  miniValue: {
-    fontVariant: ['tabular-nums'],
   },
 });

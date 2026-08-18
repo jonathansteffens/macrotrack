@@ -127,12 +127,9 @@ export default function TodayScreen() {
     }, [load])
   );
 
-  // The ring header owns calories + the classic macros; the bar list below it
-  // carries the per-nutrient detail for everything else the user tracks.
-  const RING_KEYS = ['kcal', 'protein', 'carbs', 'fat'];
-  const detailNutrients = NUTRIENTS.filter(
-    (n) => tracking[n.key].enabled && !RING_KEYS.includes(n.key)
-  );
+  // The hero ring owns calories alone; every other tracked nutrient is a bar
+  // below it — one consistent secondary treatment instead of mini-rings.
+  const detailNutrients = NUTRIENTS.filter((n) => tracking[n.key].enabled && n.key !== 'kcal');
   const dayEmpty = entries.length === 0;
 
   return (
