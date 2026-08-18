@@ -83,8 +83,43 @@ export const foodClassLabel = (c: FoodClass): string => CLASS_LABELS[c];
 
 function singularize(s: string): string {
   if (s.endsWith('ies')) return `${s.slice(0, -3)}y`;
-  if (s.endsWith('s') && !s.endsWith('ss')) return s.slice(0, -1);
+  // -ss and -us endings aren't plurals ("asparagus" must not become "asparagu").
+  if (s.endsWith('s') && !s.endsWith('ss') && !s.endsWith('us')) return s.slice(0, -1);
   return s;
+}
+
+// Words that are never the thing being counted. JUNK are qualifier tails to
+// drop ("can drained solids" → "can"); GENERIC means "no real noun here" and
+// the caller should fall back (a chip may not read "larges" or "items").
+const NOUN_JUNK = new Set([
+  'eaten', 'cooked', 'raw', 'drained', 'only', 'yield', 'refuse', 'content',
+  'contents', 'solid', 'solids', 'unheated', 'prepared', 'frozen', 'ns', 'nfs',
+  'size', 'boneless', 'skinless',
+]);
+const NOUN_GENERIC = new Set([
+  'piece', 'pieces', 'unit', 'units', 'item', 'items', 'serving', 'servings',
+  'size', 'large', 'medium', 'small', 'regular', 'extra', 'thin', 'thick',
+  'snack', 'or', 'and',
+]);
+
+/**
+ * Distill a label phrase to the noun someone would count in:
+ *   "breast, NS as to skin eaten"  → "breast"
+ *   "large or thick slice"         → "slice"   (English noun phrases are head-final)
+ *   "thigh without skin"           → "thigh"
+ *   "slice 1/4 of pie"             → "slice"
+ *   "item" / "large"               → ""        (nothing noun-like — caller falls back)
+ */
+export function headNoun(text: string): string {
+  let s = text.toLowerCase().split(/[,(]/)[0];
+  s = s.split(/\s+(?:with|without|per|from|of|in)\s+/)[0];
+  s = s.replace(/["']/g, ' ').split(/\d/)[0];
+  let words = s.trim().split(/\s+/).filter(Boolean);
+  // Junk-check the singular form so plural qualifiers ("yields") drop too.
+  while (words.length > 0 && NOUN_JUNK.has(singularize(words[words.length - 1]))) words.pop();
+  if (words.length > 2) words = [words[words.length - 1]];
+  if (words.length === 0 || words.every((w) => NOUN_GENERIC.has(w))) return '';
+  return singularize(words.join(' '));
 }
 
 /**
@@ -100,11 +135,16 @@ function pieceFromPortions(match: FoodItem | null): { perUnit: number; noun: str
     if (!m) continue;
     const n = Number(m[1]);
     const label = m[2].toLowerCase();
-    if (!n || /\b(cup|tbsp|tablespoon|tsp|teaspoon|fl oz|fluid|oz|ounce|gram|ml|liter|quart|pint)\b/.test(label)) continue;
-    // The noun is the head of the portion text — qualifiers after a comma or
-    // paren ("NS as to skin eaten", "(yield after cooking)") are not nouns.
-    const noun = label.split(/[,(]/)[0].trim();
-    return { perUnit: p.grams / n, noun: noun && noun !== 'unit' ? singularize(noun) : 'piece' };
+    // Measures are not pieces — "1 cup" or "1 lb" of something countable is
+    // still weight/volume entry, which the oz/g chips already own.
+    if (
+      !n ||
+      /\b(cup|tbsp|tablespoon|tsp|teaspoon|fl oz|fluid|oz|ounce|gram|ml|liter|quart|pint|lb|lbs|pound|pounds|inch|inches|cubic)\b/.test(
+        label
+      )
+    )
+      continue;
+    return { perUnit: p.grams / n, noun: headNoun(label) || 'piece' };
   }
   return null;
 }
@@ -264,18 +304,14 @@ export function formatAmount(
 }
 
 /** The noun to count in ("nugget", "breast", "egg"): curated table first, then
- *  the matched row's unit portion, then the head of the name. */
+ *  the matched row's unit portion, then the head of the name — all through the
+ *  same distiller, so a qualifier word can never become the counting noun. */
 export function pieceNoun(name: string, match: FoodItem | null): string {
   const curated = lookupPiece(name, null);
   if (curated?.unit) return curated.unit;
   const fromPortion = pieceFromPortions(match)?.noun;
   if (fromPortion && fromPortion !== 'piece') return fromPortion;
-  // Name fallback: only the head before any comma/paren — USDA names trail
-  // qualifiers ("Chicken breast, NS as to cooking method, skin not eaten"),
-  // and "eaten" must never become the counting noun.
-  const head = String(name).split(/[,(]/)[0].trim();
-  const last = head.split(/\s+/).pop() ?? 'piece';
-  return singularize(last.toLowerCase()) || 'piece';
+  return headNoun(String(name)) || 'piece';
 }
 
 /** One-line label combining both, e.g. "12 fl oz (355 g)". */

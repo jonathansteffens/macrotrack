@@ -162,8 +162,17 @@ console.log('piece nouns:');
   eq(
     'name fallback cuts at the first comma',
     U.pieceNoun('Chicken breast, skin not eaten', { category: null, unit: 'g', portions: [] }),
-    'breast'
+    'chicken breast'
   );
+  // Families found by auditing all 8k countable foods.db rows (2026-08-18):
+  eq('head-final phrases reduce', U.headNoun('large or thick slice'), 'slice');
+  eq('prepositional tails cut', U.headNoun('thigh without skin'), 'thigh');
+  eq('junk tail-words drop', U.headNoun('can drained solids'), 'can');
+  eq('digits cut', U.headNoun('slice 1/4 of pie'), 'slice');
+  eq('bare size words are not nouns', U.headNoun('large'), '');
+  eq('generic-only is not a noun', U.headNoun('item'), '');
+  const LB = { category: null, unit: 'g', portions: [{ label: '1 lb', grams: 454 }] };
+  eq('a pound is a measure, not a piece', U.pieceGramsFor('mystery meat xyz', LB), null);
 }
 
 console.log('solids:');

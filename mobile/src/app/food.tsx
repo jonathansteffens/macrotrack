@@ -17,7 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
-import { defaultAmountUnit, formatAmountValue, gramsToUnit } from '@/lib/units';
+import { defaultAmountUnit, formatAmountValue, gramsToUnit, headNoun } from '@/lib/units';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
 import { NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
@@ -44,10 +44,12 @@ function previewValue(m: Macros | null, key: NutrientKey, unit: string): string 
 }
 
 /** The portion's noun for unit words and chips: "serving(s)", "egg(s)",
- *  "cup(s)". Gram equivalents live behind the grams chip, not in labels. */
+ *  "cup(s)" — distilled by headNoun so DB qualifier text ("breast, NS as to
+ *  skin eaten") can never surface. Grams live behind the grams chip. */
 function portionNoun(p: Portion, plural: boolean): string {
   if (p.label.startsWith('1 serving')) return plural ? 'servings' : 'serving';
-  const noun = p.label.replace(/^1\s+/, '');
+  const stripped = p.label.replace(/^\d+(?:\.\d+)?(?:\/\d+)?\s+/, '');
+  const noun = headNoun(stripped) || stripped.toLowerCase();
   return plural && !noun.endsWith('s') ? `${noun}s` : noun;
 }
 
