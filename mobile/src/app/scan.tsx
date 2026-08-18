@@ -201,6 +201,14 @@ export default function ScanScreen() {
             onChange={setManualCode}
             onSubmit={() => manualCode.trim() && handleCode(manualCode.trim())}
           />
+          {/* Honest sourcing note: OFF is community data and sometimes wrong
+              (field-verified twice on day one) — and the fix is theirs to make,
+              once, permanently. */}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.sourceNote}>
+            Nutrition comes from Open Food Facts, a community database that is sometimes
+            incorrect — verify against the label. Corrections you save are remembered for
+            future scans.
+          </ThemedText>
         </View>
       </SafeAreaView>
     </View>
@@ -278,8 +286,12 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     padding: Spacing.three,
+    gap: Spacing.two,
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
+  },
+  sourceNote: {
+    textAlign: 'center',
   },
   manualRow: {
     flexDirection: 'row',
