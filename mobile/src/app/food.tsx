@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 
-import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -325,7 +324,6 @@ export default function FoodScreen() {
               />
             )}
           </View>
-          <PortionAnchors />
 
           {/* Nutrition preview — every TRACKED nutrient gets the same cell
               treatment (no big-four/fine-print split: whichever four the user

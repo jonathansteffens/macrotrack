@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/food-search-modal';
-import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -19,6 +18,7 @@ import {
   updateEntryMeal,
   updateEntryQuantity,
 } from '@/lib/log';
+import { getFoodByRef } from '@/lib/foods';
 import { fmtGrams, fmtKcal, parseDecimal, rescaleMacros } from '@/lib/macros';
 import { MEAL_LABELS, MEALS, type FoodItem, type LogEntry, type MealType } from '@/lib/types';
 
@@ -26,6 +26,9 @@ export default function EntryScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ id: string }>();
   const [entry, setEntry] = useState<LogEntry | null>(null);
+  // The entry's source food, when it still resolves — its portions let the
+  // amount edit in the food's own units ("2 thin slices"), not just oz/g.
+  const [food, setFood] = useState<FoodItem | null>(null);
   const [gramsText, setGramsText] = useState('');
   const [meal, setMeal] = useState<MealType>('snack');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -45,6 +48,7 @@ export default function EntryScreen() {
       setEntry(e);
       setMeal(e.meal);
       if (e.grams != null) setGramsText(fmtGrams(e.grams));
+      if (e.foodRef) getFoodByRef(e.foodRef).then(setFood);
     });
   }, [params.id]);
 
@@ -145,12 +149,19 @@ export default function EntryScreen() {
                 instead of making the user do the arithmetic. */}
             <AmountInput
               grams={newGrams}
-              onGramsChange={(g) => setGramsText(g == null ? '' : fmtGrams(g))}
+              onGramsChange={(g) => {
+                setGramsText(g == null ? '' : fmtGrams(g));
+                // A changed amount makes any open nutrition edit stale — the
+                // rescaling preview is the truth again. Without this reset,
+                // the snapshot fields would overwrite the rescale on save
+                // (the "changed 1 oz to 4 oz, macros didn't move" bug).
+                setMacroEdit(null);
+              }}
               name={entry.foodName}
+              match={food}
               liquid={entry.unit === 'ml'}
             />
           </View>
-          <PortionAnchors />
         </>
       ) : (
         <ThemedText type="small" themeColor="textSecondary">
