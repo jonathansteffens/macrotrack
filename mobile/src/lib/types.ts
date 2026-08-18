@@ -61,6 +61,9 @@ export type FoodItem = {
   displayName?: string | null;
   /** Base unit for amounts. Defaults to grams; 'ml' for liquids (mL ≈ g). */
   unit?: 'g' | 'ml';
+  /** Barcode foods only: nutrition was hand-corrected from the label, so the
+   *  cached row is authoritative and never refreshed from Open Food Facts. */
+  userEdited?: boolean;
   portions: Portion[];
   /**
    * foods.db provenance ('sr_legacy' | 'survey' | 'foundation' | 'branded').

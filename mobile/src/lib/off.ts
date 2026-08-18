@@ -169,14 +169,85 @@ async function getCached(
   barcode: string,
   { allowStale = false }: { allowStale?: boolean } = {}
 ): Promise<FoodItem | null> {
-  const row = await getUserDb().getFirstAsync<{ fetched_at: string }>(
-    'SELECT fetched_at FROM barcode_cache WHERE barcode = ?',
+  const row = await getUserDb().getFirstAsync<{ fetched_at: string; user_edited: number | null }>(
+    'SELECT fetched_at, user_edited FROM barcode_cache WHERE barcode = ?',
     barcode
   );
   if (!row) return null;
+  // A hand-corrected row is the user's own label data — authoritative, never
+  // TTL-expired, so the OFF refresh (which would overwrite it) never runs.
+  if (row.user_edited) return getFoodByRef(`barcode:${barcode}`);
   const ageDays = (Date.now() - Date.parse(row.fetched_at)) / 86_400_000;
   // Fresh entries serve without a network call. Stale entries are still used
   // when the refresh fails (allowStale) — data > no data. See lookupBarcode.
   if (!allowStale && ageDays > CACHE_TTL_DAYS) return null;
   return getFoodByRef(`barcode:${barcode}`);
+}
+
+/**
+ * Overwrite a scanned product's nutrition with label-corrected values and mark
+ * the row authoritative (`user_edited`) so no OFF refresh can undo it.
+ *
+ * `per100` is what's stored (the app's canonical denomination) — callers
+ * convert from the label's per-serving numbers at the input boundary.
+ */
+export async function correctBarcodeFood(
+  barcode: string,
+  input: {
+    name: string;
+    brand: string | null;
+    per100: {
+      kcal: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number | null;
+      sugar: number | null;
+      sodiumMg: number | null;
+      satFat: number | null;
+      cholesterolMg: number | null;
+      calciumMg: number | null;
+      ironMg: number | null;
+      potassiumMg: number | null;
+    };
+    servingGrams: number;
+    servingLabel?: string;
+  }
+): Promise<void> {
+  const portions: Portion[] = [
+    { label: input.servingLabel?.trim() || '1 serving', grams: input.servingGrams },
+  ];
+  await getUserDb().runAsync(
+    `UPDATE barcode_cache SET
+       name = ?, brand = ?, kcal = ?, protein = ?, carbs = ?, fat = ?,
+       fiber = ?, sugar = ?, sodium_mg = ?, sat_fat = ?, cholesterol_mg = ?,
+       calcium_mg = ?, iron_mg = ?, potassium_mg = ?,
+       portions_json = ?, user_edited = 1
+     WHERE barcode = ?`,
+    input.name.trim(),
+    input.brand?.trim() || null,
+    input.per100.kcal,
+    input.per100.protein,
+    input.per100.carbs,
+    input.per100.fat,
+    input.per100.fiber,
+    input.per100.sugar,
+    input.per100.sodiumMg,
+    input.per100.satFat,
+    input.per100.cholesterolMg,
+    input.per100.calciumMg,
+    input.per100.ironMg,
+    input.per100.potassiumMg,
+    JSON.stringify(portions),
+    barcode
+  );
+}
+
+/**
+ * Discard a correction (or any cached copy) so the next lookup re-fetches
+ * from Open Food Facts. Returns the fresh lookup result.
+ */
+export async function resetBarcodeToOff(barcode: string): Promise<BarcodeLookup> {
+  await getUserDb().runAsync('DELETE FROM barcode_cache WHERE barcode = ?', barcode);
+  return lookupBarcode(barcode);
 }

@@ -349,6 +349,26 @@ export async function updateEntryMeal(id: number, meal: MealType): Promise<void>
   await getUserDb().runAsync('UPDATE log_entries SET meal = ? WHERE id = ?', meal, id);
 }
 
+/**
+ * Hand-corrected nutrition for one logged entry — the universal escape hatch
+ * when the source data was wrong (bad OFF entry, off USDA row, AI estimate).
+ * Only the big four are edited; stored micros stay as-is rather than being
+ * zeroed — slightly stale detail beats destroyed detail for trends.
+ */
+export async function updateEntryMacros(
+  id: number,
+  m: { kcal: number; protein: number; carbs: number; fat: number }
+): Promise<void> {
+  await getUserDb().runAsync(
+    'UPDATE log_entries SET kcal = ?, protein = ?, carbs = ?, fat = ? WHERE id = ?',
+    m.kcal,
+    m.protein,
+    m.carbs,
+    m.fat,
+    id
+  );
+}
+
 export async function deleteEntry(id: number): Promise<void> {
   await getUserDb().runAsync('DELETE FROM log_entries WHERE id = ?', id);
 }

@@ -317,10 +317,9 @@ export async function getFoodByRef(ref: string): Promise<FoodItem | null> {
     return r ? customRowToFood(r) : null;
   }
   if (kind === 'barcode') {
-    const r = await getUserDb().getFirstAsync<FoodRow & { barcode: string }>(
-      'SELECT rowid AS id, * FROM barcode_cache WHERE barcode = ?',
-      key
-    );
+    const r = await getUserDb().getFirstAsync<
+      FoodRow & { barcode: string; user_edited?: number | null }
+    >('SELECT rowid AS id, * FROM barcode_cache WHERE barcode = ?', key);
     if (!r) return null;
     return {
       ref,
@@ -330,6 +329,7 @@ export async function getFoodByRef(ref: string): Promise<FoodItem | null> {
       category: null,
       per100: rowMacros(r),
       unit: r.unit === 'ml' ? 'ml' : 'g',
+      userEdited: !!r.user_edited,
       portions: parsePortions(r.portions_json),
     };
   }
@@ -379,6 +379,45 @@ export async function createCustomFood(input: CustomFoodInput): Promise<FoodItem
   const food = await getFoodByRef(`custom:${res.lastInsertRowId}`);
   if (!food) throw new Error('Failed to create custom food');
   return food;
+}
+
+/** Full edit of a custom food. `barcode` linkage is creation-time only and
+ *  deliberately not editable here. */
+export async function updateCustomFood(id: number, input: CustomFoodInput): Promise<FoodItem> {
+  await getUserDb().runAsync(
+    `UPDATE custom_foods SET
+       name = ?, name_norm = ?, brand = ?, kcal = ?, protein = ?, carbs = ?, fat = ?,
+       fiber = ?, sugar = ?, sodium_mg = ?, sat_fat = ?, cholesterol_mg = ?,
+       calcium_mg = ?, iron_mg = ?, potassium_mg = ?, portions_json = ?, unit = ?
+     WHERE id = ?`,
+    input.name.trim(),
+    normName(input.name),
+    input.brand?.trim() || null,
+    input.per100.kcal,
+    input.per100.protein,
+    input.per100.carbs,
+    input.per100.fat,
+    input.per100.fiber,
+    input.per100.sugar,
+    input.per100.sodiumMg,
+    input.per100.satFat,
+    input.per100.cholesterolMg,
+    input.per100.calciumMg,
+    input.per100.ironMg,
+    input.per100.potassiumMg,
+    JSON.stringify(input.portions ?? []),
+    input.unit ?? 'g',
+    id
+  );
+  const food = await getFoodByRef(`custom:${id}`);
+  if (!food) throw new Error('Custom food not found');
+  return food;
+}
+
+/** Logged entries keep their own macro snapshots, so deleting the food never
+ *  corrupts history — the dangling ref just stops resolving. */
+export async function deleteCustomFood(id: number): Promise<void> {
+  await getUserDb().runAsync('DELETE FROM custom_foods WHERE id = ?', id);
 }
 
 /** Custom food previously created for a barcode OFF didn't know. */

@@ -148,6 +148,9 @@ export async function initDb(): Promise<void> {
   const nutrientCols = ['sat_fat', 'cholesterol_mg', 'calcium_mg', 'iron_mg', 'potassium_mg'];
   const migrations = [
     "ALTER TABLE barcode_cache ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
+    // Label corrections: a row the user fixed by hand is authoritative — the
+    // OFF refresh path must never overwrite it (see off.ts).
+    'ALTER TABLE barcode_cache ADD COLUMN user_edited INTEGER NOT NULL DEFAULT 0',
     "ALTER TABLE custom_foods ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     "ALTER TABLE log_entries ADD COLUMN unit TEXT NOT NULL DEFAULT 'g'",
     // Entry-creation flow, distinct from macro `source` — nullable, so ordinary

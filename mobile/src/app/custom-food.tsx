@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,13 +15,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { createCustomFood } from '@/lib/foods';
+import { createCustomFood, deleteCustomFood, getFoodByRef, updateCustomFood } from '@/lib/foods';
 import { parseDecimal } from '@/lib/macros';
 import type { Portion } from '@/lib/types';
 
 /**
- * Manual food creation. Nutrition values are entered per 100 g; an optional
- * serving (label + gram weight) becomes a selectable portion when logging.
+ * Manual food creation — and, with `editRef`, full editing of an existing
+ * custom food ("edit what gets input": the user's own data is always
+ * correctable). Nutrition values are entered per 100 g; an optional serving
+ * (label + gram weight) becomes a selectable portion when logging.
  */
 export default function CustomFoodScreen() {
   const theme = useTheme();
@@ -29,11 +31,16 @@ export default function CustomFoodScreen() {
     day?: string;
     meal?: string;
     barcode?: string;
+    /** 'custom:<id>' → edit that food instead of creating a new one. */
+    editRef?: string;
     prefillName?: string;
     prefillProtein?: string;
     prefillCarbs?: string;
     prefillFat?: string;
   }>();
+  const editId = params.editRef?.startsWith('custom:')
+    ? Number(params.editRef.slice('custom:'.length))
+    : null;
 
   const [name, setName] = useState(params.prefillName ?? '');
   const [brand, setBrand] = useState('');
@@ -57,6 +64,54 @@ export default function CustomFoodScreen() {
   // matters; anyone who has the rest can expand to enter them.
   const [showMore, setShowMore] = useState(false);
 
+  // Edit mode: prefill every field from the existing food. At most one decimal
+  // on numbers — stored floats must not surface as 18.987341772151898.
+  useEffect(() => {
+    if (editId == null) return;
+    getFoodByRef(`custom:${editId}`).then((f) => {
+      if (!f) return;
+      const s = (v: number | null) => (v == null ? '' : String(Math.round(v * 10) / 10));
+      setName(f.name);
+      setBrand(f.brand ?? '');
+      setKcal(s(f.per100.kcal));
+      setProtein(s(f.per100.protein));
+      setCarbs(s(f.per100.carbs));
+      setFat(s(f.per100.fat));
+      setFiber(s(f.per100.fiber));
+      setSugar(s(f.per100.sugar));
+      setSodium(s(f.per100.sodiumMg));
+      setSatFat(s(f.per100.satFat));
+      setCholesterol(s(f.per100.cholesterolMg));
+      setCalcium(s(f.per100.calciumMg));
+      setIron(s(f.per100.ironMg));
+      setPotassium(s(f.per100.potassiumMg));
+      if (f.portions[0]) {
+        setServingLabel(f.portions[0].label);
+        setServingGrams(s(f.portions[0].grams));
+      }
+      setUnit(f.unit === 'ml' ? 'ml' : 'g');
+    });
+  }, [editId]);
+
+  const confirmDelete = () => {
+    if (editId == null) return;
+    Alert.alert(
+      'Delete this food?',
+      `"${name}" will disappear from search. Days it was already logged keep their numbers.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteCustomFood(editId);
+            router.dismissAll();
+          },
+        },
+      ]
+    );
+  };
+
   const save = async () => {
     const kcalNum = parseDecimal(kcal);
     if (!name.trim() || kcalNum == null) {
@@ -70,7 +125,7 @@ export default function CustomFoodScreen() {
     }
     setSaving(true);
     try {
-      const food = await createCustomFood({
+      const input = {
         name,
         brand: brand || null,
         per100: {
@@ -90,8 +145,12 @@ export default function CustomFoodScreen() {
         portions,
         barcode: params.barcode ?? null,
         unit,
-      });
+      };
+      const food =
+        editId != null ? await updateCustomFood(editId, input) : await createCustomFood(input);
       if (params.day) {
+        // Replace rather than back: the food screen fetches on mount, so a
+        // fresh mount is what makes the edited numbers visible immediately.
         router.replace({
           pathname: '/food',
           params: { ref: food.ref, day: params.day, meal: params.meal },
@@ -211,9 +270,16 @@ export default function CustomFoodScreen() {
             onPress={save}
             disabled={saving}>
             <ThemedText type="smallBold" style={styles.saveText}>
-              {saving ? 'Saving…' : 'Save food'}
+              {saving ? 'Saving…' : editId != null ? 'Save changes' : 'Save food'}
             </ThemedText>
           </Pressable>
+          {editId != null && (
+            <Pressable style={styles.deleteButton} hitSlop={8} onPress={confirmDelete}>
+              <ThemedText type="smallBold" style={{ color: theme.danger }}>
+                Delete this food
+              </ThemedText>
+            </Pressable>
+          )}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
@@ -317,4 +383,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   saveText: { color: '#ffffff' },
+  deleteButton: {
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+  },
 });

@@ -13,7 +13,6 @@ import {
 import { AmountInput } from '@/components/amount-input';
 import { EstimatingIndicator } from '@/components/estimating-indicator';
 import { FoodSearchModal } from '@/components/food-search-modal';
-import { FractionChips } from '@/components/fraction-chips';
 import { SpeechTextInput } from '@/components/speech-text-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -261,8 +260,8 @@ export default function AssistScreen() {
 
   const setItemGrams = (idx: number, gramsText: string) => {
     const g = parseDecimal(gramsText);
-    // A manual gram edit (TextInput or FractionChips) breaks the count × serving
-    // derivation → drop the stepper into its "custom" state; a later ± re-derives.
+    // A manual amount edit breaks the count × serving derivation → drop the
+    // stepper into its "custom" state; a later ± re-derives.
     updateItem(idx, { gramsText, stepCount: null, ...(g != null && g > 0 ? { grams: g } : {}) });
   };
 
@@ -654,11 +653,6 @@ function ItemCard({
           </ThemedText>
         </Pressable>
       )}
-
-      <FractionChips
-        value={parseDecimal(item.gramsText)}
-        onValue={(v) => onGramsChange(fmtGrams(v))}
-      />
 
       <View style={styles.matchRow}>
         <Pressable style={styles.flex} onPress={onToggleAlternatives}>

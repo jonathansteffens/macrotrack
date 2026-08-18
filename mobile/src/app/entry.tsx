@@ -3,10 +3,9 @@ import { AmountInput } from '@/components/amount-input';
 import { amountLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { FoodSearchModal } from '@/components/food-search-modal';
-import { FractionChips } from '@/components/fraction-chips';
 import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,6 +15,7 @@ import {
   deleteEntry,
   getEntry,
   updateEntryFood,
+  updateEntryMacros,
   updateEntryMeal,
   updateEntryQuantity,
 } from '@/lib/log';
@@ -29,6 +29,15 @@ export default function EntryScreen() {
   const [gramsText, setGramsText] = useState('');
   const [meal, setMeal] = useState<MealType>('snack');
   const [searchOpen, setSearchOpen] = useState(false);
+  // Direct nutrition editing — the escape hatch when the SOURCE data was wrong
+  // (bad OFF entry, off USDA row, AI estimate). null → not editing; fields are
+  // absolute values for the entry at its current amount.
+  const [macroEdit, setMacroEdit] = useState<{
+    kcal: string;
+    protein: string;
+    carbs: string;
+    fat: string;
+  } | null>(null);
 
   useEffect(() => {
     getEntry(Number(params.id)).then((e) => {
@@ -65,6 +74,17 @@ export default function EntryScreen() {
           })
         )
       );
+    }
+    // Typed nutrition wins over any amount rescale above: the user's numbers
+    // are absolute for the entry as displayed. Unparseable fields keep the
+    // previewed value rather than silently zeroing a macro.
+    if (macroEdit) {
+      await updateEntryMacros(entry.id, {
+        kcal: parseDecimal(macroEdit.kcal) ?? preview.kcal,
+        protein: parseDecimal(macroEdit.protein) ?? preview.protein,
+        carbs: parseDecimal(macroEdit.carbs) ?? preview.carbs,
+        fat: parseDecimal(macroEdit.fat) ?? preview.fat,
+      });
     }
     if (meal !== entry.meal) {
       await updateEntryMeal(entry.id, meal);
@@ -130,7 +150,6 @@ export default function EntryScreen() {
               liquid={entry.unit === 'ml'}
             />
           </View>
-          <FractionChips value={newGrams} onValue={(v) => setGramsText(fmtGrams(v))} />
           <PortionAnchors />
         </>
       ) : (
@@ -140,10 +159,60 @@ export default function EntryScreen() {
       )}
 
       <ThemedView type="backgroundElement" style={styles.previewCard}>
-        <ThemedText type="small">
-          {fmtKcal(preview.kcal)} kcal · P {fmtGrams(preview.protein)} g · C{' '}
-          {fmtGrams(preview.carbs)} g · F {fmtGrams(preview.fat)} g
-        </ThemedText>
+        {macroEdit == null ? (
+          <View style={styles.previewRow}>
+            <ThemedText type="small" style={styles.flex}>
+              {fmtKcal(preview.kcal)} kcal · P {fmtGrams(preview.protein)} g · C{' '}
+              {fmtGrams(preview.carbs)} g · F {fmtGrams(preview.fat)} g
+            </ThemedText>
+            <Pressable
+              hitSlop={8}
+              onPress={() =>
+                setMacroEdit({
+                  kcal: fmtKcal(preview.kcal),
+                  protein: fmtGrams(preview.protein),
+                  carbs: fmtGrams(preview.carbs),
+                  fat: fmtGrams(preview.fat),
+                })
+              }>
+              <ThemedText type="small" themeColor="tint">
+                Edit
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.macroGrid}>
+            {(
+              [
+                ['Calories', 'kcal'],
+                ['Protein (g)', 'protein'],
+                ['Carbs (g)', 'carbs'],
+                ['Fat (g)', 'fat'],
+              ] as const
+            ).map(([label, key]) => (
+              <View key={key} style={styles.macroField}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {label}
+                </ThemedText>
+                <TextInput
+                  style={[
+                    styles.macroInput,
+                    { backgroundColor: theme.background, color: theme.text },
+                  ]}
+                  value={macroEdit[key]}
+                  onChangeText={(v) => setMacroEdit((m) => (m ? { ...m, [key]: v } : m))}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                />
+              </View>
+            ))}
+            <Pressable hitSlop={8} style={styles.macroCancel} onPress={() => setMacroEdit(null)}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Cancel edit
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
       </ThemedView>
 
       <View style={styles.mealChips}>
@@ -218,6 +287,34 @@ const styles = StyleSheet.create({
   previewCard: {
     borderRadius: Radius.card,
     padding: Spacing.three,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  macroGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    alignItems: 'flex-end',
+  },
+  macroField: {
+    gap: Spacing.one,
+    width: '22%',
+    flexGrow: 1,
+  },
+  macroInput: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  macroCancel: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: Spacing.one,
   },
   mealChips: {
     flexDirection: 'row',

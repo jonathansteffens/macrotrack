@@ -10,11 +10,10 @@ import {
   View,
 } from 'react-native';
 
-import { FractionChips } from '@/components/fraction-chips';
 import { PortionAnchors } from '@/components/portion-anchors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MacroColors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getFoodByRef } from '@/lib/foods';
@@ -23,6 +22,7 @@ import { defaultAmountUnit, formatAmountValue, gramsToUnit } from '@/lib/units';
 import { logFood } from '@/lib/log';
 import { fmtGrams, fmtKcal, parseDecimal, scaleMacros } from '@/lib/macros';
 import { CORE_NUTRIENT_KEYS, NUTRIENTS, type NutrientKey } from '@/lib/nutrients';
+import { getTracking, type TrackingConfig } from '@/lib/tracking';
 import {
   MEAL_LABELS,
   MEALS,
@@ -38,15 +38,26 @@ const CORE_KEYS = new Set<NutrientKey>(CORE_NUTRIENT_KEYS);
 /** Grams per ounce — the amount field can be entered in oz for weight foods. */
 const OZ_TO_G = 28.3495;
 
-/** "Fiber 3 g · Sodium 120 mg · …" for every non-core nutrient that has data. */
-function extraNutrientLine(m: Macros): string {
-  return NUTRIENTS.filter((n) => !CORE_KEYS.has(n.key) && m[n.key] != null)
+/** "Fiber 3 g · Sodium 120 mg · …" for non-core nutrients the user TRACKS and
+ *  that have data — a nutrient nobody asked for is noise on this screen. */
+function extraNutrientLine(m: Macros, tracking: TrackingConfig | null): string {
+  return NUTRIENTS.filter(
+    (n) => !CORE_KEYS.has(n.key) && m[n.key] != null && tracking?.[n.key].enabled
+  )
     .map((n) => {
       const v = m[n.key] as number;
       const val = n.unit === 'mg' ? String(Math.round(v)) : fmtGrams(v);
       return `${n.label} ${val}${n.unit ? ` ${n.unit}` : ''}`;
     })
     .join('  ·  ');
+}
+
+/** One preview value in the nutrient's own display format. */
+function previewValue(m: Macros | null, key: NutrientKey, unit: string): string {
+  if (!m) return '–';
+  const v = m[key] ?? 0;
+  if (key === 'kcal') return fmtKcal(v);
+  return unit === 'mg' ? `${Math.round(v)} mg` : `${fmtGrams(v)} ${unit}`;
 }
 
 export default function FoodScreen() {
@@ -56,6 +67,12 @@ export default function FoodScreen() {
 
   const [food, setFood] = useState<FoodItem | null>(null);
   const [missing, setMissing] = useState(false);
+  // Only the nutrients the user tracks appear in the preview (their choice in
+  // onboarding/Settings governs this screen too, not just Today/Trends).
+  const [tracking, setTracking] = useState<TrackingConfig | null>(null);
+  useEffect(() => {
+    getTracking().then(setTracking);
+  }, []);
   const [amountText, setAmountText] = useState('100');
   // 0 = grams; i+1 = food.portions[i]
   const [unitIdx, setUnitIdx] = useState(0);
@@ -177,6 +194,38 @@ export default function FoodScreen() {
               {food.category}
             </ThemedText>
           )}
+          {/* OFF is crowdsourced and sometimes wrong in undetectable ways —
+              only the person holding the label can fix it (see correct-food). */}
+          {food.source === 'barcode' && (
+            <Pressable
+              hitSlop={6}
+              onPress={() =>
+                router.push({
+                  pathname: '/correct-food',
+                  params: { ref: food.ref, day, meal },
+                })
+              }>
+              <ThemedText type="small" themeColor="textSecondary">
+                {food.userEdited
+                  ? 'Corrected from label ✓ · edit'
+                  : 'Wrong nutrition? Fix from the label ›'}
+              </ThemedText>
+            </Pressable>
+          )}
+          {food.source === 'custom' && (
+            <Pressable
+              hitSlop={6}
+              onPress={() =>
+                router.push({
+                  pathname: '/custom-food',
+                  params: { editRef: food.ref, day, meal },
+                })
+              }>
+              <ThemedText type="small" themeColor="textSecondary">
+                Edit this food ›
+              </ThemedText>
+            </Pressable>
+          )}
           {/* Plain name leads; the canonical DB name is tucked behind a
               disclosure for anyone who wants to verify the source. */}
           {food.displayName && food.displayName !== food.name && (
@@ -245,19 +294,30 @@ export default function FoodScreen() {
               />
             </View>
           )}
-          <FractionChips value={amount} onValue={(v) => setAmountText(fmtGrams(v))} />
           <PortionAnchors />
 
-          {/* Nutrition preview */}
+          {/* Nutrition preview — tracked nutrients only. If somehow no core
+              nutrient is tracked, calories still shows: a food preview with no
+              numbers at all would be useless. */}
           <ThemedView type="backgroundElement" style={styles.previewCard}>
-            <PreviewCell label="Calories" value={preview ? fmtKcal(preview.kcal) : '–'} color={MacroColors.kcal} />
-            <PreviewCell label="Protein" value={preview ? `${fmtGrams(preview.protein)} g` : '–'} color={MacroColors.protein} />
-            <PreviewCell label="Carbs" value={preview ? `${fmtGrams(preview.carbs)} g` : '–'} color={MacroColors.carbs} />
-            <PreviewCell label="Fat" value={preview ? `${fmtGrams(preview.fat)} g` : '–'} color={MacroColors.fat} />
+            {(() => {
+              const cells = NUTRIENTS.filter(
+                (n) => CORE_KEYS.has(n.key) && (tracking?.[n.key].enabled ?? true)
+              );
+              const shown = cells.length > 0 ? cells : NUTRIENTS.filter((n) => n.key === 'kcal');
+              return shown.map((n) => (
+                <PreviewCell
+                  key={n.key}
+                  label={n.label}
+                  value={previewValue(preview, n.key, n.unit)}
+                  color={n.color}
+                />
+              ));
+            })()}
           </ThemedView>
-          {preview && extraNutrientLine(preview) !== '' && (
+          {preview && extraNutrientLine(preview, tracking) !== '' && (
             <ThemedText type="small" themeColor="textSecondary">
-              {extraNutrientLine(preview)}
+              {extraNutrientLine(preview, tracking)}
             </ThemedText>
           )}
 
