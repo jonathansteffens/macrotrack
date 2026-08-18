@@ -144,6 +144,28 @@ console.log('servings (packaged foods and recipes):');
   eq('toGrams serving without a weight', U.toGrams(2, 'serving', null), null);
 }
 
+console.log('piece nouns:');
+{
+  // FNDDS-style rows trail qualifiers; the counting noun must come from the
+  // unit portion's head, never the name's last word ("eaten" -> "eatens" bug).
+  const CB = {
+    category: null,
+    unit: 'g',
+    portions: [{ label: '1 breast, NS as to skin eaten', grams: 172 }],
+  };
+  eq(
+    'noun from the unit portion, not name-tail junk',
+    U.pieceNoun('Chicken breast, NS as to cooking method, skin not eaten', CB),
+    'breast'
+  );
+  eq('same portion supplies the weight', U.pieceGramsFor('chicken breast xyz', CB), 172);
+  eq(
+    'name fallback cuts at the first comma',
+    U.pieceNoun('Chicken breast, skin not eaten', { category: null, unit: 'g', portions: [] }),
+    'breast'
+  );
+}
+
 console.log('solids:');
 eq('227 g steak (US)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: US }).primary, '8 oz');
 eq('227 g steak (metric)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: METRIC }).primary, '227 g');

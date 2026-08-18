@@ -81,15 +81,19 @@ const CLASS_LABELS: Record<FoodClass, string> = {
 };
 export const foodClassLabel = (c: FoodClass): string => CLASS_LABELS[c];
 
+function singularize(s: string): string {
+  if (s.endsWith('ies')) return `${s.slice(0, -3)}y`;
+  if (s.endsWith('s') && !s.endsWith('ss')) return s.slice(0, -1);
+  return s;
+}
+
 /**
- * Grams of one piece of this food, or null when it is not sensibly countable.
- * Prefers the curated pool table (hand-checked against foods.db), then a
- * single-unit portion on the matched row ("1 nugget" = 16 g), ignoring portions
- * that are really measures ("1 cup").
+ * The first single-unit portion on the matched row, as both a weight and a
+ * noun: "1 breast, NS as to skin eaten" (172 g) → 172 g per "breast".
+ * Measures ("1 cup") don't count as pieces. Weight and noun come from the SAME
+ * portion so the chip can never name one thing and weigh another.
  */
-export function pieceGramsFor(name: string, match: FoodItem | null): number | null {
-  const curated = lookupPiece(name, null);
-  if (curated) return curated.grams;
+function pieceFromPortions(match: FoodItem | null): { perUnit: number; noun: string } | null {
   for (const p of match?.portions ?? []) {
     if (!p.grams || p.grams <= 0) continue;
     const m = /^(\d+(?:\.\d+)?)\s+(.+)$/.exec(p.label);
@@ -97,9 +101,23 @@ export function pieceGramsFor(name: string, match: FoodItem | null): number | nu
     const n = Number(m[1]);
     const label = m[2].toLowerCase();
     if (!n || /\b(cup|tbsp|tablespoon|tsp|teaspoon|fl oz|fluid|oz|ounce|gram|ml|liter|quart|pint)\b/.test(label)) continue;
-    return p.grams / n;
+    // The noun is the head of the portion text — qualifiers after a comma or
+    // paren ("NS as to skin eaten", "(yield after cooking)") are not nouns.
+    const noun = label.split(/[,(]/)[0].trim();
+    return { perUnit: p.grams / n, noun: noun && noun !== 'unit' ? singularize(noun) : 'piece' };
   }
   return null;
+}
+
+/**
+ * Grams of one piece of this food, or null when it is not sensibly countable.
+ * Prefers the curated pool table (hand-checked against foods.db), then a
+ * single-unit portion on the matched row ("1 nugget" = 16 g).
+ */
+export function pieceGramsFor(name: string, match: FoodItem | null): number | null {
+  const curated = lookupPiece(name, null);
+  if (curated) return curated.grams;
+  return pieceFromPortions(match)?.perUnit ?? null;
 }
 
 /**
@@ -245,16 +263,19 @@ export function formatAmount(
   return { primary: gramsLabel, secondary: null };
 }
 
-/** The noun to count in ("nugget", "egg"), derived from the curated table or the name. */
+/** The noun to count in ("nugget", "breast", "egg"): curated table first, then
+ *  the matched row's unit portion, then the head of the name. */
 export function pieceNoun(name: string, match: FoodItem | null): string {
   const curated = lookupPiece(name, null);
   if (curated?.unit) return curated.unit;
-  // Singularize the food's last word: "scrambled eggs" -> "egg".
-  const last = String(name).trim().split(/\s+/).pop() ?? 'piece';
-  const s = last.toLowerCase();
-  if (s.endsWith('ies')) return `${s.slice(0, -3)}y`;
-  if (s.endsWith('s') && !s.endsWith('ss')) return s.slice(0, -1);
-  return s || 'piece';
+  const fromPortion = pieceFromPortions(match)?.noun;
+  if (fromPortion && fromPortion !== 'piece') return fromPortion;
+  // Name fallback: only the head before any comma/paren — USDA names trail
+  // qualifiers ("Chicken breast, NS as to cooking method, skin not eaten"),
+  // and "eaten" must never become the counting noun.
+  const head = String(name).split(/[,(]/)[0].trim();
+  const last = head.split(/\s+/).pop() ?? 'piece';
+  return singularize(last.toLowerCase()) || 'piece';
 }
 
 /** One-line label combining both, e.g. "12 fl oz (355 g)". */
