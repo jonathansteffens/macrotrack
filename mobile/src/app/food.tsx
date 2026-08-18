@@ -44,11 +44,12 @@ function previewValue(m: Macros | null, key: NutrientKey, unit: string): string 
   return unit === 'mg' ? `${Math.round(v)} mg` : `${fmtGrams(v)} ${unit}`;
 }
 
-/** Chip text for a portion: the label serving reads simply "servings"; a
- *  household portion keeps its name. Gram equivalents live in the caption
- *  line under the amount row, not crammed into every chip. */
-function portionChipLabel(p: Portion): string {
-  return p.label.startsWith('1 serving') ? 'servings' : p.label;
+/** The portion's noun for unit words and chips: "serving(s)", "egg(s)",
+ *  "cup(s)". Gram equivalents live behind the grams chip, not in labels. */
+function portionNoun(p: Portion, plural: boolean): string {
+  if (p.label.startsWith('1 serving')) return plural ? 'servings' : 'serving';
+  const noun = p.label.replace(/^1\s+/, '');
+  return plural && !noun.endsWith('s') ? `${noun}s` : noun;
 }
 
 /**
@@ -143,9 +144,6 @@ export default function FoodScreen() {
   const portions = food.portions.length > 0 ? food.portions : syntheticPortion ? [syntheticPortion] : [];
   const amount = parseDecimal(amountText);
   const unitLabel = food.unit ?? 'g';
-  // The oz toggle only applies to the base weight unit (grams); it's hidden for
-  // ml foods and household portions.
-  const showOzToggle = unitIdx === 0 && unitLabel === 'g';
   const WEIGH_G: Record<'g' | 'oz' | 'floz', number> = { g: 1, oz: OZ_TO_G, floz: 29.5735 };
   const baseGrams = WEIGH_G[weighUnit];
   const gramsPerUnit = unitIdx === 0 ? baseGrams : (portions[unitIdx - 1]?.grams ?? 1);
@@ -158,12 +156,18 @@ export default function FoodScreen() {
       ? `${fmtGrams(amount)} ${weighUnit === 'g' ? unitLabel : weighUnit === 'oz' ? 'oz' : 'fl oz'}`
       : `${fmtGrams(amount)} × ${portions[unitIdx - 1]?.label ?? unitLabel}`;
 
-  // Convert the typed value in place when switching g ⇄ oz.
-  const setWeigh = (u: 'g' | 'oz' | 'floz') => {
-    if (u === weighUnit) return;
-    // Convert the typed value in place rather than clearing it.
-    const a = parseDecimal(amountText);
-    if (a != null) setAmountText(fmtGrams((a * WEIGH_G[weighUnit]) / WEIGH_G[u]));
+  // Unit switches convert the typed number in place — the amount the user
+  // expressed is preserved, only its denomination changes.
+  const switchToPortion = (i: number) => {
+    if (unitIdx === i + 1) return;
+    const per = portions[i].grams;
+    setAmountText(grams != null && per > 0 ? fmtGrams(grams / per) : '1');
+    setUnitIdx(i + 1);
+  };
+  const switchToBase = (u: 'g' | 'oz' | 'floz') => {
+    if (unitIdx === 0 && weighUnit === u) return;
+    setAmountText(grams != null ? fmtGrams(grams / WEIGH_G[u]) : '100');
+    setUnitIdx(0);
     setWeighUnit(u);
   };
 
@@ -246,9 +250,10 @@ export default function FoodScreen() {
             </View>
           )}
 
-          {/* Amount + unit: "number — unit word", chips switch the unit, and
-              the caption below explains what a serving is. Gram clutter lives
-              in the caption (or the g chip), never beside every chip. */}
+          {/* Amount: number + its unit word, nothing else on the row. The
+              caption appears only when a label serving has a real description
+              ("1 serving = 0.5 package") — never as default "X = N g" text.
+              All unit switching lives in the single "Enter in" row below. */}
           <View style={styles.amountRow}>
             <TextInput
               style={[
@@ -262,64 +267,64 @@ export default function FoodScreen() {
             />
             <ThemedText type="small" themeColor="textSecondary">
               {unitIdx === 0
-                ? weighUnit === 'g'
-                  ? unitLabel
-                  : weighUnit === 'oz'
-                    ? 'oz'
-                    : 'fl oz'
-                : portionChipLabel(portions[unitIdx - 1])}
+                ? unitLabel === 'ml'
+                  ? 'ml'
+                  : weighUnit === 'g'
+                    ? 'g'
+                    : weighUnit === 'oz'
+                      ? 'oz'
+                      : 'fl oz'
+                : portionNoun(portions[unitIdx - 1], amount !== 1)}
             </ThemedText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.unitChips}>
-                <UnitChip
-                  label={unitLabel}
-                  selected={unitIdx === 0}
-                  onPress={() => {
-                    setUnitIdx(0);
-                    setAmountText('100');
-                    setWeighUnit('g');
-                  }}
-                />
-                {portions.map((p, i) => (
-                  <UnitChip
-                    key={i}
-                    label={portionChipLabel(p)}
-                    selected={unitIdx === i + 1}
-                    onPress={() => {
-                      setUnitIdx(i + 1);
-                      setAmountText('1');
-                    }}
-                  />
-                ))}
-              </View>
-            </ScrollView>
           </View>
           {unitIdx > 0 &&
             (() => {
               const p = portions[unitIdx - 1];
-              const caption = p.label.startsWith('1 serving')
-                ? `1 serving = ${servingMeaning(p) ?? `${fmtGrams(p.grams)} ${unitLabel}`}`
-                : `${p.label} = ${fmtGrams(p.grams)} ${unitLabel}`;
-              return (
+              const meaning = p.label.startsWith('1 serving') ? servingMeaning(p) : null;
+              return meaning ? (
                 <ThemedText type="small" themeColor="textSecondary">
-                  {caption}
+                  1 serving = {meaning}
                 </ThemedText>
-              );
+              ) : null;
             })()}
-          {showOzToggle && (
-            <View style={styles.weighToggle}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Enter in
-              </ThemedText>
-              <UnitChip label="grams" selected={weighUnit === 'g'} onPress={() => setWeigh('g')} />
-              <UnitChip label="oz" selected={weighUnit === 'oz'} onPress={() => setWeigh('oz')} />
+          <View style={styles.weighToggle}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Enter in
+            </ThemedText>
+            {portions.map((p, i) => (
               <UnitChip
-                label="fl oz"
-                selected={weighUnit === 'floz'}
-                onPress={() => setWeigh('floz')}
+                key={`p${i}`}
+                label={portionNoun(p, true)}
+                selected={unitIdx === i + 1}
+                onPress={() => switchToPortion(i)}
               />
-            </View>
-          )}
+            ))}
+            {unitLabel === 'g' ? (
+              <>
+                <UnitChip
+                  label="grams"
+                  selected={unitIdx === 0 && weighUnit === 'g'}
+                  onPress={() => switchToBase('g')}
+                />
+                <UnitChip
+                  label="oz"
+                  selected={unitIdx === 0 && weighUnit === 'oz'}
+                  onPress={() => switchToBase('oz')}
+                />
+                <UnitChip
+                  label="fl oz"
+                  selected={unitIdx === 0 && weighUnit === 'floz'}
+                  onPress={() => switchToBase('floz')}
+                />
+              </>
+            ) : (
+              <UnitChip
+                label="ml"
+                selected={unitIdx === 0}
+                onPress={() => switchToBase('g')}
+              />
+            )}
+          </View>
           <PortionAnchors />
 
           {/* Nutrition preview — every TRACKED nutrient gets the same cell
