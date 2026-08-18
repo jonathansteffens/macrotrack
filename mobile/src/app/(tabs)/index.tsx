@@ -159,7 +159,7 @@ export default function TodayScreen() {
             hitSlop={12}
             style={styles.settingsButton}
             onPress={() => router.push('/settings')}>
-            <ThemedText type="default" themeColor="textSecondary">
+            <ThemedText type="default" themeColor="textSecondary" style={styles.settingsGlyph}>
               ⚙
             </ThemedText>
           </Pressable>
@@ -408,6 +408,10 @@ const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
     right: Spacing.three,
+  },
+  settingsGlyph: {
+    fontSize: 24,
+    lineHeight: 28,
   },
   scrollContent: {
     paddingHorizontal: Spacing.three,
