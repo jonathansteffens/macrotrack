@@ -451,10 +451,14 @@ export async function deleteCustomFood(id: number): Promise<void> {
   await getUserDb().runAsync('DELETE FROM custom_foods WHERE id = ?', id);
 }
 
-/** All user-created foods, newest first (the Library tab's listing). */
-export async function listCustomFoods(): Promise<FoodItem[]> {
+/** User-created foods, newest first. 'manual' = entered by hand; 'barcode' =
+ *  created for a product Open Food Facts didn't know (the Library tab shows
+ *  them as separate sections). */
+export async function listCustomFoods(kind?: 'manual' | 'barcode'): Promise<FoodItem[]> {
+  const where =
+    kind === 'manual' ? 'WHERE barcode IS NULL' : kind === 'barcode' ? 'WHERE barcode IS NOT NULL' : '';
   const rows = await getUserDb().getAllAsync<FoodRow>(
-    'SELECT * FROM custom_foods ORDER BY id DESC'
+    `SELECT * FROM custom_foods ${where} ORDER BY id DESC`
   );
   return rows.map(customRowToFood);
 }

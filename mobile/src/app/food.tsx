@@ -152,10 +152,13 @@ export default function FoodScreen() {
   const preview = grams != null ? scaleMacros(food.per100, grams) : null;
 
   const canLog = grams != null && grams > 0 && !saving;
+  // The log keeps the unit AS ENTERED: "1 banana", "2 servings", "3.9 oz" —
+  // never restated into another denomination (that's what the entry editor is
+  // for). See the Log-screen rows, which render this text verbatim.
   const quantityDesc =
     unitIdx === 0
       ? `${fmtGrams(amount)} ${weighUnit === 'g' ? unitLabel : weighUnit === 'oz' ? 'oz' : 'fl oz'}`
-      : `${fmtGrams(amount)} × ${portions[unitIdx - 1]?.label ?? unitLabel}`;
+      : `${fmtGrams(amount)} ${portionNoun(portions[unitIdx - 1], amount !== 1)}`;
 
   // Unit switches convert the typed number in place — the amount the user
   // expressed is preserved, only its denomination changes.

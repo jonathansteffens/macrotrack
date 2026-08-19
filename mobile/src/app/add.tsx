@@ -235,9 +235,9 @@ export default function AddFoodScreen() {
         <Pressable
           style={[styles.actionButton, { backgroundColor: theme.backgroundElement }]}
           onPress={() =>
-            router.push({ pathname: '/custom-food', params: { day, meal, prefillName: query } })
+            router.push({ pathname: '/manual-entry', params: { day, meal, prefillName: query } })
           }>
-          <ThemedText type="small">＋ Custom food</ThemedText>
+          <ThemedText type="small">＋ Manual entry</ThemedText>
         </Pressable>
       </View>
 

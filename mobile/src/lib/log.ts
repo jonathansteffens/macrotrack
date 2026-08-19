@@ -149,6 +149,43 @@ export async function logAiEstimate(opts: {
 }
 
 /**
+ * A one-off manual entry: a name and the macros the user typed, nothing else.
+ * No food_ref (nothing saved to the library unless they chose to), no gram
+ * weight (the numbers ARE the entry).
+ */
+export async function logManualEntry(opts: {
+  day: string;
+  meal: MealType;
+  name: string;
+  macros: Macros;
+}): Promise<number> {
+  const res = await getUserDb().runAsync(
+    `INSERT INTO log_entries
+       (day, ts, meal, food_name, food_ref, quantity_desc, grams,
+        kcal, protein, carbs, fat, fiber, sugar, sodium_mg,
+        sat_fat, cholesterol_mg, calcium_mg, iron_mg, potassium_mg, unit, source)
+     VALUES (?, ?, ?, ?, NULL, 'manual entry', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'g', 'manual')`,
+    opts.day,
+    new Date().toISOString(),
+    opts.meal,
+    opts.name.trim() || 'Manual entry',
+    opts.macros.kcal,
+    opts.macros.protein,
+    opts.macros.carbs,
+    opts.macros.fat,
+    opts.macros.fiber,
+    opts.macros.sugar,
+    opts.macros.sodiumMg,
+    opts.macros.satFat,
+    opts.macros.cholesterolMg,
+    opts.macros.calciumMg,
+    opts.macros.ironMg,
+    opts.macros.potassiumMg
+  );
+  return res.lastInsertRowId;
+}
+
+/**
  * Re-log existing entries into a day + meal: same foods and amounts, fresh
  * timestamps. Macros are copied from the stored snapshots, so this works even
  * if the source foods were since deleted. Used by "copy yesterday" and the

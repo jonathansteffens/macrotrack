@@ -23,12 +23,42 @@ import type { FoodItem } from '@/lib/types';
 export default function LibraryScreen() {
   const theme = useTheme();
   const unitPrefs = useUnitPrefs();
-  const [customFoods, setCustomFoods] = useState<FoodItem[]>([]);
+  const [manualFoods, setManualFoods] = useState<FoodItem[]>([]);
+  const [barcodeFoods, setBarcodeFoods] = useState<FoodItem[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      listCustomFoods().then(setCustomFoods);
+      listCustomFoods('manual').then(setManualFoods);
+      listCustomFoods('barcode').then(setBarcodeFoods);
     }, [])
+  );
+
+  const FoodRowCard = ({ f }: { f: FoodItem }) => (
+    <ThemedView type="backgroundElement" style={styles.foodCard}>
+      <View style={styles.flex}>
+        <ThemedText type="small" numberOfLines={1}>
+          {f.name}
+          {f.brand ? ` (${f.brand})` : ''}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {fmtKcal(f.per100.kcal)} {energyLabel(unitPrefs)}/100 {f.unit ?? 'g'}
+        </ThemedText>
+      </View>
+      <Pressable
+        hitSlop={8}
+        onPress={() => router.push({ pathname: '/food', params: { ref: f.ref } })}>
+        <ThemedText type="small" themeColor="tint">
+          Log
+        </ThemedText>
+      </Pressable>
+      <Pressable
+        hitSlop={8}
+        onPress={() => router.push({ pathname: '/custom-food', params: { editRef: f.ref } })}>
+        <ThemedText type="small" themeColor="tint">
+          Edit
+        </ThemedText>
+      </Pressable>
+    </ThemedView>
   );
 
   return (
@@ -47,44 +77,34 @@ export default function LibraryScreen() {
           <RecipeManager />
 
           <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Custom foods
+            Manual entries
           </ThemedText>
           <Pressable
             style={[styles.newButton, { backgroundColor: theme.backgroundElement }]}
-            onPress={() => router.push('/custom-food')}>
+            onPress={() => router.push('/manual-entry')}>
             <ThemedText type="smallBold" themeColor="tint">
-              ＋ New custom food
+              ＋ Manual entry
             </ThemedText>
           </Pressable>
-          {customFoods.length === 0 && (
+          {manualFoods.length === 0 && (
             <ThemedText type="small" themeColor="textSecondary">
-              Foods you enter from a label live here — including ones created for barcodes
-              the database didn’t know.
+              Foods you saved from a manual entry live here for re-logging.
             </ThemedText>
           )}
-          {customFoods.map((f) => (
-            <ThemedView key={f.ref} type="backgroundElement" style={styles.foodCard}>
-              <Pressable
-                style={styles.flex}
-                onPress={() => router.push({ pathname: '/food', params: { ref: f.ref } })}>
-                <ThemedText type="small" numberOfLines={1}>
-                  {f.name}
-                  {f.brand ? ` (${f.brand})` : ''}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {fmtKcal(f.per100.kcal)} {energyLabel(unitPrefs)}/100 {f.unit ?? 'g'}
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                hitSlop={8}
-                onPress={() =>
-                  router.push({ pathname: '/custom-food', params: { editRef: f.ref } })
-                }>
-                <ThemedText type="small" themeColor="tint">
-                  Edit
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
+          {manualFoods.map((f) => (
+            <FoodRowCard key={f.ref} f={f} />
+          ))}
+
+          <ThemedText type="smallBold" style={styles.sectionTitle}>
+            Barcode scans
+          </ThemedText>
+          {barcodeFoods.length === 0 && (
+            <ThemedText type="small" themeColor="textSecondary">
+              Products you entered for barcodes the database didn’t know.
+            </ThemedText>
+          )}
+          {barcodeFoods.map((f) => (
+            <FoodRowCard key={f.ref} f={f} />
           ))}
         </ScrollView>
       </SafeAreaView>

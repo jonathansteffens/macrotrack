@@ -35,7 +35,7 @@ import {
 import type { EstimateTurn, FoodClaim } from '@/lib/ai/types';
 import { todayKey } from '@/lib/dates';
 import { logFood, logAiEstimate } from '@/lib/log';
-import { amountLabel, energyLabel, formatAmount } from '@/lib/units';
+import { energyLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import { trackedNutrientLine } from '@/lib/nutrients';
@@ -372,13 +372,13 @@ export default function AssistScreen() {
             day,
             meal,
             grams: item.grams,
-            quantityDesc: amountLabel(
-              formatAmount(item.grams, {
-                name: displayName(item),
-                match: item.match,
-                prefs: unitPrefs,
-              })
-            ),
+            // Primary unit only ("1 banana", "12 fl oz") — the gram restatement
+            // is noise on the log rows, which show this text verbatim.
+            quantityDesc: formatAmount(item.grams, {
+              name: displayName(item),
+              match: item.match,
+              prefs: unitPrefs,
+            }).primary,
             origin: 'assist',
           });
         } else {

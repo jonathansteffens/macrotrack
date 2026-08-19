@@ -125,6 +125,10 @@ export default function RootLayout() {
           options={{ presentation: 'modal', title: 'Custom food' }}
         />
         <Stack.Screen
+          name="manual-entry"
+          options={{ presentation: 'modal', title: 'Manual entry' }}
+        />
+        <Stack.Screen
           name="correct-food"
           options={{ presentation: 'modal', title: 'Fix from the label' }}
         />

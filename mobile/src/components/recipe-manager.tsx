@@ -115,6 +115,10 @@ export function RecipeManager() {
           </ThemedText>
           <View style={styles.actions}>
             <Action
+              label="Log"
+              onPress={() => router.push({ pathname: '/food', params: { ref: `recipe:${r.id}` } })}
+            />
+            <Action
               label="Edit"
               onPress={() => router.push({ pathname: '/recipe', params: { id: String(r.id) } })}
             />

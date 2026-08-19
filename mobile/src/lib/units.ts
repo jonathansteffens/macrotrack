@@ -103,7 +103,8 @@ function singularize(s: string): string {
 const NOUN_JUNK = new Set([
   'eaten', 'cooked', 'raw', 'drained', 'only', 'yield', 'refuse', 'content',
   'contents', 'solid', 'solids', 'unheated', 'prepared', 'frozen', 'ns', 'nfs',
-  'size', 'boneless', 'skinless',
+  'size', 'boneless', 'skinless', 'peeled', 'pitted', 'shelled', 'trimmed',
+  'cored', 'seeded', 'halved', 'mashed', 'sliced', 'diced', 'chopped',
 ]);
 const NOUN_GENERIC = new Set([
   'piece', 'pieces', 'unit', 'units', 'item', 'items', 'serving', 'servings',

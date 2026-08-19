@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { AmountInput } from '@/components/amount-input';
-import { amountLabel, energyLabel, formatAmount } from '@/lib/units';
+import { energyLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -76,14 +76,12 @@ export default function EntryScreen() {
       await updateEntryQuantity(
         entry.id,
         newGrams,
-        amountLabel(
-          formatAmount(newGrams, {
-            name: entry.foodName,
-            match: null,
-            prefs: unitPrefs,
-            liquid: entry.unit === 'ml',
-          })
-        )
+        formatAmount(newGrams, {
+          name: entry.foodName,
+          match: food,
+          prefs: unitPrefs,
+          liquid: entry.unit === 'ml',
+        }).primary
       );
     }
     // Typed nutrition wins over any amount rescale above: the user's numbers
