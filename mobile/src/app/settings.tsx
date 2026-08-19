@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -52,7 +51,6 @@ import {
   checkinSupported,
   formatCheckinTime,
   getCheckinTime,
-  parseCheckinTime,
   requestCheckinPermission,
   setCheckinTime,
   type CheckinTime,
@@ -72,7 +70,6 @@ export default function SettingsScreen() {
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [dayEnd, setDayEnd] = useState<number | null>(null);
   const [checkin, setCheckin] = useState<CheckinTime | null>(null);
-  const [checkinText, setCheckinText] = useState('');
   const [checkinPermMissing, setCheckinPermMissing] = useState(false);
   const [devMode, setDevModeState] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -84,10 +81,7 @@ export default function SettingsScreen() {
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
     getDayEndHour().then(setDayEnd);
-    getCheckinTime().then((t) => {
-      setCheckin(t);
-      setCheckinText(t ? formatCheckinTime(t) : '');
-    });
+    getCheckinTime().then(setCheckin);
     isDevMode().then(setDevModeState);
     checkinPermissionMissing().then(setCheckinPermMissing);
     getLastBackupAt().then(setLastBackup);
@@ -109,7 +103,6 @@ export default function SettingsScreen() {
   // a denial keeps the time saved but shows the "permission needed" state.
   const chooseCheckin = async (t: CheckinTime | null) => {
     setCheckin(t);
-    if (t == null) setCheckinText('');
     if (t != null) {
       const granted = await requestCheckinPermission();
       setCheckinPermMissing(!granted);
@@ -119,13 +112,12 @@ export default function SettingsScreen() {
     await setCheckinTime(t);
   };
 
-  // The typed time applies on blur/submit; garbage leaves the saved setting
-  // alone (the hint under the field explains the accepted formats).
-  const commitCheckinTime = () => {
-    const t = parseCheckinTime(checkinText);
-    if (!t) return;
-    setCheckinText(formatCheckinTime(t));
-    chooseCheckin(t);
+  // ±15-minute steps, wrapping around midnight. Stepping while Off turns the
+  // check-in on from the 8 PM anchor.
+  const stepCheckin = (dir: 1 | -1) => {
+    const base = checkin ?? { hour: 20, minute: 0 };
+    const mins = (base.hour * 60 + base.minute + dir * 15 + 24 * 60) % (24 * 60);
+    chooseCheckin({ hour: Math.floor(mins / 60), minute: mins % 60 });
   };
 
   const downloadModel = async () => {
@@ -422,42 +414,34 @@ export default function SettingsScreen() {
                     Off
                   </ThemedText>
                 </Pressable>
-                <TextInput
+                {/* Tap-only time control. Two rounds of free-text entry proved
+                    unreliable on-device (focus/commit semantics) — steppers
+                    use the same chip taps that work everywhere else. */}
+                <Pressable
+                  hitSlop={6}
+                  onPress={() => stepCheckin(-1)}
+                  style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}>
+                  <ThemedText type="small">−15m</ThemedText>
+                </Pressable>
+                <View
                   style={[
-                    styles.checkinInput,
-                    { backgroundColor: theme.backgroundElement, color: theme.text },
-                  ]}
-                  value={checkinText}
-                  onChangeText={setCheckinText}
-                  onSubmitEditing={commitCheckinTime}
-                  placeholder="8:00 PM"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                  selectTextOnFocus
-                />
-                {/* Explicit apply — committing must never depend on where the
-                    keyboard's focus wanders (field-blur commits proved flaky). */}
-                {(() => {
-                  const typed = parseCheckinTime(checkinText);
-                  const dirty =
-                    typed != null &&
-                    (checkin == null || formatCheckinTime(typed) !== formatCheckinTime(checkin));
-                  return dirty ? (
-                    <Pressable
-                      onPress={commitCheckinTime}
-                      style={[styles.chip, { backgroundColor: theme.tintSurface, borderColor: theme.tint }]}>
-                      <ThemedText type="small" themeColor="tint">
-                        Set
-                      </ThemedText>
-                    </Pressable>
-                  ) : null;
-                })()}
+                    styles.chip,
+                    {
+                      backgroundColor: checkin != null ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: checkin != null ? theme.tint : 'transparent',
+                    },
+                  ]}>
+                  <ThemedText type="small" themeColor={checkin != null ? 'tint' : 'textSecondary'}>
+                    {checkin != null ? formatCheckinTime(checkin) : 'Off'}
+                  </ThemedText>
+                </View>
+                <Pressable
+                  hitSlop={6}
+                  onPress={() => stepCheckin(1)}
+                  style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}>
+                  <ThemedText type="small">+15m</ThemedText>
+                </Pressable>
               </View>
-              {checkinText.trim() !== '' && parseCheckinTime(checkinText) == null && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  Enter a time like 8:30 PM or 20:30.
-                </ThemedText>
-              )}
               {checkin != null && (
                 <ThemedText type="small" themeColor="textSecondary">
                   Daily at {formatCheckinTime(checkin)} on days with nothing logged.

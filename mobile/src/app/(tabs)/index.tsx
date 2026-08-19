@@ -233,18 +233,8 @@ export default function TodayScreen() {
             </View>
           )}
 
-          {/* Meals */}
-          {MEALS.map((meal) => (
-            <MealSection
-              key={meal}
-              meal={meal}
-              day={day}
-              entries={entries.filter((e) => e.meal === meal)}
-              canCopyYesterday={copyableMeals.has(meal)}
-              onCopyYesterday={() => copyYesterday(meal)}
-            />
-          ))}
-
+          {/* Input actions live ABOVE the meals: logging is the screen's most
+              frequent act and must never require scrolling past the day. */}
           <View style={styles.quickActions}>
             {/* AI + Scan pick no meal — the target screens guess one (AI
                 meal_guess or time of day) and the entry editor can re-file it
@@ -275,6 +265,18 @@ export default function TodayScreen() {
               <ThemedText type="small">📷 Scan</ThemedText>
             </Pressable>
           </View>
+
+          {/* Meals */}
+          {MEALS.map((meal) => (
+            <MealSection
+              key={meal}
+              meal={meal}
+              day={day}
+              entries={entries.filter((e) => e.meal === meal)}
+              canCopyYesterday={copyableMeals.has(meal)}
+              onCopyYesterday={() => copyYesterday(meal)}
+            />
+          ))}
         </ScrollView>
       </SafeAreaView>
 
