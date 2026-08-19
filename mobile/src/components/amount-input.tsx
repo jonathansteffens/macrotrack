@@ -40,6 +40,7 @@ export function AmountInput({
   liquid,
   autoFocus,
   compact,
+  preferGrams,
 }: {
   grams: number | null;
   onGramsChange: (grams: number | null) => void;
@@ -50,10 +51,17 @@ export function AmountInput({
   autoFocus?: boolean;
   /** Tighter layout for list rows (recipe ingredients, assist items). */
   compact?: boolean;
+  /** Grams first (AI review rows: the model already converted the user's
+   *  phrase to grams — that conversion is the number being reviewed). */
+  preferGrams?: boolean;
 }) {
   const theme = useTheme();
   const prefs = useUnitPrefs();
-  const options = amountUnitOptions({ name, match, prefs, liquid });
+  let options = amountUnitOptions({ name, match, prefs, liquid });
+  if (preferGrams) {
+    const gIdx = options.findIndex((o) => o.choice === 'g' || o.choice === 'ml');
+    if (gIdx > 0) options = [options[gIdx], ...options.slice(0, gIdx), ...options.slice(gIdx + 1)];
+  }
   // The chosen unit is stored as a choice, not an object, and resolved against
   // the current options each render — so a chip whose per-unit weight has gone
   // away (food swapped, preference changed) can never stay selected.

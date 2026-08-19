@@ -678,10 +678,12 @@ function ItemCard({
       </View>
 
       <View style={styles.itemRow}>
-        {/* Denominated in the food's own unit. The serving stepper below still
-            drives grams, and AmountInput re-derives its text when it does. */}
+        {/* Grams-first here: the model already converted the user's phrase
+            ("a handful of almonds") to grams, and that conversion is the
+            number under review. Other units stay one chip away. */}
         <AmountInput
           compact
+          preferGrams
           grams={item.grams}
           onGramsChange={(g) => onGramsChange(g == null ? '' : String(g))}
           name={displayName(item)}
@@ -693,6 +695,10 @@ function ItemCard({
           </ThemedText>
         </View>
       </View>
+      {/* The conversion, stated: what the model read the described amount as. */}
+      <ThemedText type="small" themeColor="textSecondary">
+        AI read the amount as {fmtGrams(item.claim.grams)} g
+      </ThemedText>
 
       {item.serving != null && (
         <View style={styles.stepperRow}>
