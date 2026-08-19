@@ -11,6 +11,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getCustomFoodByBarcode } from '@/lib/foods';
 import { lookupBarcode } from '@/lib/off';
+import { decodeRecipeShare, isRecipeShare } from '@/lib/recipe-share';
+import { saveRecipe } from '@/lib/recipes';
 
 export default function ScanScreen() {
   const theme = useTheme();
@@ -45,6 +47,44 @@ export default function ScanScreen() {
     if (busy.current) return;
     busy.current = true;
     setStatus('looking_up');
+
+    // A scanned MacroTrack recipe QR imports the recipe (see recipe-share.ts)
+    // — checked before any barcode lookup so recipe payloads never hit OFF.
+    if (isRecipeShare(code)) {
+      const decoded = decodeRecipeShare(code);
+      const resume = () => {
+        busy.current = false;
+        setStatus('scanning');
+      };
+      if (!decoded) {
+        Alert.alert('Unreadable recipe code', 'This QR looks like a recipe but couldn’t be read.', [
+          { text: 'OK', onPress: resume },
+        ]);
+        return;
+      }
+      Alert.alert(
+        'Import recipe?',
+        `“${decoded.name}” — ${decoded.items.length} ingredient${decoded.items.length === 1 ? '' : 's'}, ${decoded.servings} servings.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: resume },
+          {
+            text: 'Import',
+            onPress: async () => {
+              await saveRecipe(decoded);
+              router.replace('/recipes');
+            },
+          },
+        ]
+      );
+      return;
+    }
+    // Non-recipe QR content isn't a product barcode — ignore rather than
+    // sending arbitrary scanned text to Open Food Facts.
+    if (!/^\d{6,14}$/.test(code)) {
+      busy.current = false;
+      setStatus('scanning');
+      return;
+    }
 
     // The user's own foods win over Open Food Facts (covers OFF misses and
     // products the user has corrected by re-entering).
@@ -174,7 +214,8 @@ export default function ScanScreen() {
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{
-          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
+          // 'qr' is for MacroTrack recipe-share codes, not products.
+          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'qr'],
         }}
         onBarcodeScanned={({ data }) => {
           if (data) handleCode(data);

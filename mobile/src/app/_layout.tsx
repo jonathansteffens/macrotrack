@@ -129,6 +129,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', title: 'Fix from the label' }}
         />
         <Stack.Screen name="recipe" options={{ presentation: 'modal', title: 'Recipe' }} />
+        <Stack.Screen name="recipes" options={{ presentation: 'modal', title: 'Your recipes' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
         <Stack.Screen name="about" options={{ presentation: 'modal', title: 'About' }} />
       </Stack>

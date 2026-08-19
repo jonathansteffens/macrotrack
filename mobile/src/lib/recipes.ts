@@ -211,6 +211,13 @@ export async function listRecipes(): Promise<Recipe[]> {
   return out;
 }
 
+/** Copy a recipe under "<name> (copy)". Returns the new recipe's id. */
+export async function duplicateRecipe(id: number): Promise<number | null> {
+  const r = await getRecipe(id);
+  if (!r) return null;
+  return saveRecipe({ name: `${r.name} (copy)`, servings: r.servings, items: r.items });
+}
+
 export async function deleteRecipe(id: number): Promise<void> {
   const db = getUserDb();
   await db.runAsync('DELETE FROM recipe_items WHERE recipe_id = ?', id);

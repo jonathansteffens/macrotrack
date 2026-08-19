@@ -37,9 +37,18 @@ function NewRecipeButton({ empty }: { empty: boolean }) {
   return (
     <Pressable style={styles.templateRow} onPress={() => router.push('/recipe')}>
       <ThemedView type="backgroundElement" style={styles.newRecipeCard}>
-        <ThemedText type="smallBold" themeColor="tint">
-          ＋ Create a recipe
-        </ThemedText>
+        <View style={styles.newRecipeHeader}>
+          <ThemedText type="smallBold" themeColor="tint">
+            ＋ Create a recipe
+          </ThemedText>
+          {!empty && (
+            <Pressable hitSlop={8} onPress={() => router.push('/recipes')}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Manage ›
+              </ThemedText>
+            </Pressable>
+          )}
+        </View>
         {empty && (
           <ThemedText type="small" themeColor="textSecondary">
             Combine ingredients once, then log it by the serving.
@@ -415,6 +424,11 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.one,
+  },
+  newRecipeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
