@@ -163,7 +163,10 @@ def main():
         Image.new('RGB', (1024, 1024), bg).save(f'{assets}/android-icon-background.png')
         render(v, 1024, mono=True, safe=True).save(f'{assets}/android-icon-monochrome.png')
         render(v, 48).save(f'{assets}/favicon.png')
-        print(f'wrote variant {v} to {assets}/: icon, adaptive fg/bg/mono, favicon')
+        # Splash: the mark alone, white on transparent, over the iris splash
+        # background set in app.json (replaces the template's Expo glyph).
+        render(v, 512, transparent=True).save(f'{assets}/splash-icon.png')
+        print(f'wrote variant {v} to {assets}/: icon, adaptive fg/bg/mono, favicon, splash')
 
 
 if __name__ == '__main__':
