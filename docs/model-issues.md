@@ -9,6 +9,33 @@ when they were logged.
 
 ## Open
 
+### 0. PRIORITY — invented estimates for out-of-database foods are far off in the field
+- **Field observation (Jon, 2026-08-19):** whenever an item fails to resolve
+  against foods.db, the model's own est_per100 fallback is "always really far
+  from anything that makes sense" — despite the offline eval measuring ~2%
+  median APE on est_per100. That mismatch is the finding: the eval's OOD cases
+  are not the field's OOD cases. Field failures correlate with IDENTITY
+  fabrication (issues 1–3): the model invents a dish ("cabbage and mushroom
+  soup") or emits a garbled name, and its est_per100 is then internally
+  consistent with the invented identity — accurate arithmetic on a wrong food.
+- **App-side change (shipped 2026-08-19):** the assist review no longer counts
+  est_per100 silently. Unmatched items render as "Couldn't find this in the
+  food database" with [Search the database] / [Use AI estimate anyway];
+  unresolved items are excluded from totals and from logging, and record as
+  'remove' edits in ai_events — so every field failure of this class now
+  produces a labeled training signal automatically.
+- **Training/eval work order (Jon: "explicitly train and test on this
+  extensively"):**
+  1. Anti-fabrication training: the model must never emit a dish/preparation
+     not present in the text; enumerated ingredients stay enumerated;
+     unfamiliar foods keep the user's own wording as the name (verbatim-name
+     bias) so DB search gets an honest shot.
+  2. A field-OOD eval lane built from real ai_events no-match cases (the
+     exports carry them), scored on: identity fidelity to the user's words,
+     and est_per100 accuracy against reference values for the TRUE food.
+  3. Decode-stability coverage (issue 3) folded in: the garbled-name class is
+     an instance of this problem.
+
 ### 1. Enumerated ingredient lists get fused into an invented dish
 - **Input (device, 2026-08-18):** `200 g of cabbage, carrot, and mushrooms`
 - **Observed:** one item, "cabbage and mushroom soup" — a dish the user never

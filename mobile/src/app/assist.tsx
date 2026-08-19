@@ -47,6 +47,11 @@ type Phase = 'input' | 'estimating' | 'review';
 type ReviewItem = ResolvedItem & {
   gramsText: string;
   showAlternatives: boolean;
+  /** Unmatched items don't silently count the model's invented per-100g —
+   *  they render as "not found" until the user searches the DB or explicitly
+   *  opts into the AI estimate. Field experience: silent inventions were
+   *  reliably far off (usually downstream of a fabricated identity). */
+  useAiEstimate: boolean;
   /** Model's grams when the amount was pre-adjusted to the user's usual. */
   usualFrom: number | null;
   /** Grams of one serving when a discrete serving is known (enables the count
@@ -214,6 +219,7 @@ export default function AssistScreen() {
         grams,
         gramsText: String(grams),
         showAlternatives: false,
+        useAiEstimate: false,
         usualFrom: grams === r.grams ? null : r.grams,
         serving: info?.serving ?? null,
         stepFractional: info?.fractional ?? false,
@@ -289,7 +295,15 @@ export default function AssistScreen() {
   const chooseMatch = (idx: number, match: FoodItem | null) => {
     setItems((prev) =>
       prev.map((it, i) =>
-        i === idx ? { ...it, ...reprojectMatch(it, match), showAlternatives: false } : it
+        i === idx
+          ? {
+              ...it,
+              ...reprojectMatch(it, match),
+              showAlternatives: false,
+              // Picking "Use AI estimate" from the list is the explicit opt-in.
+              useAiEstimate: match == null,
+            }
+          : it
       )
     );
   };
@@ -344,6 +358,11 @@ export default function AssistScreen() {
       const corrections: LoggedCorrection[] = [];
       const savedItems: SavedAiItem[] = [];
       for (const item of items) {
+        // Unresolved (no match, AI estimate not opted into) items are skipped:
+        // never log invented numbers. Their absence from savedItems records as
+        // a 'remove' edit in the ai_event — a clean training signal that the
+        // model's identity for them failed.
+        if (!item.match && !item.useAiEstimate) continue;
         const macros = resolvedMacros(item);
         if (item.match) {
           // Logged wording follows the user's unit preference ("12 fl oz
@@ -386,7 +405,9 @@ export default function AssistScreen() {
     }
   };
 
-  const totalKcal = items.reduce((s, it) => s + resolvedMacros(it).kcal, 0);
+  const resolvedItems = items.filter((it) => it.match || it.useAiEstimate);
+  const unresolvedCount = items.length - resolvedItems.length;
+  const totalKcal = resolvedItems.reduce((s, it) => s + resolvedMacros(it).kcal, 0);
 
   return (
     <KeyboardAvoidingView
@@ -485,6 +506,7 @@ export default function AssistScreen() {
                   onRemove={() => removeItem(idx)}
                   onRevertUsual={() => revertUsual(idx)}
                   onChangeFood={() => setSearchItemIdx(idx)}
+                  onUseAiEstimate={() => updateItem(idx, { useAiEstimate: true })}
                 />
               ))}
 
@@ -496,13 +518,20 @@ export default function AssistScreen() {
                 ))}
               </View>
 
+              {unresolvedCount > 0 && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {unresolvedCount} item{unresolvedCount === 1 ? '' : 's'} not found in the
+                  database won’t be logged — search for {unresolvedCount === 1 ? 'it' : 'them'} or
+                  remove {unresolvedCount === 1 ? 'it' : 'them'}.
+                </ThemedText>
+              )}
               <PrimaryButton
                 label={
                   saving
                     ? 'Logging…'
-                    : `Log ${items.length} item${items.length === 1 ? '' : 's'} · ${fmtKcal(totalKcal)} ${energyLabel(unitPrefs)}`
+                    : `Log ${resolvedItems.length} item${resolvedItems.length === 1 ? '' : 's'} · ${fmtKcal(totalKcal)} ${energyLabel(unitPrefs)}`
                 }
-                disabled={items.length === 0}
+                disabled={resolvedItems.length === 0}
                 onPress={logAll}
               />
               <Pressable
@@ -576,6 +605,7 @@ function ItemCard({
   onRemove,
   onRevertUsual,
   onChangeFood,
+  onUseAiEstimate,
 }: {
   item: ReviewItem;
   onGramsChange: (text: string) => void;
@@ -585,6 +615,7 @@ function ItemCard({
   onRemove: () => void;
   onRevertUsual: () => void;
   onChangeFood: () => void;
+  onUseAiEstimate: () => void;
 }) {
   const theme = useTheme();
   const macros = resolvedMacros(item);
@@ -594,6 +625,41 @@ function ItemCard({
   useEffect(() => {
     getTracking().then(setTrackingCfg);
   }, []);
+
+  // Not in the database and no explicit opt-in → an honest "not found" card,
+  // never silently-counted invented numbers.
+  if (!item.match && !item.useAiEstimate) {
+    return (
+      <ThemedView type="backgroundElement" style={styles.itemCard}>
+        <View style={styles.itemHeader}>
+          <ThemedText type="smallBold" numberOfLines={2} style={styles.flex}>
+            {item.claim.name}
+            {item.claim.prep ? ` (${item.claim.prep})` : ''}
+          </ThemedText>
+          <Pressable hitSlop={8} onPress={onRemove}>
+            <ThemedText type="small" themeColor="textSecondary">
+              ✕
+            </ThemedText>
+          </Pressable>
+        </View>
+        <ThemedText type="small" style={{ color: theme.danger }}>
+          Couldn’t find this in the food database.
+        </ThemedText>
+        <View style={styles.unresolvedActions}>
+          <Pressable hitSlop={6} onPress={onChangeFood}>
+            <ThemedText type="small" themeColor="tint">
+              Search the database ›
+            </ThemedText>
+          </Pressable>
+          <Pressable hitSlop={6} onPress={onUseAiEstimate}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Use AI estimate anyway
+            </ThemedText>
+          </Pressable>
+        </View>
+      </ThemedView>
+    );
+  }
   // Below the prompt's "real uncertainty" line — invite an edit, don't block.
   const lowConfidence = item.claim.confidence < 0.6;
 
@@ -850,6 +916,11 @@ const styles = StyleSheet.create({
     minWidth: 44,
     paddingVertical: Spacing.one,
     borderRadius: Spacing.two,
+    alignItems: 'center',
+  },
+  unresolvedActions: {
+    flexDirection: 'row',
+    gap: Spacing.four,
     alignItems: 'center',
   },
   streamList: {
