@@ -64,6 +64,21 @@ when they were logged.
   Suggested: a CPU-only llama.cpp decode lane for release candidates, seeded
   with the gate's capitalized/trailing-space variants.
 
+### 4. Resolver search should converge with the human-facing manual search
+- **Field observation (Jon, 2026-08-19):** an AI-matched item can differ from
+  what manually searching the same words shows — confusing now that the
+  assist flow is DB-match-only (no silent inventions).
+- **Why they diverge:** the resolver's 'all'-scope search + ranking is the
+  model's TRAINING CONTRACT (db_search_terms are optimized against it; the
+  gate mirrors it byte-for-byte), so it stayed frozen while manual search
+  gained the common-tier subset, display-name bridge, plural-awareness, and
+  cocktail de-rank. Only alias + de-rank + display-stage made it into the
+  resolver (c822a6c).
+- **Work order:** next training round, update the resolver search to the
+  manual-search semantics (plural-aware tiers at minimum), regenerate
+  training data + gate cases against it, and retrain so model terms target
+  the search humans actually see. All four SQL mirrors move together.
+
 ## Resolved (kept for the record)
 - "coke"/"cola"/"soda" identity + cocktail-first ranking → fixed app-side via
   curated aliases + cocktail de-rank (c822a6c, 75fe94b); grams fixed by the

@@ -34,7 +34,15 @@ const DRINK_CATEGORY_RE = /beverage|drink|beer|wine|smoothie|soda|juice/i;
 export function isLiquidFood(match: FoodItem | null): boolean | null {
   if (!match) return null;
   if (match.unit === 'ml') return true;
-  if (DRINK_CATEGORY_RE.test(match.category ?? '')) return true;
+  const cat = match.category ?? '';
+  if (DRINK_CATEGORY_RE.test(cat)) {
+    // "Fruits and Fruit Juices" is a MIXED USDA category — the 'Juices' in
+    // its NAME must not make every banana a beverage. For fruit categories
+    // the item's own name decides; pure drink categories stay categorical.
+    // KEEP IN SYNC with tools/parse/quantity-override.mjs.
+    if (!/fruit/i.test(cat)) return true;
+    if (/juice|smoothie|nectar|drink|beverage/i.test(match.name)) return true;
+  }
   return match.portions.some((p) => /fl\s*oz/i.test(p.label));
 }
 

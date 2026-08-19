@@ -175,6 +175,28 @@ console.log('piece nouns:');
   eq('a pound is a measure, not a piece', U.pieceGramsFor('mystery meat xyz', LB), null);
 }
 
+console.log('fruit is not a beverage:');
+{
+  // USDA files bananas under "Fruits and Fruit Juices" — the category word
+  // 'Juices' must not classify solid fruit as a drink (field bug: overripe
+  // banana offered fl oz / cups / mL instead of "1 banana").
+  const BAN = {
+    name: 'Overripe Bananas, Raw',
+    category: 'Fruits and Fruit Juices',
+    unit: 'g',
+    portions: [{ label: '1 Banana Peeled', grams: 110 }],
+  };
+  eq('overripe banana is countable', U.classifyFood('overripe banana', BAN), 'countable');
+  // The curated pool's unit ("medium banana") outranks the portion label.
+  eq(
+    'and reads as a banana',
+    U.formatAmount(110, { name: 'overripe banana', match: BAN, prefs: US }).primary,
+    '1 medium banana'
+  );
+  const OJ = { name: 'Orange juice, raw', category: 'Fruits and Fruit Juices', unit: 'g', portions: [] };
+  eq('actual juice stays a drink', U.classifyFood('orange juice', OJ), 'drink');
+}
+
 console.log('solids:');
 eq('227 g steak (US)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: US }).primary, '8 oz');
 eq('227 g steak (metric)', U.formatAmount(227, { name: 'steak', match: STEAK, prefs: METRIC }).primary, '227 g');
