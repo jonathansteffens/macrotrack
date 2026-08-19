@@ -44,14 +44,23 @@ export type UnitSystem = 'us' | 'metric';
 export type FoodClass = 'serving' | 'drink' | 'countable' | 'solid';
 /** 'auto' defers to the system default for that class. */
 export type UnitChoice = 'auto' | 'serving' | 'piece' | 'floz' | 'ml' | 'cup' | 'oz' | 'g';
+/** Same energy, two spellings: US labels say "Cal(ories)", science says kcal. */
+export type EnergyUnit = 'Cal' | 'kcal';
 
 export type UnitPrefs = {
   system: UnitSystem;
   /** Per-class override; absent or 'auto' means follow `system`. */
   overrides: Partial<Record<FoodClass, UnitChoice>>;
+  /** Display label for energy; default 'Cal' (what US nutrition labels print). */
+  energy?: EnergyUnit;
 };
 
-export const DEFAULT_UNIT_PREFS: UnitPrefs = { system: 'us', overrides: {} };
+export const DEFAULT_UNIT_PREFS: UnitPrefs = { system: 'us', overrides: {}, energy: 'Cal' };
+
+/** The energy display label under the given prefs. */
+export function energyLabel(prefs?: Pick<UnitPrefs, 'energy'> | null): string {
+  return prefs?.energy === 'kcal' ? 'kcal' : 'Cal';
+}
 
 /** Choices offered per class in Settings, in display order. */
 export const UNIT_CHOICES: Record<FoodClass, UnitChoice[]> = {

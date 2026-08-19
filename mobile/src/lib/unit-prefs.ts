@@ -11,10 +11,18 @@
  */
 
 import { getUserDb } from './db';
-import { DEFAULT_UNIT_PREFS, type FoodClass, type UnitChoice, type UnitPrefs, type UnitSystem } from './units';
+import {
+  DEFAULT_UNIT_PREFS,
+  type EnergyUnit,
+  type FoodClass,
+  type UnitChoice,
+  type UnitPrefs,
+  type UnitSystem,
+} from './units';
 
 const SYSTEM_KEY = 'unit_system';
 const OVERRIDES_KEY = 'unit_overrides';
+const ENERGY_KEY = 'unit_energy';
 
 let prefs: UnitPrefs = DEFAULT_UNIT_PREFS;
 const listeners = new Set<() => void>();
@@ -55,11 +63,24 @@ export async function loadUnitPrefs(): Promise<void> {
       overrides = {};
     }
   }
+  const en = await db.getFirstAsync<{ value: string }>(
+    'SELECT value FROM settings WHERE key = ?', ENERGY_KEY
+  );
   prefs = {
     system: isSystem(sys?.value) ? sys.value : DEFAULT_UNIT_PREFS.system,
     overrides,
+    energy: en?.value === 'kcal' ? 'kcal' : 'Cal',
   };
   emit();
+}
+
+/** Persist and apply the energy display label immediately. */
+export async function setEnergyUnit(next: EnergyUnit): Promise<void> {
+  prefs = { ...prefs, energy: next };
+  emit();
+  await getUserDb().runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ENERGY_KEY, next
+  );
 }
 
 /** Persist and apply a unit system immediately. */

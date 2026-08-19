@@ -69,13 +69,18 @@ export function trackedNutrients(tracking: TrackingConfig | null): NutrientDef[]
   return defs.length > 0 ? defs : NUTRIENTS.filter((n) => n.key === 'kcal');
 }
 
-/** "245 kcal · Protein 32 g · Fiber 3 g" — tracked nutrients only, so every
- *  summary line in the app shows the user's chosen set, not the classic four. */
-export function trackedNutrientLine(m: Macros, tracking: TrackingConfig | null): string {
+/** "245 Cal · Protein 32 g · Fiber 3 g" — tracked nutrients only, so every
+ *  summary line in the app shows the user's chosen set, not the classic four.
+ *  `energy` is the display label for calories (Settings → Units). */
+export function trackedNutrientLine(
+  m: Macros,
+  tracking: TrackingConfig | null,
+  energy = 'Cal'
+): string {
   return trackedNutrients(tracking)
     .map((n) => {
       const v = nutrientValue(m, n.key);
-      if (n.key === 'kcal') return `${fmtKcal(v)} kcal`;
+      if (n.key === 'kcal') return `${fmtKcal(v)} ${energy}`;
       const val = n.unit === 'mg' ? String(Math.round(v)) : fmtGrams(v);
       return `${n.label} ${val} ${n.unit}`;
     })

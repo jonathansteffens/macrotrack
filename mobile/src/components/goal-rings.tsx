@@ -84,7 +84,16 @@ function Ring({
   );
 }
 
-export function GoalRings({ totals, tracking }: { totals: Macros; tracking: TrackingConfig }) {
+export function GoalRings({
+  totals,
+  tracking,
+  energy = 'Cal',
+}: {
+  totals: Macros;
+  tracking: TrackingConfig;
+  /** Energy display label from Settings → Units ("Cal" or "kcal"). */
+  energy?: string;
+}) {
   const theme = useTheme();
 
   const kcalCfg = tracking.kcal;
@@ -116,7 +125,7 @@ export function GoalRings({ totals, tracking }: { totals: Macros; tracking: Trac
               {fmtKcal(totals.kcal)}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" maxFontSizeMultiplier={1.1}>
-              {kcalGoal != null ? `of ${fmtKcal(kcalGoal)} kcal` : 'kcal'}
+              {kcalGoal != null ? `of ${fmtKcal(kcalGoal)} ${energy}` : energy}
             </ThemedText>
             {left != null &&
               (over ? (

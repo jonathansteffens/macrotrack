@@ -35,7 +35,7 @@ import {
 import type { EstimateTurn, FoodClaim } from '@/lib/ai/types';
 import { todayKey } from '@/lib/dates';
 import { logFood, logAiEstimate } from '@/lib/log';
-import { amountLabel, formatAmount } from '@/lib/units';
+import { amountLabel, energyLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import { trackedNutrientLine } from '@/lib/nutrients';
@@ -500,7 +500,7 @@ export default function AssistScreen() {
                 label={
                   saving
                     ? 'Logging…'
-                    : `Log ${items.length} item${items.length === 1 ? '' : 's'} · ${fmtKcal(totalKcal)} kcal`
+                    : `Log ${items.length} item${items.length === 1 ? '' : 's'} · ${fmtKcal(totalKcal)} ${energyLabel(unitPrefs)}`
                 }
                 disabled={items.length === 0}
                 onPress={logAll}
@@ -588,6 +588,7 @@ function ItemCard({
 }) {
   const theme = useTheme();
   const macros = resolvedMacros(item);
+  const prefs = useUnitPrefs();
   // The macro summary shows the user's TRACKED set, same as everywhere else.
   const [trackingCfg, setTrackingCfg] = useState<TrackingConfig | null>(null);
   useEffect(() => {
@@ -621,7 +622,9 @@ function ItemCard({
           match={item.match}
         />
         <View style={styles.itemMacros}>
-          <ThemedText type="small">{trackedNutrientLine(macros, trackingCfg)}</ThemedText>
+          <ThemedText type="small">
+            {trackedNutrientLine(macros, trackingCfg, energyLabel(prefs))}
+          </ThemedText>
         </View>
       </View>
 
@@ -685,7 +688,7 @@ function ItemCard({
                 themeColor={item.match?.ref === alt.ref ? 'text' : 'textSecondary'}
                 numberOfLines={1}>
                 {item.match?.ref === alt.ref ? '● ' : '○ '}
-                {alt.displayName ?? alt.name} ({fmtKcal(alt.per100.kcal)} kcal/100g)
+                {alt.displayName ?? alt.name} ({fmtKcal(alt.per100.kcal)} {energyLabel(prefs)}/100g)
               </ThemedText>
             </Pressable>
           ))}
@@ -694,7 +697,7 @@ function ItemCard({
               type="small"
               themeColor={item.match == null ? 'text' : 'textSecondary'}>
               {item.match == null ? '● ' : '○ '}Use AI estimate (
-              {fmtKcal(item.claim.est_per100.kcal)} kcal/100g)
+              {fmtKcal(item.claim.est_per100.kcal)} {energyLabel(prefs)}/100g)
             </ThemedText>
           </Pressable>
         </View>

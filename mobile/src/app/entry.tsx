@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { AmountInput } from '@/components/amount-input';
-import { amountLabel, formatAmount } from '@/lib/units';
+import { amountLabel, energyLabel, formatAmount } from '@/lib/units';
 import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -180,7 +180,7 @@ export default function EntryScreen() {
         {macroEdit == null ? (
           <View style={styles.previewRow}>
             <ThemedText type="small" style={styles.flex}>
-              {trackedNutrientLine(preview, trackingCfg)}
+              {trackedNutrientLine(preview, trackingCfg, energyLabel(unitPrefs))}
             </ThemedText>
             <Pressable
               hitSlop={8}

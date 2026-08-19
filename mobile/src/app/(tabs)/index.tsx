@@ -24,6 +24,8 @@ import { fmtKcal, ZERO_MACROS } from '@/lib/macros';
 import { NUTRIENTS, nutrientValue } from '@/lib/nutrients';
 import { saveTemplate } from '@/lib/templates';
 import { defaultTracking, getTracking } from '@/lib/tracking';
+import { energyLabel } from '@/lib/units';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import {
   MEAL_LABELS,
   MEALS,
@@ -58,6 +60,7 @@ export default function TodayScreen() {
   // ids just inserted, so Undo removes only those.
   const [undo, setUndo] = useState<{ ids: number[]; count: number } | null>(null);
   const relogging = useRef(false);
+  const unitPrefs = useUnitPrefs();
 
   const load = useCallback(async () => {
     const dayEntries = await entriesForDay(day);
@@ -167,7 +170,7 @@ export default function TodayScreen() {
           showsVerticalScrollIndicator={false}>
           {/* Summary card: goal rings up top, per-nutrient detail bars below */}
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
-            <GoalRings totals={totals} tracking={tracking} />
+            <GoalRings totals={totals} tracking={tracking} energy={energyLabel(unitPrefs)} />
             {detailNutrients.map((n) => (
               <MacroBar
                 key={n.key}
@@ -196,7 +199,7 @@ export default function TodayScreen() {
                 Log your usual {usual.meal}?{'  '}
                 <ThemedText type="small" themeColor="textSecondary">
                   {usual.entries.map((e) => e.foodName.split(',')[0]).join(' + ')} ·{' '}
-                  {fmtKcal(usual.kcal)} kcal
+                  {fmtKcal(usual.kcal)} {energyLabel(unitPrefs)}
                 </ThemedText>
               </ThemedText>
             </Pressable>
@@ -289,6 +292,7 @@ function MealSection({
   onCopyYesterday: () => void;
 }) {
   const theme = useTheme();
+  const unitPrefs = useUnitPrefs();
   const mealKcal = entries.reduce((s, e) => s + e.macros.kcal, 0);
 
   const saveAsTemplate = () => {
@@ -323,7 +327,7 @@ function MealSection({
                 </ThemedText>
               </Pressable>
               <ThemedText type="small" themeColor="textSecondary">
-                {fmtKcal(mealKcal)} kcal
+                {fmtKcal(mealKcal)} {energyLabel(unitPrefs)}
               </ThemedText>
             </>
           )}

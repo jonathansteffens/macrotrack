@@ -37,6 +37,9 @@ export default function CorrectFoodScreen() {
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [servingGrams, setServingGrams] = useState('');
+  // The serving's descriptive text ("1 can (8 fl oz)") — editable because OFF
+  // serving text carries crowdsourced typos ("8 h. oz") just like its numbers.
+  const [servingDesc, setServingDesc] = useState('');
   const [kcal, setKcal] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
@@ -61,6 +64,8 @@ export default function CorrectFoodScreen() {
       setBrand(f.brand ?? '');
       const sg = f.portions[0]?.grams ?? null;
       setServingGrams(sg != null ? fmtNum(sg) : '');
+      const descMatch = /^1 serving \((.+)\)$/.exec(f.portions[0]?.label ?? '');
+      setServingDesc(descMatch ? descMatch[1] : '');
       // Prefill in the label's own terms: current per-100 scaled to a serving.
       const per = (v: number | null) =>
         v == null || sg == null ? '' : fmtNum((v * sg) / 100);
@@ -124,9 +129,8 @@ export default function CorrectFoodScreen() {
           potassiumMg: per100(potassium),
         },
         servingGrams: sg,
-        // Keep the descriptive OFF label ("2 bites (50 g)") only while the
-        // weight still matches it — otherwise it would lie about the grams.
-        servingLabel: food?.portions[0]?.grams === sg ? food.portions[0].label : undefined,
+        // The user's (possibly corrected) description; empty → plain "1 serving".
+        servingLabel: servingDesc.trim() ? `1 serving (${servingDesc.trim()})` : undefined,
       });
       backToFood();
     } finally {
@@ -195,6 +199,15 @@ export default function CorrectFoodScreen() {
               value={servingGrams}
               onChangeText={setServingGrams}
               keyboardType="decimal-pad"
+            />
+          </Field>
+          <Field label="Serving description (optional)">
+            <TextInput
+              style={inputStyle}
+              value={servingDesc}
+              onChangeText={setServingDesc}
+              placeholder="e.g. 1 can (8 fl oz)"
+              placeholderTextColor={theme.textSecondary}
             />
           </Field>
 

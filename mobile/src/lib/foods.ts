@@ -226,6 +226,40 @@ export async function searchFoods(
   // original name-only ranking on an old DB. ('all' never touches this.)
   const displayReady = effectiveScope === 'common' ? await foodsHasDisplayNorm() : false;
 
+  // ---- manual-search plural bridge (common scope ONLY) ---------------------
+  // "strawberry" must find "Strawberries, raw": the ranking tiers match the
+  // query token as a whole word, so a singular query lost the top tier to rows
+  // that happen to use the singular ("Milk, strawberry"). Manual search treats
+  // simple singular/plural variants as the same word — in the WHERE and in
+  // every ranking tier. The resolver scopes ('all' / 'display') are CANONICAL,
+  // mirrored into the eval harnesses, and stay byte-identical.
+  const tokenVariants = (t: string): string[] => {
+    const v = new Set([t]);
+    if (t.endsWith('ies')) v.add(`${t.slice(0, -3)}y`);
+    else if (t.endsWith('es')) {
+      v.add(t.slice(0, -1));
+      v.add(t.slice(0, -2));
+    } else if (t.endsWith('s')) v.add(t.slice(0, -1));
+    else {
+      v.add(`${t}s`);
+      v.add(`${t}es`);
+      if (t.endsWith('y')) v.add(`${t.slice(0, -1)}ies`);
+    }
+    return [...v];
+  };
+  const variants = tokens.map(tokenVariants);
+  const v0 = variants[0];
+  const anyLike = (col: string, vs: string[]) =>
+    `(${vs.map(() => `(' ' || ${col}) LIKE ? ESCAPE '\\'`).join(' OR ')})`;
+  const whereVar = variants.map((vs) => anyLike('name_norm', vs)).join(' AND ');
+  const whereVarParams = variants.flatMap((vs) => vs.map((v) => `% ${escapeLike(v)}%`));
+  const wholeWordAny = (col: string) =>
+    `CASE WHEN ${v0.map(() => `(' ' || ${col} || ' ') LIKE ? ESCAPE '\\'`).join(' OR ')} THEN 0 ELSE 1 END`;
+  const wholeWordAnyParams = v0.map((v) => `% ${escapeLike(v)} %`);
+  const wordStartAny = (col: string) =>
+    `CASE WHEN ${v0.map(() => `${col} LIKE ? ESCAPE '\\'`).join(' OR ')} THEN 0 ELSE 1 END`;
+  const wordStartAnyParams = v0.map((v) => `${escapeLike(v)}%`);
+
   const queryUsda = (commonOnly: boolean) => {
     if (!commonOnly) {
       // Resolver ('all'): whole-word match on the first token outranks
@@ -245,15 +279,16 @@ export async function searchFoods(
       );
     }
     if (!displayReady) {
-      // Old bundled DB without display_name_norm: original name-only ranking.
-      // Whole-word first, then head-noun prefix, then the primary generics
-      // (common = 2) above everyday foods (= 1), then plainer, then shortest.
+      // Old bundled DB without display_name_norm: original name-only ranking,
+      // plural-aware. Whole-word first, then head-noun prefix, then the primary
+      // generics (common = 2) above everyday foods (= 1), then plainer, then
+      // shortest.
       return getFoodsDb().getAllAsync<FoodRow>(
-        `SELECT * FROM foods WHERE ${where} AND common >= 1
-         ORDER BY ${wholeWord}, ${wordStart}, common DESC, ${wordCount}, LENGTH(name_norm) LIMIT ?`,
-        ...params,
-        wholeWordParam,
-        prefix,
+        `SELECT * FROM foods WHERE ${whereVar} AND common >= 1
+         ORDER BY ${wholeWordAny('name_norm')}, ${wordStartAny('name_norm')}, common DESC, ${wordCount}, LENGTH(name_norm) LIMIT ?`,
+        ...whereVarParams,
+        ...wholeWordAnyParams,
+        ...wordStartAnyParams,
         limit
       );
     }
@@ -263,29 +298,25 @@ export async function searchFoods(
     // only ever help a row's rank, never hurt it. Tiers preserved in spirit:
     // whole-word, word-start, common DESC, word-count (plainness), raw length.
     // COALESCE guards the length/word-count of rows with a NULL display name.
-    const whereDisp = tokens
-      .map(() => "(' ' || display_name_norm) LIKE ? ESCAPE '\\'")
-      .join(' AND ');
-    const wholeWordDisp = `CASE WHEN (' ' || display_name_norm || ' ') LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
-    const wordStartDisp = `CASE WHEN display_name_norm LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END`;
+    const whereDispVar = variants.map((vs) => anyLike('display_name_norm', vs)).join(' AND ');
     const wordCountDisp = `(LENGTH(display_name_norm) - LENGTH(REPLACE(display_name_norm, ' ', '')) + 1)`;
     return getFoodsDb().getAllAsync<FoodRow>(
       `SELECT * FROM foods
-       WHERE ( (${where})
-               OR (${whereDisp} AND display_name_norm IS NOT NULL) ) AND common >= 1
+       WHERE ( (${whereVar})
+               OR (${whereDispVar} AND display_name_norm IS NOT NULL) ) AND common >= 1
        ORDER BY
-         MIN(${wholeWord}, ${wholeWordDisp}),
-         MIN(${wordStart}, ${wordStartDisp}),
+         MIN(${wholeWordAny('name_norm')}, ${wholeWordAny('display_name_norm')}),
+         MIN(${wordStartAny('name_norm')}, ${wordStartAny('display_name_norm')}),
          common DESC,
          MIN(${wordCount}, COALESCE(${wordCountDisp}, 9999)),
          MIN(LENGTH(name_norm), COALESCE(LENGTH(display_name_norm), 9999))
        LIMIT ?`,
-      ...params, // WHERE — name_norm tokens
-      ...params, // WHERE — display_name_norm tokens
-      wholeWordParam, // ORDER — whole-word (name)
-      wholeWordParam, // ORDER — whole-word (display)
-      prefix, // ORDER — word-start (name)
-      prefix, // ORDER — word-start (display)
+      ...whereVarParams, // WHERE — name_norm token variants
+      ...whereVarParams, // WHERE — display_name_norm token variants
+      ...wholeWordAnyParams, // ORDER — whole-word (name)
+      ...wholeWordAnyParams, // ORDER — whole-word (display)
+      ...wordStartAnyParams, // ORDER — word-start (name)
+      ...wordStartAnyParams, // ORDER — word-start (display)
       limit
     );
   };

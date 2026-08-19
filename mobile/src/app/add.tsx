@@ -12,6 +12,8 @@ import { todayKey } from '@/lib/dates';
 import { recentFoods, searchFoods } from '@/lib/foods';
 import { deleteEntries } from '@/lib/log';
 import { fmtKcal } from '@/lib/macros';
+import { energyLabel } from '@/lib/units';
+import { useUnitPrefs } from '@/hooks/use-unit-prefs';
 import { listRecipes, recipePerServing, type Recipe } from '@/lib/recipes';
 import {
   deleteTemplate,
@@ -50,6 +52,7 @@ function NewRecipeButton({ empty }: { empty: boolean }) {
 
 export default function AddFoodScreen() {
   const theme = useTheme();
+  const unitPrefs = useUnitPrefs();
   const params = useLocalSearchParams<{ day?: string; meal?: string }>();
   const day = params.day ?? todayKey();
   // May be undefined — downstream screens guess a meal from the time of day.
@@ -167,7 +170,7 @@ export default function AddFoodScreen() {
           🍲 {r.name}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} kcal ea
+          {r.servings} servings · {fmtKcal(recipePerServing(r).kcal)} {energyLabel(unitPrefs)} ea
         </ThemedText>
         {/* Editing used to be long-press only, which nothing advertises. */}
         <Pressable
@@ -192,7 +195,7 @@ export default function AddFoodScreen() {
           ☆ {t.name}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {t.items.length} items · {fmtKcal(templateKcal(t))} kcal
+          {t.items.length} items · {fmtKcal(templateKcal(t))} {energyLabel(unitPrefs)}
         </ThemedText>
       </ThemedView>
     </Pressable>

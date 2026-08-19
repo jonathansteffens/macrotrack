@@ -28,11 +28,12 @@ import {
   setAppearance,
   type AppearancePref,
 } from '@/lib/appearance';
-import { setUnitOverride, setUnitSystem } from '@/lib/unit-prefs';
+import { setEnergyUnit, setUnitOverride, setUnitSystem } from '@/lib/unit-prefs';
 import {
   UNIT_CHOICES,
   foodClassLabel,
   unitChoiceLabel,
+  type EnergyUnit,
   type FoodClass,
   type UnitChoice,
   type UnitSystem,
@@ -313,6 +314,31 @@ export default function SettingsScreen() {
             ))}
           </View>
 
+          <ThemedText type="small" themeColor="textSecondary" style={styles.unitClassLabel}>
+            Energy
+          </ThemedText>
+          <View style={styles.modelChips}>
+            {(['Cal', 'kcal'] as EnergyUnit[]).map((en) => {
+              const active = (unitPrefs.energy ?? 'Cal') === en;
+              return (
+                <Pressable
+                  key={en}
+                  onPress={() => setEnergyUnit(en)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: active ? theme.tint : 'transparent',
+                    },
+                  ]}>
+                  <ThemedText type="small" themeColor={active ? 'tint' : 'textSecondary'}>
+                    {en === 'Cal' ? 'Calories (Cal)' : 'kcal'}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {(Object.keys(UNIT_CHOICES) as FoodClass[]).map((cls) => (
             <View key={cls}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.unitClassLabel}>
@@ -400,16 +426,38 @@ export default function SettingsScreen() {
                   ]}
                   value={checkinText}
                   onChangeText={setCheckinText}
-                  onEndEditing={commitCheckinTime}
                   onSubmitEditing={commitCheckinTime}
                   placeholder="8:00 PM"
                   placeholderTextColor={theme.textSecondary}
                   autoCapitalize="none"
+                  selectTextOnFocus
                 />
+                {/* Explicit apply — committing must never depend on where the
+                    keyboard's focus wanders (field-blur commits proved flaky). */}
+                {(() => {
+                  const typed = parseCheckinTime(checkinText);
+                  const dirty =
+                    typed != null &&
+                    (checkin == null || formatCheckinTime(typed) !== formatCheckinTime(checkin));
+                  return dirty ? (
+                    <Pressable
+                      onPress={commitCheckinTime}
+                      style={[styles.chip, { backgroundColor: theme.tintSurface, borderColor: theme.tint }]}>
+                      <ThemedText type="small" themeColor="tint">
+                        Set
+                      </ThemedText>
+                    </Pressable>
+                  ) : null;
+                })()}
               </View>
               {checkinText.trim() !== '' && parseCheckinTime(checkinText) == null && (
                 <ThemedText type="small" themeColor="textSecondary">
                   Enter a time like 8:30 PM or 20:30.
+                </ThemedText>
+              )}
+              {checkin != null && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  Daily at {formatCheckinTime(checkin)} on days with nothing logged.
                 </ThemedText>
               )}
               {checkinPermMissing && (
