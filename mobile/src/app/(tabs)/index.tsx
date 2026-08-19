@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePickerModal } from '@/components/date-picker-modal';
 import { GoalRings } from '@/components/goal-rings';
 import { MacroBar } from '@/components/macro-bar';
+import { SettingsGear } from '@/components/settings-gear';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
@@ -155,14 +156,7 @@ export default function TodayScreen() {
               ›
             </ThemedText>
           </Pressable>
-          <Pressable
-            hitSlop={12}
-            style={styles.settingsButton}
-            onPress={() => router.push('/settings')}>
-            <ThemedText type="default" themeColor="textSecondary" style={styles.settingsGlyph}>
-              ⚙
-            </ThemedText>
-          </Pressable>
+          <SettingsGear style={styles.settingsButton} />
         </View>
 
         <ScrollView
@@ -409,10 +403,6 @@ const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
     right: Spacing.three,
-  },
-  settingsGlyph: {
-    fontSize: 24,
-    lineHeight: 28,
   },
   scrollContent: {
     paddingHorizontal: Spacing.three,

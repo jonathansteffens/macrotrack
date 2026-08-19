@@ -1,9 +1,10 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LineChart } from '@/components/line-chart';
+import { SettingsGear } from '@/components/settings-gear';
 import { SparkLine } from '@/components/spark-line';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -76,11 +77,7 @@ export default function TrendsScreen() {
             <ThemedText type="subtitle" style={styles.flex}>
               Trends
             </ThemedText>
-            <Pressable hitSlop={12} onPress={() => router.push('/settings')}>
-              <ThemedText type="default" themeColor="textSecondary">
-                ⚙
-              </ThemedText>
-            </Pressable>
+            <SettingsGear />
           </View>
 
           {/* Range selector */}
