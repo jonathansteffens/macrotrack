@@ -451,6 +451,14 @@ export async function deleteCustomFood(id: number): Promise<void> {
   await getUserDb().runAsync('DELETE FROM custom_foods WHERE id = ?', id);
 }
 
+/** All user-created foods, newest first (the Library tab's listing). */
+export async function listCustomFoods(): Promise<FoodItem[]> {
+  const rows = await getUserDb().getAllAsync<FoodRow>(
+    'SELECT * FROM custom_foods ORDER BY id DESC'
+  );
+  return rows.map(customRowToFood);
+}
+
 /** Custom food previously created for a barcode OFF didn't know. */
 export async function getCustomFoodByBarcode(barcode: string): Promise<FoodItem | null> {
   const r = await getUserDb().getFirstAsync<FoodRow>(

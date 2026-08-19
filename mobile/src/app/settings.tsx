@@ -50,10 +50,10 @@ import {
   checkinPermissionMissing,
   checkinSupported,
   formatCheckinTime,
-  getCheckinTime,
+  getCheckinPref,
   requestCheckinPermission,
-  setCheckinTime,
-  type CheckinTime,
+  setCheckinPref,
+  type CheckinPref,
 } from '@/lib/checkin';
 import { DAY_END_OPTIONS, dayEndLabel, getDayEndHour, setDayEndHour } from '@/lib/day-end';
 import { isDevMode } from '@/lib/dev-mode';
@@ -69,7 +69,7 @@ export default function SettingsScreen() {
   const [modelStatus, setModelStatus] = useState<LocalModelStatus | null>(null);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [dayEnd, setDayEnd] = useState<number | null>(null);
-  const [checkin, setCheckin] = useState<CheckinTime | null>(null);
+  const [checkin, setCheckin] = useState<CheckinPref | null>(null);
   const [checkinPermMissing, setCheckinPermMissing] = useState(false);
   const [devMode, setDevModeState] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -81,7 +81,7 @@ export default function SettingsScreen() {
     getFoodDbInfo().then(setDbInfo);
     getLocalModelStatus().then(setModelStatus);
     getDayEndHour().then(setDayEnd);
-    getCheckinTime().then(setCheckin);
+    getCheckinPref().then(setCheckin);
     isDevMode().then(setDevModeState);
     checkinPermissionMissing().then(setCheckinPermMissing);
     getLastBackupAt().then(setLastBackup);
@@ -101,23 +101,24 @@ export default function SettingsScreen() {
 
   // Also persisted immediately. Turning it on asks for permission right away;
   // a denial keeps the time saved but shows the "permission needed" state.
-  const chooseCheckin = async (t: CheckinTime | null) => {
-    setCheckin(t);
-    if (t != null) {
+  const applyCheckin = async (next: CheckinPref) => {
+    setCheckin(next);
+    if (next.enabled) {
       const granted = await requestCheckinPermission();
       setCheckinPermMissing(!granted);
     } else {
       setCheckinPermMissing(false);
     }
-    await setCheckinTime(t);
+    await setCheckinPref(next);
   };
 
-  // ±15-minute steps, wrapping around midnight. Stepping while Off turns the
-  // check-in on from the 8 PM anchor.
+  // ±15-minute steps, wrapping around midnight. Stepping also turns the
+  // check-in on — adjusting a time means you want the reminder.
   const stepCheckin = (dir: 1 | -1) => {
-    const base = checkin ?? { hour: 20, minute: 0 };
-    const mins = (base.hour * 60 + base.minute + dir * 15 + 24 * 60) % (24 * 60);
-    chooseCheckin({ hour: Math.floor(mins / 60), minute: mins % 60 });
+    if (!checkin) return;
+    const mins =
+      (checkin.time.hour * 60 + checkin.time.minute + dir * 15 + 24 * 60) % (24 * 60);
+    applyCheckin({ enabled: true, time: { hour: Math.floor(mins / 60), minute: mins % 60 } });
   };
 
   const downloadModel = async () => {
@@ -400,23 +401,28 @@ export default function SettingsScreen() {
           {checkinSupported() ? (
             <>
               <View style={styles.modelChips}>
+                {/* Off is a STATE toggle, never an eraser: the time chip keeps
+                    showing the remembered time either way, and toggling back
+                    on returns to it. Tap-only throughout — two rounds of
+                    free-text entry proved unreliable on-device. */}
                 <Pressable
-                  onPress={() => chooseCheckin(null)}
+                  onPress={() =>
+                    checkin && applyCheckin({ ...checkin, enabled: !checkin.enabled })
+                  }
                   style={[
                     styles.chip,
                     {
                       backgroundColor:
-                        checkin == null ? theme.tintSurface : theme.backgroundElement,
-                      borderColor: checkin == null ? theme.tint : 'transparent',
+                        checkin?.enabled === false ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: checkin?.enabled === false ? theme.tint : 'transparent',
                     },
                   ]}>
-                  <ThemedText type="small" themeColor={checkin == null ? 'tint' : 'textSecondary'}>
+                  <ThemedText
+                    type="small"
+                    themeColor={checkin?.enabled === false ? 'tint' : 'textSecondary'}>
                     Off
                   </ThemedText>
                 </Pressable>
-                {/* Tap-only time control. Two rounds of free-text entry proved
-                    unreliable on-device (focus/commit semantics) — steppers
-                    use the same chip taps that work everywhere else. */}
                 <Pressable
                   hitSlop={6}
                   onPress={() => stepCheckin(-1)}
@@ -427,12 +433,12 @@ export default function SettingsScreen() {
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: checkin != null ? theme.tintSurface : theme.backgroundElement,
-                      borderColor: checkin != null ? theme.tint : 'transparent',
+                      backgroundColor: checkin?.enabled ? theme.tintSurface : theme.backgroundElement,
+                      borderColor: checkin?.enabled ? theme.tint : 'transparent',
                     },
                   ]}>
-                  <ThemedText type="small" themeColor={checkin != null ? 'tint' : 'textSecondary'}>
-                    {checkin != null ? formatCheckinTime(checkin) : 'Off'}
+                  <ThemedText type="small" themeColor={checkin?.enabled ? 'tint' : 'textSecondary'}>
+                    {checkin ? formatCheckinTime(checkin.time) : '—'}
                   </ThemedText>
                 </View>
                 <Pressable
@@ -442,9 +448,9 @@ export default function SettingsScreen() {
                   <ThemedText type="small">+15m</ThemedText>
                 </Pressable>
               </View>
-              {checkin != null && (
+              {checkin?.enabled && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  Daily at {formatCheckinTime(checkin)} on days with nothing logged.
+                  Daily at {formatCheckinTime(checkin.time)} on days with nothing logged.
                 </ThemedText>
               )}
               {checkinPermMissing && (

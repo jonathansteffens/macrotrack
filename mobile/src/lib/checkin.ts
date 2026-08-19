@@ -65,30 +65,48 @@ async function notifications(): Promise<NotificationsModule | null> {
   }
 }
 
-/** The configured check-in time, or null when the check-in is off (default).
- *  Falls back to the legacy whole-hour setting from the old chip UI. */
-export async function getCheckinTime(): Promise<CheckinTime | null> {
+/** The check-in as the UI sees it: the chosen time always survives (Off is a
+ *  state, not an eraser — toggling off must not forget "8:30 PM"). */
+export type CheckinPref = { enabled: boolean; time: CheckinTime };
+
+const DEFAULT_TIME: CheckinTime = { hour: 20, minute: 0 };
+
+export async function getCheckinPref(): Promise<CheckinPref> {
   const row = await getUserDb().getFirstAsync<{ value: string }>(
     `SELECT value FROM settings WHERE key = '${TIME_KEY}'`
   );
   if (row) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(row.value);
-    return m ? { hour: parseInt(m[1], 10), minute: parseInt(m[2], 10) } : null;
+    const m = /^(off:)?(\d{1,2}):(\d{2})$/.exec(row.value);
+    if (m) {
+      return {
+        enabled: !m[1],
+        time: { hour: parseInt(m[2], 10), minute: parseInt(m[3], 10) },
+      };
+    }
+    return { enabled: false, time: DEFAULT_TIME }; // legacy '-1' = off
   }
   const legacy = await getUserDb().getFirstAsync<{ value: string }>(
     `SELECT value FROM settings WHERE key = '${HOUR_KEY}'`
   );
   const hour = legacy ? parseInt(legacy.value, 10) : NaN;
-  return Number.isFinite(hour) && hour > 0 ? { hour, minute: 0 } : null;
+  return Number.isFinite(hour) && hour > 0
+    ? { enabled: true, time: { hour, minute: 0 } }
+    : { enabled: false, time: DEFAULT_TIME };
 }
 
-/** Persist the time (null = off) and re-sync the scheduled notifications. */
-export async function setCheckinTime(t: CheckinTime | null): Promise<void> {
+export async function setCheckinPref(p: CheckinPref): Promise<void> {
+  const t = `${p.time.hour}:${String(p.time.minute).padStart(2, '0')}`;
   await getUserDb().runAsync(
     `INSERT OR REPLACE INTO settings (key, value) VALUES ('${TIME_KEY}', ?)`,
-    t == null ? '-1' : `${t.hour}:${String(t.minute).padStart(2, '0')}`
+    p.enabled ? t : `off:${t}`
   );
   await syncCheckinNotification();
+}
+
+/** The active check-in time, or null when off — what scheduling consumes. */
+export async function getCheckinTime(): Promise<CheckinTime | null> {
+  const pref = await getCheckinPref();
+  return pref.enabled ? pref.time : null;
 }
 
 /** True when the check-in is on but the OS permission is (or became) denied. */
