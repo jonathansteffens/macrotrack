@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DatePickerModal } from '@/components/date-picker-modal';
@@ -84,6 +84,26 @@ export default function TodayScreen() {
       setUsual(null);
     }
   }, [day]);
+
+  // The process routinely survives overnight in the background, and resuming
+  // does NOT refire navigation focus — without this, the screen keeps showing
+  // yesterday's frame under a stale "Today" until something forces a render.
+  // On every foreground: if we were parked on the logical today and it moved,
+  // follow it; otherwise just refresh the data for the day being viewed.
+  const lastToday = useRef(todayKey());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const now = todayKey();
+      if (now !== lastToday.current) {
+        setDay((d) => (d === lastToday.current ? now : d));
+        lastToday.current = now;
+      } else {
+        load();
+      }
+    });
+    return () => sub.remove();
+  }, [load]);
 
   const relog = async (entriesToLog: LogEntry[], meal: MealType) => {
     if (relogging.current || entriesToLog.length === 0) return;
