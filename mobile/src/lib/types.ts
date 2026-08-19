@@ -11,14 +11,16 @@ export const MEAL_LABELS: Record<MealType, string> = {
 
 /**
  * Best-guess meal when the user hasn't picked one, from the time of day:
- * 5–10:30am breakfast, 10:30am–3pm lunch, 5–9pm dinner, otherwise a snack.
- * Entries can always be re-filed later from the entry editor.
+ * 4–10:30am breakfast, 10:30am–2:30pm lunch, 4:30–9:30pm dinner, with snack
+ * covering only the genuine between-meals windows (mid-afternoon and late
+ * night). The old map left 3–5pm and 9pm+ defaulting to snack, which read as
+ * "not time-based at all" at dinnertime. Entries can always be re-filed later.
  */
 export function mealForTime(date = new Date()): MealType {
   const mins = date.getHours() * 60 + date.getMinutes();
-  if (mins >= 5 * 60 && mins < 10 * 60 + 30) return 'breakfast';
-  if (mins >= 10 * 60 + 30 && mins < 15 * 60) return 'lunch';
-  if (mins >= 17 * 60 && mins < 21 * 60) return 'dinner';
+  if (mins >= 4 * 60 && mins < 10 * 60 + 30) return 'breakfast';
+  if (mins >= 10 * 60 + 30 && mins < 14 * 60 + 30) return 'lunch';
+  if (mins >= 16 * 60 + 30 && mins < 21 * 60 + 30) return 'dinner';
   return 'snack';
 }
 
