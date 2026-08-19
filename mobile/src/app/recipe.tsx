@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,7 +13,6 @@ import {
 
 import { AmountInput } from '@/components/amount-input';
 import { EstimatingIndicator } from '@/components/estimating-indicator';
-import { FoodRow } from '@/components/food-row';
 import { SpeechTextInput } from '@/components/speech-text-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -22,7 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { localEstimate } from '@/lib/ai/local';
 import { ensureLoaded } from '@/lib/ai/local-model';
 import { displayName, resolveClaim, type ResolvedItem } from '@/lib/ai/resolver';
-import { searchFoods } from '@/lib/foods';
+import { FoodSearchModal } from '@/components/food-search-modal';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import {
   deleteRecipe,
@@ -51,8 +50,7 @@ export default function RecipeScreen() {
   const [name, setName] = useState('');
   const [servingsText, setServingsText] = useState('1');
   const [items, setItems] = useState<EditorItem[]>([]);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<FoodItem[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   // AI ingredient entry: a whole ingredient list at once, parsed by the same
   // estimator (and the same quantity hybrid) the assist flow uses — so "1 lb
@@ -73,8 +71,6 @@ export default function RecipeScreen() {
   // Labels state macros per serving far more often than per 100 g, so let the
   // user say which they are copying instead of making them do the arithmetic.
   const [manualBasis, setManualBasis] = useState<'amount' | 'per100'>('amount');
-  const searchId = useRef(0);
-
   // Warm the model while the user is still adding ingredients by hand.
   useEffect(() => {
     ensureLoaded();
@@ -90,23 +86,8 @@ export default function RecipeScreen() {
     });
   }, [editId]);
 
-  useEffect(() => {
-    const id = ++searchId.current;
-    const q = query.trim();
-    const t = setTimeout(
-      async () => {
-        const found = q ? await searchFoods(q, 15) : [];
-        if (searchId.current === id) setResults(found);
-      },
-      q ? 200 : 0
-    );
-    return () => clearTimeout(t);
-  }, [query]);
-
   const addIngredient = (food: FoodItem) => {
     setItems((prev) => [...prev, { ...recipeItemFromFood(food, 100), gramsText: '100' }]);
-    setQuery('');
-    setResults([]);
   };
 
   const setItemGrams = (idx: number, text: string) => {
@@ -363,18 +344,24 @@ export default function RecipeScreen() {
             </ThemedText>
           </View>
 
-          {/* Ingredient search */}
-          <TextInput
-            style={inputStyle}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Add one ingredient by name"
-            placeholderTextColor={theme.textSecondary}
-            autoCorrect={false}
-          />
-          {results.map((f) => (
-            <FoodRow key={f.ref} food={f} onPress={() => addIngredient(f)} />
-          ))}
+          {/* Ingredient search: the app's ONE search experience (same modal as
+              Add-food and the entry editor), not a homegrown inline list. The
+              modal stays open after each pick so several ingredients can be
+              added in one visit. */}
+          <Pressable
+            style={[styles.searchButton, { backgroundColor: theme.backgroundElement }]}
+            onPress={() => setSearchOpen(true)}>
+            <ThemedText type="smallBold" themeColor="tint">
+              🔍 Add ingredient from search
+            </ThemedText>
+          </Pressable>
+          {searchOpen && (
+            <FoodSearchModal
+              title="Add ingredient"
+              onSelect={(f) => addIngredient(f)}
+              onClose={() => setSearchOpen(false)}
+            />
+          )}
 
           {/* Manual entry — for ingredients neither the database nor the model
               can place. Kept collapsed so it does not crowd the two paths that
@@ -533,6 +520,11 @@ const styles = StyleSheet.create({
   servingCol: { gap: Spacing.one },
   aiButton: { borderRadius: Radius.control, paddingVertical: Spacing.two, alignItems: 'center' },
   manualToggle: { paddingVertical: Spacing.two },
+  searchButton: {
+    borderRadius: Radius.card,
+    padding: Spacing.three,
+    alignItems: 'center',
+  },
   manualCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
   manualRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   manualLabel: { minWidth: 84 },
