@@ -19,6 +19,62 @@ async function shareText(filename: string, content: string): Promise<void> {
 }
 
 /**
+ * Label-corrected barcode products as JSONL — the rows the user fixed against
+ * physical packaging ("Fix from the label"), which are exactly the corrections
+ * Open Food Facts wants back. Developer-only: the file is reviewed by a human
+ * and contributed upstream by hand (or a future OFF-API script); the app never
+ * writes to OFF directly.
+ */
+export async function exportBarcodeCorrections(): Promise<number> {
+  const rows = await getUserDb().getAllAsync<{
+    barcode: string;
+    name: string;
+    brand: string | null;
+    kcal: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number | null;
+    sugar: number | null;
+    sodium_mg: number | null;
+    sat_fat: number | null;
+    cholesterol_mg: number | null;
+    portions_json: string;
+    unit: string;
+    fetched_at: string;
+  }>(
+    `SELECT barcode, name, brand, kcal, protein, carbs, fat, fiber, sugar,
+            sodium_mg, sat_fat, cholesterol_mg, portions_json, unit, fetched_at
+       FROM barcode_cache WHERE user_edited = 1 ORDER BY barcode`
+  );
+  if (rows.length === 0) return 0;
+  const lines = rows.map((r) =>
+    JSON.stringify({
+      v: 1,
+      barcode: r.barcode,
+      name: r.name,
+      brand: r.brand,
+      unit: r.unit,
+      per100: {
+        kcal: r.kcal,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiber: r.fiber,
+        sugar: r.sugar,
+        sodiumMg: r.sodium_mg,
+        satFat: r.sat_fat,
+        cholesterolMg: r.cholesterol_mg,
+      },
+      portions: JSON.parse(r.portions_json),
+      first_fetched: r.fetched_at,
+    })
+  );
+  await shareText(`macrotrack-barcode-corrections-${dayKey(new Date())}.jsonl`, lines.join('\n'));
+  return rows.length;
+}
+
+/**
  * ai_events as JSONL, one saved estimator interaction per line, exactly per
  * docs/ai-events-format.md v1. Rows recorded before the v1 columns existed
  * lack a faithful model_claim/final_claim pair and are skipped. Capped at the

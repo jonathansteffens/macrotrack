@@ -58,7 +58,8 @@ import {
   type CheckinTime,
 } from '@/lib/checkin';
 import { DAY_END_OPTIONS, dayEndLabel, getDayEndHour, setDayEndHour } from '@/lib/day-end';
-import { exportFoodLog, exportTrainingData } from '@/lib/export';
+import { isDevMode } from '@/lib/dev-mode';
+import { exportBarcodeCorrections, exportFoodLog, exportTrainingData } from '@/lib/export';
 import { getFoodDbInfo } from '@/lib/foods';
 import { NUTRIENTS } from '@/lib/nutrients';
 import { setTracking } from '@/lib/tracking';
@@ -73,6 +74,7 @@ export default function SettingsScreen() {
   const [checkin, setCheckin] = useState<CheckinTime | null>(null);
   const [checkinText, setCheckinText] = useState('');
   const [checkinPermMissing, setCheckinPermMissing] = useState(false);
+  const [devMode, setDevModeState] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [appearance, setAppearanceState] = useState<AppearancePref>(getAppearance);
@@ -86,6 +88,7 @@ export default function SettingsScreen() {
       setCheckin(t);
       setCheckinText(t ? formatCheckinTime(t) : '');
     });
+    isDevMode().then(setDevModeState);
     checkinPermissionMissing().then(setCheckinPermMissing);
     getLastBackupAt().then(setLastBackup);
   }, []);
@@ -524,20 +527,39 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          {/* Advanced — power-user export tucked under a subtle caption. */}
-          <ThemedText type="small" themeColor="textSecondary" style={styles.sectionTitle}>
-            Advanced
-          </ThemedText>
-          <View style={styles.modelChips}>
-            <Pressable
-              style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
-              onPress={async () => {
-                const n = await exportTrainingData();
-                if (n === 0) Alert.alert('Nothing to export', 'No AI interactions recorded yet.');
-              }}>
-              <ThemedText type="small">Export corrections (for model tuning)</ThemedText>
-            </Pressable>
-          </View>
+          {/* Developer-only: the training export is a dead end for ordinary
+              users (the file goes nowhere) — unlocked by long-pressing the
+              version line on the About screen. */}
+          {devMode && (
+            <>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.sectionTitle}>
+                Developer
+              </ThemedText>
+              <View style={styles.modelChips}>
+                <Pressable
+                  style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+                  onPress={async () => {
+                    const n = await exportTrainingData();
+                    if (n === 0) Alert.alert('Nothing to export', 'No AI interactions recorded yet.');
+                  }}>
+                  <ThemedText type="small">Export corrections (for model tuning)</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.chip, { backgroundColor: theme.backgroundElement, borderColor: 'transparent' }]}
+                  onPress={async () => {
+                    const n = await exportBarcodeCorrections();
+                    Alert.alert(
+                      n === 0 ? 'Nothing to export' : `Exported ${n} product${n === 1 ? '' : 's'}`,
+                      n === 0
+                        ? 'No label-corrected barcode products yet.'
+                        : 'Label corrections ready to contribute back to Open Food Facts.'
+                    );
+                  }}>
+                  <ThemedText type="small">Export barcode fixes (for Open Food Facts)</ThemedText>
+                </Pressable>
+              </View>
+            </>
+          )}
 
           <Pressable
             style={styles.aboutRow}

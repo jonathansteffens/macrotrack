@@ -1,10 +1,11 @@
 import Constants from 'expo-constants';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { LOCAL_MODEL_TOTAL_BYTES } from '@/lib/ai/local-model';
+import { isDevMode, setDevMode } from '@/lib/dev-mode';
 
 /**
  * Static about + attribution screen. Credits every external tool and data
@@ -46,14 +47,24 @@ const CREDITS: Credit[] = [
 ];
 
 export default function AboutScreen() {
+  // Hidden developer unlock: long-press the version line. Gated affordances
+  // (the training-data export) live behind this — see lib/dev-mode.ts.
+  const toggleDevMode = async () => {
+    const next = !(await isDevMode());
+    await setDevMode(next);
+    Alert.alert(next ? 'Developer options enabled' : 'Developer options disabled');
+  };
+
   return (
     <ThemedView style={styles.flex}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ThemedText type="subtitle">{APP_NAME}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Version {APP_VERSION}
-          </ThemedText>
+          <Pressable onLongPress={toggleDevMode} delayLongPress={1200}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Version {APP_VERSION}
+            </ThemedText>
+          </Pressable>
           <ThemedText type="small" themeColor="textSecondary">
             Simple, private macro tracking. Your data never leaves your device.
           </ThemedText>
