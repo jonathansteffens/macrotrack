@@ -29,7 +29,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "output": "static",
