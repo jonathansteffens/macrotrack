@@ -22,7 +22,11 @@ export const FOOD_ALIASES: Record<string, string> = {
   "diet coke": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
   "diet cola": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
   "diet soda": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
-  "diet pepsi": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine"
+  "diet pepsi": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
+  "mint": "spearmint fresh",
+  "fresh mint": "spearmint fresh",
+  "mint leaves": "spearmint fresh",
+  "mint leaf": "spearmint fresh"
 };
 
 /** Aliases longest-first, so a more specific phrase matches before a shorter one. */

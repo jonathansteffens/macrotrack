@@ -11,15 +11,19 @@ import { useTheme } from '@/hooks/use-theme';
 import { todayKey } from '@/lib/dates';
 import { getCustomFoodByBarcode } from '@/lib/foods';
 import { lookupBarcode } from '@/lib/off';
+import { setPendingIngredient } from '@/lib/pending-ingredient';
 import { decodeRecipeShare, isRecipeShare } from '@/lib/recipe-share';
 import { saveRecipe } from '@/lib/recipes';
 
 export default function ScanScreen() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ day?: string; meal?: string }>();
+  const params = useLocalSearchParams<{ day?: string; meal?: string; intent?: string }>();
   const day = params.day ?? todayKey();
   // May be undefined (quick actions) — the food screen guesses one then.
   const meal = params.meal;
+  // 'ingredient': hand the scanned food back to the recipe editor instead of
+  // opening the logging screen (see lib/pending-ingredient.ts).
+  const forIngredient = params.intent === 'ingredient';
 
   const [permission, requestPermission] = useCameraPermissions();
   // useCameraPermissions() does NOT request on mount (SDK 57 docs) — it only
@@ -90,13 +94,36 @@ export default function ScanScreen() {
     // products the user has corrected by re-entering).
     const custom = await getCustomFoodByBarcode(code);
     if (custom) {
-      router.replace({ pathname: '/food', params: { ref: custom.ref, day, meal } });
+      if (forIngredient) {
+        setPendingIngredient(custom.ref);
+        router.back();
+      } else {
+        router.replace({ pathname: '/food', params: { ref: custom.ref, day, meal } });
+      }
       return;
     }
 
     const result = await lookupBarcode(code);
     if (result.status === 'found') {
-      router.replace({ pathname: '/food', params: { ref: result.food.ref, day, meal } });
+      if (forIngredient) {
+        setPendingIngredient(result.food.ref);
+        router.back();
+      } else {
+        router.replace({ pathname: '/food', params: { ref: result.food.ref, day, meal } });
+      }
+      return;
+    }
+    // Ingredient mode keeps failures simple: no custom-food detour mid-recipe.
+    if (forIngredient) {
+      Alert.alert('Product not found', 'This barcode isn’t in the database.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            busy.current = false;
+            setStatus('scanning');
+          },
+        },
+      ]);
       return;
     }
 

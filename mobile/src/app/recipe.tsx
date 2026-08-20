@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -22,6 +22,8 @@ import { localEstimate } from '@/lib/ai/local';
 import { ensureLoaded } from '@/lib/ai/local-model';
 import { displayName, resolveClaim, type ResolvedItem } from '@/lib/ai/resolver';
 import { FoodSearchModal } from '@/components/food-search-modal';
+import { getFoodByRef } from '@/lib/foods';
+import { takePendingIngredient } from '@/lib/pending-ingredient';
 import { fmtGrams, fmtKcal, parseDecimal } from '@/lib/macros';
 import {
   deleteRecipe,
@@ -89,6 +91,18 @@ export default function RecipeScreen() {
   const addIngredient = (food: FoodItem) => {
     setItems((prev) => [...prev, { ...recipeItemFromFood(food, 100), gramsText: '100' }]);
   };
+
+  // A barcode scanned in ingredient mode lands here when the scanner pops
+  // back (see lib/pending-ingredient.ts).
+  useFocusEffect(
+    useCallback(() => {
+      const ref = takePendingIngredient();
+      if (!ref) return;
+      getFoodByRef(ref).then((food) => {
+        if (food) addIngredient(food);
+      });
+    }, [])
+  );
 
   const setItemGrams = (idx: number, text: string) => {
     const g = parseDecimal(text);
@@ -348,13 +362,22 @@ export default function RecipeScreen() {
               Add-food and the entry editor), not a homegrown inline list. The
               modal stays open after each pick so several ingredients can be
               added in one visit. */}
-          <Pressable
-            style={[styles.searchButton, { backgroundColor: theme.backgroundElement }]}
-            onPress={() => setSearchOpen(true)}>
-            <ThemedText type="smallBold" themeColor="tint">
-              🔍 Add ingredient from search
-            </ThemedText>
-          </Pressable>
+          <View style={styles.ingredientButtons}>
+            <Pressable
+              style={[styles.searchButton, styles.flex, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => setSearchOpen(true)}>
+              <ThemedText type="smallBold" themeColor="tint">
+                🔍 Search
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.searchButton, styles.flex, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => router.push({ pathname: '/scan', params: { intent: 'ingredient' } })}>
+              <ThemedText type="smallBold" themeColor="tint">
+                📷 Scan
+              </ThemedText>
+            </Pressable>
+          </View>
           {searchOpen && (
             <FoodSearchModal
               title="Add ingredient"
@@ -524,6 +547,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.card,
     padding: Spacing.three,
     alignItems: 'center',
+  },
+  ingredientButtons: {
+    flexDirection: 'row',
+    gap: Spacing.two,
   },
   manualCard: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.two },
   manualRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

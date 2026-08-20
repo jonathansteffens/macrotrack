@@ -29,12 +29,17 @@
     "diet coke": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
     "diet cola": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
     "diet soda": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
-    "diet pepsi": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine"
+    "diet pepsi": "beverages carbonated low calorie cola or pepper types with sodium saccharin contains caffeine",
+    "mint": "spearmint fresh",
+    "fresh mint": "spearmint fresh",
+    "mint leaves": "spearmint fresh",
+    "mint leaf": "spearmint fresh"
   },
   "expect": {
     "coke": "Beverages, carbonated, cola, regular",
     "cola": "Beverages, carbonated, cola, regular",
     "soda": "Beverages, carbonated, cola, regular",
-    "diet coke": "Beverages, carbonated, low calorie, cola or pepper-types, with sodium saccharin, contains caffeine"
+    "diet coke": "Beverages, carbonated, low calorie, cola or pepper-types, with sodium saccharin, contains caffeine",
+    "mint": "Spearmint, fresh"
   }
 }

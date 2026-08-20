@@ -79,6 +79,22 @@ when they were logged.
   training data + gate cases against it, and retrain so model terms target
   the search humans actually see. All four SQL mirrors move together.
 
+### 5. "sprig of mint" resolved to Mint Julep (a cocktail)
+- **Field observation (Jon, 2026-08-19):** an herb garnish came back as
+  bourbon. Root cause is split: the DB's herbs are named "Peppermint, fresh"
+  / "Spearmint, fresh", so the bare word "mint" can only word-match Mint
+  Candy and Mint Julep — and the model didn't translate to
+  spearmint/peppermint itself.
+- **App-side (shipped 2026-08-19):** curated aliases mint / fresh mint /
+  mint leaves / mint leaf → "Spearmint, fresh" (validated by
+  build-aliases.mjs), applying to both manual search and the resolver.
+- **Training note:** herb/garnish vocabulary is another verbatim-name trap —
+  fold into the anti-fabrication set (issue 0): unfamiliar or generic food
+  words should emit multiple db_search_terms including botanical/common
+  variants ("mint" → "spearmint", "peppermint"), and tiny-quantity garnish
+  phrases ("a sprig of", "a pat of", "a pinch of") deserve gate cases of
+  their own.
+
 ## Resolved (kept for the record)
 - "coke"/"cola"/"soda" identity + cocktail-first ranking → fixed app-side via
   curated aliases + cocktail de-rank (c822a6c, 75fe94b); grams fixed by the
